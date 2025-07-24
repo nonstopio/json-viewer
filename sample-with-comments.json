@@ -1,0 +1,50 @@
+{
+  "title": "PROMIS Pain Interference",
+  "description": "PROMIS Short Forms: Pain Interference 6b, Physical Function 10a, Emotional Distress-Depression 4a",
+  "categoryId": "{{surveyCategoryId}}",
+  "questions": [
+    // Pain Interference - Short Form 6b
+    {
+      "type": "single_choice",
+      "title": "In the past 7 days, how much did pain interfere with your enjoyment of life?",
+      "required": true,
+      "options": [
+        { "text": "Not at all", "value": "1" },
+        { "text": "A little bit", "value": "2" },
+        { "text": "Somewhat", "value": "3" },
+        { "text": "Quite a bit", "value": "4" },
+        { "text": "Very much", "value": "5" }
+      ]
+    },
+    {
+      "type": "single_choice",
+      "title": "In the past 7 days, how much did pain interfere with your ability to concentrate?",
+      "required": true,
+      "options": [
+        { "text": "Not at all", "value": "1" },
+        { "text": "A little bit", "value": "2" },
+        { "text": "Somewhat", "value": "3" },
+        { "text": "Quite a bit", "value": "4" },
+        { "text": "Very much", "value": "5" }
+      ]
+    },
+    // More questions would go here...
+    {
+      "type": "single_choice", 
+      "title": "Sample question with trailing comma",
+      "required": true,
+      "options": [
+        { "text": "Option 1", "value": "1" },
+        { "text": "Option 2", "value": "2" }, // This trailing comma will be auto-removed
+      ]
+    }
+  ],
+  "settings": {
+    "estimatedDuration": 900, // Duration in seconds
+    /* 
+     * Multi-line comment example
+     * This will also be removed automatically
+     */
+    "autoSave": true
+  }
+}

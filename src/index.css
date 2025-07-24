@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', sans-serif;
+  }
+  
+  body {
+    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+}
+
+@layer components {
+  .json-node {
+    @apply transition-all duration-200 ease-out;
+  }
+  
+  .json-node:hover {
+    @apply bg-gray-100 dark:bg-gray-800 rounded-md;
+  }
+  
+  .json-key {
+    @apply font-medium text-json-key dark:text-gray-300;
+  }
+  
+  .json-string {
+    @apply text-json-string;
+  }
+  
+  .json-number {
+    @apply text-json-number;
+  }
+  
+  .json-boolean {
+    @apply text-json-boolean;
+  }
+  
+  .json-null {
+    @apply text-json-null italic;
+  }
+  
+  .expand-collapse-btn {
+    @apply inline-flex items-center justify-center w-5 h-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-150 cursor-pointer select-none;
+  }
+}

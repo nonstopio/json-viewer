@@ -1,0 +1,115 @@
+{
+  "name": "JSON Viewer Analytics Demo",
+  "version": "1.0.0",
+  "description": "A comprehensive JSON viewer with built-in analytics tracking",
+  "author": {
+    "name": "Development Team",
+    "email": "dev@jsonviewer.com",
+    "location": {
+      "city": "San Francisco",
+      "state": "California",
+      "country": "USA"
+    }
+  },
+  "features": [
+    {
+      "name": "Smart JSON Parsing",
+      "description": "Real-time syntax validation with detailed error messages",
+      "status": "completed",
+      "priority": "high"
+    },
+    {
+      "name": "Interactive Tree View", 
+      "description": "Collapsible nodes with smooth animations and visual hierarchy",
+      "status": "completed",
+      "priority": "high"
+    },
+    {
+      "name": "Advanced Search",
+      "description": "Global search with highlighting and navigation",
+      "status": "completed", 
+      "priority": "medium"
+    },
+    {
+      "name": "Analytics Tracking",
+      "description": "Comprehensive usage analytics with privacy-first approach",
+      "status": "completed",
+      "priority": "high"
+    }
+  ],
+  "analytics": {
+    "events": [
+      "app_loaded",
+      "json_parsed", 
+      "json_parse_error",
+      "file_uploaded",
+      "json_pasted",
+      "node_expanded",
+      "node_collapsed",
+      "search_performed",
+      "value_copied",
+      "theme_changed"
+    ],
+    "storage": "localStorage",
+    "privacy": {
+      "anonymized": true,
+      "gdprCompliant": true,
+      "noPII": true
+    }
+  },
+  "configuration": {
+    "theme": {
+      "default": "system",
+      "options": ["light", "dark", "system"]
+    },
+    "limits": {
+      "maxFileSize": "1MB",
+      "maxNodes": 10000,
+      "searchTimeout": 5000
+    },
+    "performance": {
+      "lazyLoading": true,
+      "virtualScrolling": false,
+      "debounceSearch": 300
+    }
+  },
+  "statistics": {
+    "codebase": {
+      "totalFiles": 15,
+      "totalLines": 2847,
+      "languages": {
+        "TypeScript": 2156,
+        "CSS": 245,
+        "HTML": 89,
+        "JSON": 67,
+        "Markdown": 290
+      }
+    },
+    "features": {
+      "components": 6,
+      "hooks": 1,
+      "utilities": 3,
+      "types": 2
+    }
+  },
+  "dependencies": {
+    "runtime": {
+      "react": "^18.2.0",
+      "react-dom": "^18.2.0", 
+      "lucide-react": "^0.263.1"
+    },
+    "development": {
+      "vite": "^4.4.5",
+      "typescript": "^5.0.2",
+      "tailwindcss": "^3.3.3",
+      "eslint": "^8.45.0"
+    }
+  },
+  "metadata": {
+    "created": "2025-07-24T10:00:00Z",
+    "lastModified": "2025-07-24T10:30:00Z",
+    "version": "1.0.0",
+    "buildId": "abc123def456",
+    "environment": "development"
+  }
+}

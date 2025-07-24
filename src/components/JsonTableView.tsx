@@ -1,0 +1,246 @@
+import React, { useMemo } from 'react';
+import { JsonValue } from '../types/json';
+import { JsonNode } from '../types/json';
+
+interface JsonTableViewProps {
+  data: JsonValue;
+  searchQuery?: string;
+  selectedNodePath?: string;
+  nodes?: JsonNode[];
+}
+
+interface TableRow {
+  name: string;
+  value: string;
+  type: string;
+  path: string;
+}
+
+export const JsonTableView: React.FC<JsonTableViewProps> = ({ data, searchQuery = '', selectedNodePath, nodes = [] }) => {
+  const getValueType = (value: any): string => {
+    if (value === null) return 'null';
+    if (Array.isArray(value)) return 'array';
+    return typeof value;
+  };
+
+  const getDisplayValue = (value: any): string => {
+    if (value === null) return 'null';
+    if (typeof value === 'string') return `"${value}"`;
+    if (typeof value === 'object') {
+      if (Array.isArray(value)) {
+        return `Array(${value.length})`;
+      }
+      return `Object(${Object.keys(value).length})`;
+    }
+    return String(value);
+  };
+
+  // Get the selected node's data
+  const selectedNodeData = useMemo(() => {
+    if (!selectedNodePath || !nodes.length) return null;
+    
+    const selectedNode = nodes.find(node => node.path === selectedNodePath);
+    if (!selectedNode) return null;
+    
+    // Get the actual value from the data using the path
+    const getValueFromPath = (data: any, path: string): any => {
+      if (!path || path === 'root') return data;
+      
+      // Remove 'root.' prefix if present
+      const cleanPath = path.startsWith('root.') ? path.substring(5) : path;
+      if (!cleanPath) return data;
+      
+      const parts = cleanPath.split(/\.(?![^\[]*\])|\[|\]/).filter(Boolean);
+      let current = data;
+      
+      for (const part of parts) {
+        if (current === null || current === undefined) return null;
+        
+        if (Array.isArray(current)) {
+          const index = parseInt(part, 10);
+          if (isNaN(index)) return null;
+          current = current[index];
+        } else if (typeof current === 'object') {
+          current = current[part];
+        } else {
+          return null;
+        }
+      }
+      
+      return current;
+    };
+    
+    return getValueFromPath(data, selectedNodePath);
+  }, [selectedNodePath, nodes, data]);
+
+  const tableRows = useMemo(() => {
+    const rows: TableRow[] = [];
+    
+    if (selectedNodeData === undefined || selectedNodeData === null) return rows;
+    
+    // If selected node is a primitive value, show just that value
+    if (typeof selectedNodeData !== 'object' || selectedNodeData === null) {
+      rows.push({
+        name: selectedNodePath?.split(/\.(?![^\[]*\])|\[|\]/).filter(Boolean).pop() || 'value',
+        value: getDisplayValue(selectedNodeData),
+        type: getValueType(selectedNodeData),
+        path: selectedNodePath || ''
+      });
+      return rows;
+    }
+    
+    // If it's an object or array, show its immediate properties
+    if (Array.isArray(selectedNodeData)) {
+      selectedNodeData.forEach((item, index) => {
+        rows.push({
+          name: `[${index}]`,
+          value: getDisplayValue(item),
+          type: getValueType(item),
+          path: selectedNodePath ? `${selectedNodePath}[${index}]` : `[${index}]`
+        });
+      });
+    } else if (typeof selectedNodeData === 'object') {
+      Object.entries(selectedNodeData).forEach(([key, value]) => {
+        rows.push({
+          name: key,
+          value: getDisplayValue(value),
+          type: getValueType(value),  
+          path: selectedNodePath ? `${selectedNodePath}.${key}` : key
+        });
+      });
+    }
+    
+    return rows;
+  }, [selectedNodeData, selectedNodePath]);
+
+  const filteredRows = useMemo(() => {
+    if (!searchQuery.trim()) return tableRows;
+    
+    const query = searchQuery.toLowerCase();
+    return tableRows.filter(row => 
+      row.name.toLowerCase().includes(query) || 
+      row.value.toLowerCase().includes(query) ||
+      row.path.toLowerCase().includes(query)
+    );
+  }, [tableRows, searchQuery]);
+
+  const getTypeColor = (type: string): string => {
+    switch (type) {
+      case 'string': return 'text-blue-600 dark:text-blue-400';
+      case 'number': return 'text-orange-600 dark:text-orange-400';
+      case 'boolean': return 'text-green-600 dark:text-green-400';
+      case 'null': return 'text-gray-500 dark:text-gray-400';
+      case 'array': return 'text-purple-600 dark:text-purple-400';
+      case 'object': return 'text-indigo-600 dark:text-indigo-400';
+      default: return 'text-gray-600 dark:text-gray-300';
+    }
+  };
+
+  const highlightText = (text: string): React.ReactNode => {
+    if (!searchQuery || !searchQuery.trim()) return text;
+
+    const query = searchQuery.toLowerCase();
+    const lowerText = text.toLowerCase();
+    const index = lowerText.indexOf(query);
+
+    if (index === -1) return text;
+
+    return (
+      <>
+        {text.substring(0, index)}
+        <mark className="bg-yellow-300 dark:bg-yellow-600 px-1 rounded">
+          {text.substring(index, index + query.length)}
+        </mark>
+        {text.substring(index + query.length)}
+      </>
+    );
+  };
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Header - Fixed */}
+      <div className="bg-white dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 p-3 flex-shrink-0">
+        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+          Property Details
+        </h3>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          {selectedNodePath ? (
+            <>
+              <span className="font-mono">{selectedNodePath === 'root' ? 'root' : selectedNodePath}</span>
+              <span className="ml-2">({filteredRows.length} {filteredRows.length === 1 ? 'property' : 'properties'})</span>
+            </>
+          ) : (
+            'Select a node to view details'
+          )}
+        </p>
+      </div>
+
+      {/* Table Header - Fixed */}
+      <div className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
+        <div className="grid grid-cols-2 gap-2 p-2 text-xs font-medium text-gray-700 dark:text-gray-300">
+          <div>Name</div>
+          <div>Value</div>
+        </div>
+      </div>
+
+      {/* Table Content - Independent Scroll */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+        {filteredRows.length > 0 ? (
+          <div>
+            {filteredRows.map((row, index) => (
+              <div
+                key={`${row.path}-${index}`}
+                className="grid grid-cols-2 gap-2 p-2 text-xs border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                <div className="flex items-center space-x-1">
+                  <span className="font-medium text-gray-800 dark:text-gray-200 truncate" title={row.name}>
+                    {highlightText(row.name)}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className={`px-1.5 py-0.5 rounded text-xs font-mono ${getTypeColor(row.type)} bg-gray-100 dark:bg-gray-700`}>
+                    {row.type}
+                  </span>
+                  <span className="text-gray-600 dark:text-gray-400 truncate flex-1 font-mono" title={row.value}>
+                    {highlightText(row.value)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-32 text-gray-500 dark:text-gray-400">
+            <div className="text-center">
+              {selectedNodePath ? (
+                <>
+                  <p className="text-sm">No properties found</p>
+                  {searchQuery && (
+                    <p className="text-xs mt-1">Try adjusting your search query</p>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm">Select a node to view its properties</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Stats Footer - Fixed */}
+      {selectedNodePath && (
+        <div className="bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600 p-3 flex-shrink-0">
+          <div className="grid grid-cols-2 gap-4 text-xs">
+            <div>
+              <span className="font-medium text-gray-700 dark:text-gray-300">Type:</span>
+              <span className="ml-1 text-gray-600 dark:text-gray-400">{getValueType(selectedNodeData)}</span>
+            </div>
+            <div>
+              <span className="font-medium text-gray-700 dark:text-gray-300">Properties:</span>
+              <span className="ml-1 text-gray-600 dark:text-gray-400">{filteredRows.length}</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
