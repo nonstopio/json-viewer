@@ -327,9 +327,11 @@ ga-key.json
 Dockerfile*
 docker-compose*
 
-# Kubernetes
+# Kubernetes (but not GitHub workflows or config files)
 *.yaml
 *.yml
+!.github/**/*.yml
+!.github/**/*.yaml
 !package.json
 !tsconfig.json
 !vite.config.ts
