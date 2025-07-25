@@ -13,9 +13,7 @@ Navigate to: **Settings** > **Branches** > **Add rule**
 - [x] Require branches to be up to date before merging
 
 **Required checks:**
-- `code-quality` (from CI workflow)
-- `security-scan` (from CI workflow) 
-- `lint-and-test` (from CI workflow)
+- `code-quality` (from PR workflow)
 
 #### ✅ **Additional Protection**
 - [x] Require pull request reviews before merging
@@ -32,23 +30,15 @@ Navigate to: **Settings** > **Branches** > **Add rule**
 
 ## Workflow Dependencies
 
-The deployment pipeline is configured to:
+The simplified pipeline:
 
-1. **CI Pipeline** (`ci.yml`):
-   - Runs on all branches
-   - Executes `npm run code-quality` (includes lint, format, build)
-   - Must pass before deployment can proceed
-
-2. **Deployment Pipeline** (`deploy.yml`):
+1. **Deployment Pipeline** (`deploy.yml`):
    - Only runs on `main` branch
-   - Depends on CI pipeline success
-   - Includes additional pre-deployment quality checks
-   - Cancels deployment if CI fails
+   - Builds and deploys automatically
 
-3. **PR Checks** (`pr-checks.yml`):
-   - Runs on all pull requests to `main`/`develop`
-   - Provides immediate feedback on code quality
-   - Comments on PR if checks fail
+2. **PR Checks** (`pr-checks.yml`):
+   - Runs on all pull requests to `main`
+   - Executes `npm run code-quality` for code validation
 
 ## Quick Setup Commands
 
@@ -58,7 +48,7 @@ Run these in your repository settings:
 # Enable branch protection via GitHub CLI (if available)
 gh api repos/{owner}/{repo}/branches/main/protection \
   --method PUT \
-  --field required_status_checks='{"strict":true,"checks":[{"context":"code-quality"},{"context":"security-scan"}]}' \
+  --field required_status_checks='{"strict":true,"checks":[{"context":"code-quality"}]}' \
   --field enforce_admins=true \
   --field required_pull_request_reviews='{"dismiss_stale_reviews":true,"require_code_owner_reviews":true}' \
   --field restrictions=null
@@ -66,9 +56,7 @@ gh api repos/{owner}/{repo}/branches/main/protection \
 
 ## Benefits
 
-✅ **No deployment without clean code**  
-✅ **Consistent code quality across all branches**  
-✅ **Automatic security scanning**  
-✅ **PR feedback loop for early issue detection**  
-✅ **Multi-node testing (Node.js 18 & 20)**  
-✅ **Bundle size monitoring**
+✅ **Code quality checks on all PRs**  
+✅ **Automatic deployment on main branch**  
+✅ **Simple and maintainable workflow**  
+✅ **Fast feedback loop for developers**

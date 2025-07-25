@@ -26,38 +26,19 @@ To enable automatic deployment, you need to add these secrets in your GitHub rep
 
 ## How It Works
 
-### 🔄 **CI/CD Pipeline**
-1. **Continuous Integration** (`ci.yml`):
-   - Runs on all branches and PRs
-   - Executes code quality checks: `npm run code-quality`
-   - Runs security audits and vulnerability scans
-   - Tests on multiple Node.js versions (18, 20)
-   - **Must pass before deployment**
-
-2. **Deployment** (`deploy.yml`):
+### 🔄 **Simple CI/CD Pipeline**
+1. **Deployment** (`deploy.yml`):
    - **Only runs on `main` branch**
-   - **Requires CI pipeline to pass first**
-   - Additional pre-deployment quality checks
-   - Deploys to Netlify if all checks pass
+   - Builds and deploys to Netlify automatically
 
-3. **Pull Request Checks** (`pr-checks.yml`):
-   - Runs on all PRs to `main`/`develop`
-   - Provides immediate code quality feedback
-   - Bundle size analysis
-   - Auto-comments on failed checks
-
-### 🛡️ **Quality Gates**
-- **Linting**: ESLint must pass with no errors
-- **Formatting**: Prettier formatting must be correct
-- **TypeScript**: Must compile without errors
-- **Security**: No high-severity vulnerabilities
-- **Build**: Production build must succeed
+2. **Pull Request Checks** (`pr-checks.yml`):
+   - Runs on all PRs to `main` branch
+   - Executes `npm run code-quality` (formatting, linting, build)
 
 ### 🚀 **Deployment Process**
-- **Automatic Deployment**: Every push to `main` branch triggers deployment (if CI passes)
-- **Quality Assurance**: Deployment only happens after all quality checks pass
+- **Automatic Deployment**: Every push to `main` branch triggers build and deployment
 - **Build Caching**: npm dependencies are cached for faster builds
-- **Security Headers**: Netlify.toml includes security and performance headers
+- **Quality Assurance**: PRs are checked for code quality before merging
 
 ## Manual Deployment
 
