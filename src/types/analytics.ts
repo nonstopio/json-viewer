@@ -40,12 +40,18 @@ export interface AnalyticsProperties extends Record<string, unknown> {
   collapsedCount?: number;
   totalMatches?: number;
   property?: string;
+  errorLine?: number;
+  errorColumn?: number;
+  errorPosition?: number;
+  calculatedPosition?: number;
 }
 
 export type AnalyticsEventType =
   | "app_loaded"
   | "json_parsed"
   | "json_parse_error"
+  | "auto_parse_error"
+  | "error_cursor_positioned"
   | "file_uploaded"
   | "json_pasted"
   | "node_expanded"

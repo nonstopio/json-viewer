@@ -24,6 +24,7 @@ function App() {
   const [inputText, setInputText] = useState<string>('');
   const [lastParsedInput, setLastParsedInput] = useState<string>('');
   const [selectedNodePath, setSelectedNodePath] = useState<string>('');
+  const [errorDetails, setErrorDetails] = useState<{line?: number; column?: number; position?: number} | undefined>();
 
   useEffect(() => {
     trackEvent('app_loaded', {
@@ -38,6 +39,7 @@ function App() {
   const handleJsonSubmit = useCallback(async (jsonText: string, shouldSwitchTab = false) => {
     setIsLoading(true);
     setError('');
+    setErrorDetails(undefined);
     setInputText(jsonText);
     
     try {
@@ -61,6 +63,7 @@ function App() {
         }
       } else {
         setError(result.error || 'Failed to parse JSON');
+        setErrorDetails(result.errorDetails);
         setJsonData(null);
         setNodes([]);
         setFilteredNodes([]);
@@ -68,6 +71,7 @@ function App() {
       }
     } catch (err) {
       setError('Unexpected error occurred while parsing JSON');
+      setErrorDetails(undefined);
       trackEvent('error_encountered', {
         errorType: 'unexpected_parse_error',
         errorMessage: err instanceof Error ? err.message : 'Unknown error'
@@ -174,19 +178,62 @@ function App() {
     }
   }, [jsonData]);
 
-  const handleViewerTabClick = useCallback(() => {
+  const handleViewerTabClick = useCallback(async () => {
     // Check if there's unparsed text or text that has changed since last parse
     const currentInputText = inputText.trim();
     
     if (currentInputText && currentInputText !== lastParsedInput) {
       // Auto-parse the text when switching to viewer tab if:
       // 1. There's input text AND it's different from what was last successfully parsed
-      handleJsonSubmit(currentInputText, true);
+      setIsLoading(true);
+      setError('');
+      setErrorDetails(undefined);
+      
+      try {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const result = jsonParser.parseJson(currentInputText);
+        
+        if (result.success && result.data !== undefined) {
+          setJsonData(result.data);
+          const newNodes = jsonParser.convertToNodes(result.data);
+          setNodes(newNodes);
+          setFilteredNodes(newNodes);
+          setOriginalNodes(newNodes);
+          setLastParsedInput(currentInputText);
+          setSelectedNodePath('root');
+          setActiveTab('viewer');
+        } else {
+          // If parsing fails, show error and redirect back to JSON tab
+          setError(result.error || 'Failed to parse JSON');
+          setErrorDetails(result.errorDetails);
+          setJsonData(null);
+          setNodes([]);
+          setFilteredNodes([]);
+          setOriginalNodes([]);
+          setActiveTab('text'); // Redirect back to JSON tab on error
+          trackEvent('auto_parse_error', {
+            errorType: 'parse_failure',
+            errorMessage: result.error || 'Unknown error'
+          });
+        }
+      } catch (err) {
+        // If unexpected error occurs, show error and redirect back to JSON tab
+        setError('Unexpected error occurred while parsing JSON');
+        setErrorDetails(undefined);
+        setActiveTab('text'); // Redirect back to JSON tab on error
+        trackEvent('auto_parse_error', {
+          errorType: 'unexpected_error',
+          errorMessage: err instanceof Error ? err.message : 'Unknown error'
+        });
+      } finally {
+        setIsLoading(false);
+      }
     } else {
       // Just switch to viewer tab if input is the same as last parsed or no input text
       setActiveTab('viewer');
     }
-  }, [inputText, lastParsedInput, handleJsonSubmit]);
+  }, [inputText, lastParsedInput]);
 
   const handleClear = useCallback(() => {
     setJsonData(null);
@@ -196,6 +243,7 @@ function App() {
     setInputText('');
     setLastParsedInput('');
     setError('');
+    setErrorDetails(undefined);
     setSearchQuery('');
     setSearchMatchIndices([]);
     setCurrentMatchIndex(0);
@@ -856,6 +904,8 @@ function App() {
               error={error}
               initialValue={inputText}
               onError={setError}
+              onChange={setInputText}
+              errorDetails={errorDetails}
             />
           </div>
         )}

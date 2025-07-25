@@ -8,6 +8,12 @@ interface JsonInputProps {
   error?: string;
   initialValue?: string;
   onError?: (error: string) => void;
+  onChange?: (text: string) => void;
+  errorDetails?: {
+    line?: number;
+    column?: number;
+    position?: number;
+  };
 }
 
 export const JsonInput: React.FC<JsonInputProps> = ({
@@ -15,16 +21,101 @@ export const JsonInput: React.FC<JsonInputProps> = ({
   isLoading = false,
   error,
   initialValue = '',
-  onError
+  onError,
+  onChange,
+  errorDetails
 }) => {
   const [jsonText, setJsonText] = useState(initialValue);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isJumpingToError, setIsJumpingToError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setJsonText(initialValue);
   }, [initialValue]);
+
+  const handleJumpToError = useCallback(async () => {
+    if (!textareaRef.current || !errorDetails || !jsonText) {
+      console.log('Cannot position cursor - missing refs or data:', {
+        hasTextarea: !!textareaRef.current,
+        hasErrorDetails: !!errorDetails,
+        hasJsonText: !!jsonText
+      });
+      return;
+    }
+
+    setIsJumpingToError(true);
+    
+    try {
+      // Add a small delay to show the loading state
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      const textarea = textareaRef.current;
+      let cursorPosition = 0;
+
+      console.log('🎯 Jumping to error:', errorDetails);
+      console.log('📝 Text length:', jsonText.length);
+
+      // Calculate cursor position based on available error details
+      if (errorDetails.position !== undefined) {
+        cursorPosition = Math.min(errorDetails.position, jsonText.length);
+        console.log('📍 Using direct position:', errorDetails.position, 'clamped to:', cursorPosition);
+      } else if (errorDetails.line !== undefined && errorDetails.column !== undefined) {
+        const lines = jsonText.split('\n');
+        const targetLine = errorDetails.line - 1;
+        
+        console.log('📊 Calculating from line/column:', errorDetails.line, errorDetails.column);
+        console.log('📋 Total lines:', lines.length, 'Target line index:', targetLine);
+        
+        if (targetLine >= 0 && targetLine < lines.length) {
+          for (let i = 0; i < targetLine; i++) {
+            cursorPosition += lines[i].length + 1;
+          }
+          const targetColumn = Math.min(errorDetails.column - 1, lines[targetLine].length);
+          cursorPosition += Math.max(0, targetColumn);
+          
+          console.log('🧮 Calculated position:', cursorPosition, 'from line', targetLine, 'column', targetColumn);
+          console.log('📄 Line content:', JSON.stringify(lines[targetLine]));
+        }
+      }
+
+      console.log('✅ Final cursor position:', cursorPosition);
+
+      if (cursorPosition > jsonText.length) {
+        cursorPosition = jsonText.length;
+      }
+
+      // Focus and position cursor
+      textarea.focus();
+      
+      const selectionStart = cursorPosition;
+      const selectionEnd = Math.min(cursorPosition + 5, jsonText.length);
+      
+      textarea.setSelectionRange(selectionStart, selectionEnd);
+      
+      // Scroll to position
+      if (errorDetails.line) {
+        const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 20;
+        const scrollPosition = Math.max(0, (errorDetails.line - 3) * lineHeight);
+        textarea.scrollTop = scrollPosition;
+      }
+      
+      console.log('✅ Jumped to error position:', selectionStart, 'to', selectionEnd);
+      
+      trackEvent('error_cursor_positioned', {
+        errorLine: errorDetails.line,
+        errorColumn: errorDetails.column,
+        errorPosition: errorDetails.position,
+        calculatedPosition: cursorPosition
+      });
+      
+    } catch (error) {
+      console.error('❌ Error jumping to position:', error);
+    } finally {
+      setIsJumpingToError(false);
+    }
+  }, [errorDetails, jsonText]);
 
   const handleTextSubmit = useCallback(() => {
     if (jsonText.trim()) {
@@ -52,6 +143,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
       const content = e.target?.result as string;
       if (content) {
         setJsonText(content);
+        onChange?.(content);
         onJsonSubmit(content, true); // Pass true to indicate tab switch should happen
         trackEvent('file_uploaded', {
           fileSize: content.length,
@@ -67,7 +159,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
       });
     };
     reader.readAsText(file);
-  }, [onJsonSubmit, onError]);
+  }, [onJsonSubmit, onError, onChange]);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -118,20 +210,22 @@ export const JsonInput: React.FC<JsonInputProps> = ({
     const droppedText = e.dataTransfer.getData('text/plain');
     if (droppedText && !jsonFile) {
       setJsonText(droppedText);
+      onChange?.(droppedText);
       onJsonSubmit(droppedText, true); // Pass true to indicate tab switch should happen
       trackEvent('json_pasted', {
         fileSize: droppedText.length,
         source: 'drag_drop'
       });
     }
-  }, [handleFileRead, onJsonSubmit]);
+  }, [handleFileRead, onJsonSubmit, onChange]);
 
   const handleClear = useCallback(() => {
     setJsonText('');
+    onChange?.('');
     if (textareaRef.current) {
       textareaRef.current.focus();
     }
-  }, []);
+  }, [onChange]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
@@ -139,6 +233,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
       handleTextSubmit();
     }
   }, [handleTextSubmit]);
+
 
   const triggerFileInput = useCallback(() => {
     fileInputRef.current?.click();
@@ -166,7 +261,11 @@ export const JsonInput: React.FC<JsonInputProps> = ({
         <textarea
           ref={textareaRef}
           value={jsonText}
-          onChange={(e) => setJsonText(e.target.value)}
+          onChange={(e) => {
+            const newValue = e.target.value;
+            setJsonText(newValue);
+            onChange?.(newValue);
+          }}
           onKeyDown={handleKeyDown}
           placeholder='Paste the JSON code here (your code is not saved anywhere)'
           className="flex-1 w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg resize-none font-mono text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors min-h-0"
@@ -190,6 +289,32 @@ export const JsonInput: React.FC<JsonInputProps> = ({
           <div className="text-sm text-red-800 dark:text-red-200">
             <div className="font-medium">JSON Parse Error</div>
             <div className="mt-1">{error}</div>
+            {errorDetails && (errorDetails.line || errorDetails.column) && (
+              <div className="mt-1 text-xs text-red-600 dark:text-red-300">
+                {errorDetails.line && errorDetails.column 
+                  ? `Error at line ${errorDetails.line}, column ${errorDetails.column}`
+                  : errorDetails.line 
+                    ? `Error at line ${errorDetails.line}`
+                    : `Error at column ${errorDetails.column}`
+                }
+                {errorDetails.position && ` (position ${errorDetails.position})`}
+                <button
+                  onClick={handleJumpToError}
+                  disabled={isJumpingToError}
+                  className="ml-2 px-2 py-1 text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Click to jump to error location"
+                >
+                  {isJumpingToError ? (
+                    <>
+                      <span className="inline-block animate-spin w-3 h-3 border border-red-500 border-t-transparent rounded-full mr-1"></span>
+                      Finding...
+                    </>
+                  ) : (
+                    <>📍 Jump to Error</>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
