@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { FileCode, BarChart3, Upload, Copy, Square, Trash2, FileText, FoldVertical, UnfoldVertical, ChevronUp, ChevronDown } from 'lucide-react';
+import { FileCode, BarChart3, Upload, Copy, Square, Trash2, FileText, FoldVertical, UnfoldVertical, ChevronUp, ChevronDown, X, Github, Linkedin, Twitter, Globe, Heart } from 'lucide-react';
 import { JsonInput } from './components/JsonInput';
 import { JsonTree } from './components/JsonTree';
 import { ThemeToggle } from './components/ThemeToggle';
@@ -558,7 +558,7 @@ function App() {
         "timestamp": "2024-01-24T10:30:00Z",
         "version": "1.0.0",
         "environment": "production",
-        "generatedBy": "NONSTOPIO JSON Viewer Test Suite",
+        "generatedBy": "NonStop io JSON Viewer Test Suite",
         "dataPoints": 15847,
         "processingTime": 0.234,
         "checksum": "sha256:a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234"
@@ -756,30 +756,41 @@ function App() {
             >
               <FoldVertical size={16} />
             </button>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value, caseSensitive)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  if (e.shiftKey) {
-                    handleNavigateToPrevMatch();
-                  } else {
-                    handleNavigateToNextMatch();
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value, caseSensitive)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (e.shiftKey) {
+                      handleNavigateToPrevMatch();
+                    } else {
+                      handleNavigateToNextMatch();
+                    }
+                    e.preventDefault();
+                  } else if (e.key === 'F3') {
+                    if (e.shiftKey) {
+                      handleNavigateToPrevMatch();
+                    } else {
+                      handleNavigateToNextMatch();
+                    }
+                    e.preventDefault();
                   }
-                  e.preventDefault();
-                } else if (e.key === 'F3') {
-                  if (e.shiftKey) {
-                    handleNavigateToPrevMatch();
-                  } else {
-                    handleNavigateToNextMatch();
-                  }
-                  e.preventDefault();
-                }
-              }}
-              placeholder="Search JSON... (Enter: next, Shift+Enter: prev)"
-              className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+                }}
+                placeholder="Search JSON... (Enter: next, Shift+Enter: prev)"
+                className="w-full px-3 pr-10 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => handleSearch('', caseSensitive)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  title="Clear search"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
             <button
               onClick={() => setCaseSensitive(!caseSensitive)}
               className={`px-3 py-2 text-sm rounded transition-colors ${
@@ -790,13 +801,6 @@ function App() {
               title="Toggle case sensitivity - Match exact case when enabled"
             >
               Aa
-            </button>
-            <button
-              onClick={() => handleSearch('', caseSensitive)}
-              className="px-3 py-2 text-sm bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-              title="Clear search - Remove search query and show all nodes"
-            >
-              Clear
             </button>
             {searchQuery && searchMatchIndices.length > 0 && (
               <>
@@ -833,6 +837,7 @@ function App() {
               isLoading={isLoading}
               error={error}
               initialValue={inputText}
+              onError={setError}
             />
           </div>
         )}
@@ -897,6 +902,81 @@ function App() {
           </ResizablePanel>
         )}
       </div>
+
+      {/* Footer */}
+      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4">
+        <div className="px-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            {/* Logo and Company Name */}
+            <div className="flex items-center space-x-3">
+              <img 
+                src="/favicon.png" 
+                alt="NonStop io Logo" 
+                className="w-6 h-6"
+              />
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                NonStop io Technologies Pvt. Ltd.
+              </span>
+            </div>
+            
+            {/* Social Links */}
+            <div className="flex items-center space-x-4">
+              <a 
+                href="https://github.com/nonstopio" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                title="GitHub"
+              >
+                <Github size={18} />
+              </a>
+              <a 
+                href="https://linkedin.com/company/nonstopio" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                title="LinkedIn"
+              >
+                <Linkedin size={18} />
+              </a>
+              <a 
+                href="https://twitter.com/nonstopio" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                title="Twitter"
+              >
+                <Twitter size={18} />
+              </a>
+              <a 
+                href="https://nonstopio.com" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                title="Website"
+              >
+                <Globe size={18} />
+              </a>
+            </div>
+            
+            {/* Visit Counter with Creative Label */}
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                <Heart size={14} className="mr-1 text-red-500" />
+                <span>Helped</span>
+              </div>
+              <img 
+                src="https://visit-counter.vercel.app/counter.png?page=http%3A%2F%2Fjson.nonstopio.com%2F&s=34&c=039d65&bg=00000000&no=10&ff=electrolize&tb=&ta=" 
+                alt="developers helped"
+                className="h-6"
+              />
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                developers parse JSON
+              </span>
+            </div>
+          </div>
+        </div>
+      </footer>
 
     </div>
   );

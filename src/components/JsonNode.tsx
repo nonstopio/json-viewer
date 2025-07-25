@@ -239,7 +239,7 @@ export const JsonNode: React.FC<JsonNodeProps> = ({
         {canExpand ? (
           <button
             onClick={handleToggleClick}
-            className={`w-3 h-3 rounded-full flex items-center justify-center text-white text-xs font-bold transition-all duration-150 ${
+            className={`w-3 h-3 rounded-sm flex items-center justify-center text-white text-xs font-bold transition-all duration-150 ${
               node.isExpanded 
                 ? 'bg-orange-500 hover:bg-orange-600 shadow-sm' 
                 : 'bg-blue-500 hover:bg-blue-600 shadow-sm'
