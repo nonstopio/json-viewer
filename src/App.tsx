@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { FileCode, BarChart3, Upload, Copy, Square, Trash2, FileText, FoldVertical, UnfoldVertical, ChevronUp, ChevronDown, X, Github, Linkedin, Twitter, Globe, Heart, Bug } from 'lucide-react';
+import { FileCode, BarChart3, Upload, Copy, Square, Trash2, FileText, FoldVertical, UnfoldVertical, ChevronUp, ChevronDown, X, Github, Linkedin, Twitter, Globe, Heart, Bug, Maximize } from 'lucide-react';
 import { JsonInput } from './components/JsonInput';
 import { JsonTree } from './components/JsonTree';
 import { ThemeToggle } from './components/ThemeToggle';
@@ -24,6 +24,7 @@ function App() {
   const [inputText, setInputText] = useState<string>('');
   const [lastParsedInput, setLastParsedInput] = useState<string>('');
   const [selectedNodePath, setSelectedNodePath] = useState<string>('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [errorDetails, setErrorDetails] = useState<{line?: number; column?: number; position?: number} | undefined>();
 
   useEffect(() => {
@@ -34,6 +35,38 @@ function App() {
         height: window.innerHeight
       }
     });
+  }, []);
+
+  // Handle fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  // Fullscreen functions
+  const enterFullscreen = useCallback(async () => {
+    try {
+      const fullscreenElement = document.getElementById('json-tree-fullscreen');
+      if (fullscreenElement && fullscreenElement.requestFullscreen) {
+        await fullscreenElement.requestFullscreen();
+      }
+    } catch (error) {
+      console.warn('Failed to enter fullscreen:', error);
+    }
+  }, []);
+
+  const exitFullscreen = useCallback(async () => {
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        await document.exitFullscreen();
+      }
+    } catch (error) {
+      console.warn('Failed to exit fullscreen:', error);
+    }
   }, []);
 
   const handleJsonSubmit = useCallback(async (jsonText: string, shouldSwitchTab = false) => {
@@ -709,7 +742,20 @@ function App() {
   }, [searchMatchIndices, currentMatchIndex, filteredNodes]);
 
   return (
-    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
+    <>
+      {/* Fullscreen styles */}
+      <style>{`
+        #json-tree-fullscreen:fullscreen {
+          background: white;
+          padding: 0;
+          margin: 0;
+        }
+        html.dark #json-tree-fullscreen:fullscreen {
+          background: rgb(17 24 39);
+        }
+      `}</style>
+      
+      <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
       {/* Top Tab Bar - Fixed */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex items-center">
@@ -922,6 +968,17 @@ function App() {
             <div className="h-full bg-white dark:bg-gray-800 min-w-0 overflow-hidden">
               {jsonData ? (
                 <div className="h-full flex flex-col">
+                  {/* Tree Header */}
+                  <div className="flex items-center justify-between p-2 border-b border-gray-200 dark:border-gray-700">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">JSON Tree</span>
+                    <button
+                      onClick={enterFullscreen}
+                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                      title="View in fullscreen"
+                    >
+                      <Maximize size={16} className="text-gray-500 dark:text-gray-400" />
+                    </button>
+                  </div>
                   {/* Tree Content - Independent Scroll */}
                   <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 min-h-0 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
                     <div className="min-w-0">
@@ -1061,7 +1118,62 @@ function App() {
         </div>
       </footer>
 
-    </div>
+      {/* Fullscreen Tree Container */}
+      <div 
+        id="json-tree-fullscreen" 
+        className={`${isFullscreen ? 'bg-white dark:bg-gray-900' : 'hidden'}`}
+        style={isFullscreen ? {
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          zIndex: 9999
+        } : {}}
+      >
+        {isFullscreen && (
+          <div className="h-full flex flex-col">
+            {/* Fullscreen Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">JSON Tree - Fullscreen View</h2>
+              <button
+                onClick={exitFullscreen}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                title="Exit fullscreen (ESC)"
+              >
+                <X size={20} className="text-gray-500 dark:text-gray-400" />
+              </button>
+            </div>
+            
+            {/* Fullscreen Tree Content */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 min-h-0 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+              {jsonData ? (
+                <JsonTree
+                  nodes={filteredNodes}
+                  onToggleNode={handleToggleNode}
+                  onSelectNode={handleSelectNode}
+                  selectedNodePath={selectedNodePath}
+                  searchQuery={searchQuery}
+                  caseSensitive={caseSensitive}
+                  searchMatchIndices={searchMatchIndices}
+                  currentMatchIndex={currentMatchIndex}
+                />
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center text-gray-500 dark:text-gray-400">
+                    <FileCode className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                    <p className="text-lg mb-2">No JSON data loaded</p>
+                    <p className="text-sm">Use the JSON tab or toolbar buttons to load JSON</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      </div>
+    </>
   );
 }
 

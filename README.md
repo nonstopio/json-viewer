@@ -35,6 +35,7 @@ A modern, intuitive JSON viewer that transforms complex JSON data into a visuall
 | 🔍 **Advanced Search** | Global search with real-time highlighting and navigation |
 | 🎨 **Theme Support** | Dark/light/system theme with automatic detection |
 | 📋 **Copy Functionality** | Copy values and JSON paths with one click |
+| 🖥️ **Fullscreen Mode** | Native browser fullscreen for immersive JSON viewing |
 
 
 ## 📸 **Screenshots**
@@ -94,8 +95,9 @@ Visit our hosted version at **[json.nonstopio.com](https://json.nonstopio.com)**
 |------|--------|-------------|
 | 1️⃣ | **Input JSON** | Paste JSON directly, upload a .json file, or drag & drop |
 | 2️⃣ | **Explore** | Click to expand/collapse nodes, use search to find specific keys/values |
-| 3️⃣ | **Copy** | Hover over nodes to copy values or JSON paths |
-| 4️⃣ | **Customize** | Toggle between light/dark themes or use system preference |
+| 3️⃣ | **Fullscreen** | Click the maximize button for immersive viewing experience |
+| 4️⃣ | **Copy** | Hover over nodes to copy values or JSON paths |
+| 5️⃣ | **Customize** | Toggle between light/dark themes or use system preference |
 
 </div>
 
@@ -106,7 +108,7 @@ Visit our hosted version at **[json.nonstopio.com](https://json.nonstopio.com)**
 | `Ctrl+F` / `Cmd+F` | Open search |
 | `Enter` | Next search result |
 | `Shift+Enter` | Previous search result |
-| `Escape` | Clear search |
+| `Escape` | Clear search / Exit fullscreen |
 
 ## 🛠️ **Technology Stack**
 
