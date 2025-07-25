@@ -3,10 +3,34 @@ name: Build and Deploy to Netlify
 on:
   push:
     branches: [ main ]
+  workflow_run:
+    workflows: ["Continuous Integration"]
+    types:
+      - completed
+    branches: [ main ]
 
 jobs:
+  # Only deploy if CI passed
+  check-ci-status:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_run'
+    outputs:
+      ci-passed: ${{ steps.check.outputs.conclusion == 'success' }}
+    steps:
+      - name: Check CI Status
+        id: check
+        run: |
+          echo "conclusion=${{ github.event.workflow_run.conclusion }}" >> $GITHUB_OUTPUT
+          if [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
+            echo "❌ CI pipeline failed. Deployment cancelled."
+            exit 1
+          fi
+          echo "✅ CI pipeline passed. Proceeding with deployment."
+
   build-and-deploy:
     runs-on: ubuntu-latest
+    needs: [check-ci-status]
+    if: always() && (github.event_name == 'push' || needs.check-ci-status.outputs.ci-passed == 'true')
     
     steps:
       - name: Checkout Repository
@@ -21,11 +45,11 @@ jobs:
       - name: Install Dependencies
         run: npm ci
       
+      - name: Run Code Quality Checks (Pre-deployment)
+        run: npm run code-quality
+      
       - name: Run Tests (if any)
         run: npm run test --if-present
-      
-      - name: Build Project
-        run: npm run build
       
       - name: Deploy to Netlify
         uses: nwtgck/actions-netlify@v3.0
