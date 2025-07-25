@@ -5,8 +5,7 @@
   <h1>JSON Viewer</h1>
   <p><em>Transform complex JSON data into beautiful, interactive visualizations</em></p>
   
-  [![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-json.nonstopio.com-blue?style=for-the-badge&logo=vercel)](https://json.nonstopio.com)
-  <img src="https://visit-counter.vercel.app/counter.png?page=https%3A%2F%2Fjson.nonstopio.com%2F&s=40&c=039d65&bg=00000000&no=1&ff=electrolize&tb=&ta=" alt="visits">
+  [![Live at](https://img.shields.io/badge/🌐_Live_at-json.nonstopio.com-blue?style=for-the-badge&logo=vercel)](https://json.nonstopio.com)
   [![Built with React](https://img.shields.io/badge/Built_with-React_18-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
   [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
   [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
@@ -27,27 +26,25 @@ A modern, intuitive JSON viewer that transforms complex JSON data into a visuall
 ## ✨ **Features**
 
 ### 🔧 **Core Functionality**
-| Feature | Description |
-|---------|-------------|
-| 🧠 **Smart JSON Parsing** | Real-time syntax validation with clear error messages |
-| 🌳 **Interactive Tree View** | Collapsible/expandable nodes with smooth animations |
-| 📥 **Multiple Input Methods** | Paste, upload, or drag & drop JSON files |
-| 🔍 **Advanced Search** | Global search with real-time highlighting and navigation |
-| 🎨 **Theme Support** | Dark/light/system theme with automatic detection |
-| 📋 **Copy Functionality** | Copy values and JSON paths with one click |
-| 🖥️ **Fullscreen Mode** | Native browser fullscreen for immersive JSON viewing |
+| Feature                       | Description                                              |
+|-------------------------------|----------------------------------------------------------|
+| 🧠 **Smart JSON Parsing**     | Real-time syntax validation with clear error messages    |
+| 🌳 **Interactive Tree View**  | Collapsible/expandable nodes with smooth animations      |
+| 📥 **Multiple Input Methods** | Paste, upload, or drag & drop JSON files                 |
+| 🔍 **Advanced Search**        | Global search with real-time highlighting and navigation |
+| 🎨 **Theme Support**          | Dark/light/system theme with automatic detection         |
+| 📋 **Copy Functionality**     | Copy values and JSON paths with one click                |
+| 🖥️ **Fullscreen Mode**       | Native browser fullscreen for immersive JSON viewing     |
 
 
 ## 📸 **Screenshots**
 
 <div align="center">
-  <h3>🌟 Beautiful JSON Visualization</h3>
-  <p><em>Experience JSON data like never before</em></p>
+  <img src="img.png" alt="JSON Viewer Interface" width="60%" />
   
-  <!-- Add screenshots here when available -->
   <p>
     <a href="https://json.nonstopio.com">
-      <img src="https://img.shields.io/badge/🎯_See_Live_Demo-json.nonstopio.com-success?style=for-the-badge" alt="Live Demo" />
+      <img src="https://img.shields.io/badge/🎯_See_Live_at-json.nonstopio.com-success?style=for-the-badge" alt="Live at" />
     </a>
   </p>
 </div>
@@ -84,7 +81,7 @@ npm run build
 npm run preview
 ```
 
-### 🌐 **Live Demo**
+### 🌐 **Live at**
 Visit our hosted version at **[json.nonstopio.com](https://json.nonstopio.com)** to try it out instantly!
 
 ## 📖 **How to Use**
@@ -150,13 +147,8 @@ We welcome contributions! Here's how to get started:
 ---
 
 <div align="center">
-  <h3>🌟 **Made with ❤️ by NonStop Team**</h3>
-  <p>
-    <a href="https://nonstopio.com">🌐 Visit NonStop</a> •
-    <a href="https://json.nonstopio.com">🚀 Try JSON Viewer</a> •
-    <a href="https://github.com/nonstopio">💻 GitHub</a>
-  </p>
-  
+  <h3>Made with ❤️ by NonStop Team</h3>
+
   <p>
     <img src="https://img.shields.io/badge/⭐_Star_this_repo-if_it_helped_you!-yellow?style=for-the-badge" alt="Star this repo" />
   </p>
