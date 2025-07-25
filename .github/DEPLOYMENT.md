@@ -26,10 +26,19 @@ To enable automatic deployment, you need to add these secrets in your GitHub rep
 
 ## How It Works
 
-- **Automatic Deployment**: Every push to `main` branch triggers a build and deployment
-- **Pull Request Previews**: PRs create preview deployments for testing
+### 🔄 **Simple CI/CD Pipeline**
+1. **Deployment** (`deploy.yml`):
+   - **Only runs on `main` branch**
+   - Builds and deploys to Netlify automatically
+
+2. **Pull Request Checks** (`pr-checks.yml`):
+   - Runs on all PRs to `main` branch
+   - Executes `npm run code-quality` (formatting, linting, build)
+
+### 🚀 **Deployment Process**
+- **Automatic Deployment**: Every push to `main` branch triggers build and deployment
 - **Build Caching**: npm dependencies are cached for faster builds
-- **Security Headers**: Netlify.toml includes security and performance headers
+- **Quality Assurance**: PRs are checked for code quality before merging
 
 ## Manual Deployment
 

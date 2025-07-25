@@ -71,8 +71,9 @@ export const JsonTree: React.FC<JsonTreeProps> = ({
     );
   }
 
+
   return (
-    <div className="json-tree text-sm space-y-0">
+    <div className="json-tree-container">
       {nodes.map((node, index) => {
         const isCurrentMatch = searchMatchIndices.length > 0 && 
           searchMatchIndices[currentMatchIndex] === index;

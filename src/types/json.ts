@@ -1,9 +1,9 @@
-export type JsonValue = 
-  | string 
-  | number 
-  | boolean 
-  | null 
-  | JsonObject 
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonObject
   | JsonArray;
 
 export interface JsonObject {
@@ -26,7 +26,7 @@ export interface ParseResult {
 export interface JsonNode {
   key?: string;
   value: JsonValue;
-  type: 'string' | 'number' | 'boolean' | 'null' | 'object' | 'array';
+  type: "string" | "number" | "boolean" | "null" | "object" | "array";
   path: string;
   depth: number;
   isExpanded?: boolean;

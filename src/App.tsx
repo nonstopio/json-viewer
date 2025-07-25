@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { FileCode, BarChart3, Upload, Copy, Square, Trash2, FileText, FoldVertical, UnfoldVertical, ChevronUp, ChevronDown } from 'lucide-react';
+import { FileCode, BarChart3, Upload, Copy, Square, Trash2, FileText, FoldVertical, UnfoldVertical, ChevronUp, ChevronDown, X, Github, Linkedin, Twitter, Globe, Heart, Bug, Maximize } from 'lucide-react';
 import { JsonInput } from './components/JsonInput';
 import { JsonTree } from './components/JsonTree';
 import { ThemeToggle } from './components/ThemeToggle';
@@ -7,10 +7,10 @@ import { JsonTableView } from './components/JsonTableView';
 import { ResizablePanel } from './components/ResizablePanel';
 import { jsonParser } from './utils/jsonParser';
 import { trackEvent } from './utils/analytics';
-import { JsonNode } from './types/json';
+import { JsonNode, JsonValue } from './types/json';
 
 function App() {
-  const [jsonData, setJsonData] = useState<any>(null);
+  const [jsonData, setJsonData] = useState<JsonValue | null>(null);
   const [nodes, setNodes] = useState<JsonNode[]>([]);
   const [filteredNodes, setFilteredNodes] = useState<JsonNode[]>([]);
   const [originalNodes, setOriginalNodes] = useState<JsonNode[]>([]);
@@ -22,7 +22,10 @@ function App() {
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<'viewer' | 'text'>('text');
   const [inputText, setInputText] = useState<string>('');
+  const [lastParsedInput, setLastParsedInput] = useState<string>('');
   const [selectedNodePath, setSelectedNodePath] = useState<string>('');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [errorDetails, setErrorDetails] = useState<{line?: number; column?: number; position?: number} | undefined>();
 
   useEffect(() => {
     trackEvent('app_loaded', {
@@ -34,9 +37,42 @@ function App() {
     });
   }, []);
 
+  // Handle fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  // Fullscreen functions
+  const enterFullscreen = useCallback(async () => {
+    try {
+      const fullscreenElement = document.getElementById('json-tree-fullscreen');
+      if (fullscreenElement && fullscreenElement.requestFullscreen) {
+        await fullscreenElement.requestFullscreen();
+      }
+    } catch (error) {
+      console.warn('Failed to enter fullscreen:', error);
+    }
+  }, []);
+
+  const exitFullscreen = useCallback(async () => {
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        await document.exitFullscreen();
+      }
+    } catch (error) {
+      console.warn('Failed to exit fullscreen:', error);
+    }
+  }, []);
+
   const handleJsonSubmit = useCallback(async (jsonText: string, shouldSwitchTab = false) => {
     setIsLoading(true);
     setError('');
+    setErrorDetails(undefined);
     setInputText(jsonText);
     
     try {
@@ -50,6 +86,8 @@ function App() {
         setNodes(newNodes);
         setFilteredNodes(newNodes);
         setOriginalNodes(newNodes);
+        // Track the input that was successfully parsed
+        setLastParsedInput(jsonText);
         // Auto-select root node when data is loaded
         setSelectedNodePath('root');
         // Switch to viewer tab only if parsing was successful and requested
@@ -58,6 +96,7 @@ function App() {
         }
       } else {
         setError(result.error || 'Failed to parse JSON');
+        setErrorDetails(result.errorDetails);
         setJsonData(null);
         setNodes([]);
         setFilteredNodes([]);
@@ -65,6 +104,7 @@ function App() {
       }
     } catch (err) {
       setError('Unexpected error occurred while parsing JSON');
+      setErrorDetails(undefined);
       trackEvent('error_encountered', {
         errorType: 'unexpected_parse_error',
         errorMessage: err instanceof Error ? err.message : 'Unknown error'
@@ -171,13 +211,72 @@ function App() {
     }
   }, [jsonData]);
 
+  const handleViewerTabClick = useCallback(async () => {
+    // Check if there's unparsed text or text that has changed since last parse
+    const currentInputText = inputText.trim();
+    
+    if (currentInputText && currentInputText !== lastParsedInput) {
+      // Auto-parse the text when switching to viewer tab if:
+      // 1. There's input text AND it's different from what was last successfully parsed
+      setIsLoading(true);
+      setError('');
+      setErrorDetails(undefined);
+      
+      try {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        const result = jsonParser.parseJson(currentInputText);
+        
+        if (result.success && result.data !== undefined) {
+          setJsonData(result.data);
+          const newNodes = jsonParser.convertToNodes(result.data);
+          setNodes(newNodes);
+          setFilteredNodes(newNodes);
+          setOriginalNodes(newNodes);
+          setLastParsedInput(currentInputText);
+          setSelectedNodePath('root');
+          setActiveTab('viewer');
+        } else {
+          // If parsing fails, show error and redirect back to JSON tab
+          setError(result.error || 'Failed to parse JSON');
+          setErrorDetails(result.errorDetails);
+          setJsonData(null);
+          setNodes([]);
+          setFilteredNodes([]);
+          setOriginalNodes([]);
+          setActiveTab('text'); // Redirect back to JSON tab on error
+          trackEvent('auto_parse_error', {
+            errorType: 'parse_failure',
+            errorMessage: result.error || 'Unknown error'
+          });
+        }
+      } catch (err) {
+        // If unexpected error occurs, show error and redirect back to JSON tab
+        setError('Unexpected error occurred while parsing JSON');
+        setErrorDetails(undefined);
+        setActiveTab('text'); // Redirect back to JSON tab on error
+        trackEvent('auto_parse_error', {
+          errorType: 'unexpected_error',
+          errorMessage: err instanceof Error ? err.message : 'Unknown error'
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      // Just switch to viewer tab if input is the same as last parsed or no input text
+      setActiveTab('viewer');
+    }
+  }, [inputText, lastParsedInput]);
+
   const handleClear = useCallback(() => {
     setJsonData(null);
     setNodes([]);
     setFilteredNodes([]);
     setOriginalNodes([]);
     setInputText('');
+    setLastParsedInput('');
     setError('');
+    setErrorDetails(undefined);
     setSearchQuery('');
     setSearchMatchIndices([]);
     setCurrentMatchIndex(0);
@@ -187,381 +286,35 @@ function App() {
 
   const handleLoadData = useCallback(() => {
     const sampleData = {
-      "api": {
-        "version": "2.1.4",
-        "name": "E-Commerce Platform API",
-        "description": "Comprehensive REST API for modern e-commerce solutions",
-        "documentation": "https://api.example.com/docs",
-        "endpoints": {
-          "authentication": "/auth",
-          "users": "/users",
-          "products": "/products",
-          "orders": "/orders",
-          "analytics": "/analytics"
-        }
-      },
-      "database": {
-        "users": [
-          {
-            "id": 1001,
-            "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-            "profile": {
-              "firstName": "Alexandra",
-              "lastName": "Rodriguez",
-              "email": "alexandra.rodriguez@techcorp.com",
-              "phone": "+1-555-0123",
-              "avatar": "https://cdn.example.com/avatars/alexandra.jpg",
-              "bio": "Senior Full-Stack Developer with 8+ years of experience in React, Node.js, and cloud architecture.",
-              "location": {
-                "country": "United States",
-                "state": "California",
-                "city": "San Francisco",
-                "timezone": "America/Los_Angeles",
-                "coordinates": {
-                  "latitude": 37.7749,
-                  "longitude": -122.4194
-                }
-              }
-            },
-            "account": {
-              "status": "active",
-              "type": "premium",
-              "created": "2019-03-15T10:30:00Z",
-              "lastLogin": "2024-01-23T14:22:00Z",
-              "preferences": {
-                "theme": "dark",
-                "language": "en-US",
-                "currency": "USD",
-                "notifications": {
-                  "email": true,
-                  "push": false,
-                  "sms": true
-                }
-              },
-              "subscription": {
-                "plan": "professional",
-                "billing": "annual",
-                "price": 299.99,
-                "nextBilling": "2024-03-15T00:00:00Z",
-                "features": ["unlimited_projects", "priority_support", "advanced_analytics"]
-              }
-            },
-            "activities": [
-              {
-                "id": "act_001",
-                "type": "login",
-                "timestamp": "2024-01-23T14:22:00Z",
-                "metadata": {
-                  "ip": "192.168.1.100",
-                  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
-                  "device": "desktop"
-                }
-              },
-              {
-                "id": "act_002",
-                "type": "purchase",
-                "timestamp": "2024-01-20T09:15:30Z",
-                "metadata": {
-                  "orderId": "ORD-2024-001234",
-                  "amount": 149.99,
-                  "currency": "USD"
-                }
-              }
-            ]
-          },
-          {
-            "id": 1002,
-            "uuid": "b2c3d4e5-f6g7-8901-bcde-f23456789012",
-            "profile": {
-              "firstName": "Michael",
-              "lastName": "Chen",
-              "email": "m.chen@designstudio.co",
-              "phone": "+44-20-7946-0958",
-              "avatar": "https://cdn.example.com/avatars/michael.jpg",
-              "bio": "Creative Director specializing in UX/UI design and brand identity.",
-              "location": {
-                "country": "United Kingdom",
-                "state": "England",
-                "city": "London",
-                "timezone": "Europe/London",
-                "coordinates": {
-                  "latitude": 51.5074,
-                  "longitude": -0.1278
-                }
-              }
-            },
-            "account": {
-              "status": "active",
-              "type": "standard",
-              "created": "2020-07-22T16:45:00Z",
-              "lastLogin": "2024-01-22T11:30:00Z",
-              "preferences": {
-                "theme": "light",
-                "language": "en-GB",
-                "currency": "GBP",
-                "notifications": {
-                  "email": false,
-                  "push": true,
-                  "sms": false
-                }
-              }
-            }
-          }
-        ],
-        "products": [
-          {
-            "id": "prod_001",
-            "sku": "LAPTOP-GAMING-RTX4080",
-            "name": "UltraPerformance Gaming Laptop Pro",
-            "description": "High-end gaming laptop with RTX 4080, 32GB RAM, and 1TB NVMe SSD",
-            "category": {
-              "primary": "Electronics",
-              "secondary": "Computers",
-              "tertiary": "Laptops"
-            },
-            "pricing": {
-              "currency": "USD",
-              "basePrice": 2499.99,
-              "salePrice": 2199.99,
-              "discount": {
-                "type": "percentage",
-                "value": 12,
-                "validUntil": "2024-02-29T23:59:59Z"
-              },
-              "tiers": [
-                { "quantity": 1, "price": 2199.99 },
-                { "quantity": 5, "price": 2099.99 },
-                { "quantity": 10, "price": 1999.99 }
-              ]
-            },
-            "specifications": {
-              "processor": {
-                "brand": "Intel",
-                "model": "Core i9-13900HX",
-                "cores": 24,
-                "baseFreq": 2.2,
-                "boostFreq": 5.4,
-                "cache": "36MB L3"
-              },
-              "graphics": {
-                "brand": "NVIDIA",
-                "model": "GeForce RTX 4080",
-                "memory": "12GB GDDR6X",
-                "rayTracing": true
-              },
-              "memory": {
-                "size": "32GB",
-                "type": "DDR5-5600",
-                "slots": 2,
-                "maxCapacity": "64GB"
-              },
-              "storage": [
-                {
-                  "type": "NVMe SSD",
-                  "capacity": "1TB",
-                  "interface": "PCIe 4.0",
-                  "readSpeed": 7000,
-                  "writeSpeed": 6500
-                }
-              ],
-              "display": {
-                "size": 17.3,
-                "resolution": "2560x1600",
-                "refreshRate": 240,
-                "panelType": "IPS",
-                "colorGamut": "100% DCI-P3"
-              }
-            },
-            "inventory": {
-              "inStock": true,
-              "quantity": 47,
-              "reserved": 3,
-              "warehouse": {
-                "location": "West Coast DC",
-                "section": "A-12-B",
-                "lastUpdated": "2024-01-23T08:00:00Z"
-              }
-            },
-            "reviews": {
-              "average": 4.7,
-              "count": 234,
-              "distribution": {
-                "5": 145,
-                "4": 67,
-                "3": 15,
-                "2": 4,
-                "1": 3
-              },
-              "featured": [
-                {
-                  "id": "rev_001",
-                  "userId": 1001,
-                  "rating": 5,
-                  "title": "Exceptional performance for gaming and work",
-                  "content": "This laptop exceeded my expectations. The RTX 4080 handles all modern games at high settings...",
-                  "date": "2024-01-15T20:30:00Z",
-                  "verified": true,
-                  "helpful": 23
-                }
-              ]
-            }
-          }
-        ],
-        "orders": [
-          {
-            "id": "ORD-2024-001234",
-            "number": "NSP-240123-001",
-            "status": "processing",
-            "customer": {
-              "id": 1001,
-              "email": "alexandra.rodriguez@techcorp.com",
-              "shippingAddress": {
-                "firstName": "Alexandra",
-                "lastName": "Rodriguez",
-                "company": "TechCorp Inc.",
-                "address1": "123 Market Street",
-                "address2": "Suite 450",
-                "city": "San Francisco",
-                "state": "CA",
-                "postalCode": "94102",
-                "country": "US",
-                "phone": "+1-555-0123"
-              },
-              "billingAddress": {
-                "firstName": "Alexandra",
-                "lastName": "Rodriguez",
-                "address1": "456 Pine Street",
-                "address2": "Apt 78",
-                "city": "San Francisco",
-                "state": "CA",
-                "postalCode": "94108",
-                "country": "US"
-              }
-            },
-            "items": [
-              {
-                "productId": "prod_001",
-                "sku": "LAPTOP-GAMING-RTX4080",
-                "name": "UltraPerformance Gaming Laptop Pro",
-                "quantity": 1,
-                "unitPrice": 2199.99,
-                "totalPrice": 2199.99,
-                "customizations": [
-                  {
-                    "type": "memory_upgrade",
-                    "from": "32GB",
-                    "to": "64GB",
-                    "additionalCost": 299.99
-                  },
-                  {
-                    "type": "warranty_extension",
-                    "duration": "3 years",
-                    "additionalCost": 199.99
-                  }
-                ]
-              }
-            ],
-            "pricing": {
-              "subtotal": 2199.99,
-              "customizations": 499.98,
-              "shipping": 0.00,
-              "tax": 243.60,
-              "discount": -100.00,
-              "total": 2843.57,
-              "currency": "USD"
-            },
-            "payment": {
-              "method": "credit_card",
-              "status": "paid",
-              "transactionId": "txn_1234567890abcdef",
-              "processor": "stripe",
-              "card": {
-                "brand": "visa",
-                "last4": "4242",
-                "expiry": "12/27"
-              },
-              "processedAt": "2024-01-20T09:15:45Z"
-            },
-            "fulfillment": {
-              "status": "processing",
-              "estimatedShip": "2024-01-25T00:00:00Z",
-              "estimatedDelivery": "2024-01-30T00:00:00Z",
-              "carrier": "FedEx",
-              "service": "Priority Overnight",
-              "tracking": null
-            },
-            "timeline": [
-              {
-                "status": "placed",
-                "timestamp": "2024-01-20T09:15:30Z",
-                "note": "Order successfully placed"
-              },
-              {
-                "status": "payment_confirmed",
-                "timestamp": "2024-01-20T09:15:45Z",
-                "note": "Payment processed successfully"
-              },
-              {
-                "status": "processing",
-                "timestamp": "2024-01-20T10:30:00Z",
-                "note": "Order moved to fulfillment queue"
-              }
-            ]
-          }
-        ]
-      },
-      "analytics": {
-        "performance": {
-          "responseTime": {
-            "average": 156.7,
-            "p50": 142,
-            "p95": 387,
-            "p99": 892,
-            "unit": "milliseconds"
-          },
-          "throughput": {
-            "requestsPerSecond": 1247.3,
-            "peakRPS": 2103,
-            "averageRPS": 967.8
-          },
-          "errors": {
-            "rate": 0.23,
-            "count": 47,
-            "types": {
-              "4xx": 31,
-              "5xx": 16
-            }
-          }
-        },
-        "business": {
-          "revenue": {
-            "total": 127459.23,
-            "currency": "USD",
-            "period": "2024-01",
-            "growth": 12.4,
-            "breakdown": {
-              "products": 89234.56,
-              "services": 23419.87,
-              "subscriptions": 14804.80
-            }
-          },
-          "customers": {
-            "total": 2847,
-            "new": 234,
-            "returning": 2613,
-            "churnRate": 3.2,
-            "ltv": 2847.92
-          }
-        }
-      },
-      "metadata": {
-        "timestamp": "2024-01-24T10:30:00Z",
+      "company": {
         "version": "1.0.0",
-        "environment": "production",
-        "generatedBy": "NONSTOPIO JSON Viewer Test Suite",
-        "dataPoints": 15847,
-        "processingTime": 0.234,
-        "checksum": "sha256:a1b2c3d4e5f6789012345678901234567890abcdef123456789012345678901234"
+        "name": "NonStop io Technologies Pvt. Ltd.",
+        "description": "Our applied AI solutions are designed to seamlessly integrate with your processes, making your business smarter, faster, and more efficient.",
+        "website": "https://nonstopio.com/"
+      },
+      "user": {
+        "id": 104,
+        "firstName": "Ajay",
+        "lastName": "Kumar",
+        "email": "ajay.kumar@nonstopio.com",
+        "github": "https://github.com/projectaj14",
+        "bio": "Software expert with 9+ years in the field.",
+        "account": {
+          "status": "active",
+          "type": "premium",
+          "created": "2019-03-15T10:30:00Z",
+          "lastLogin": "2024-01-23T14:22:00Z",
+          "preferences": {
+            "theme": "dark",
+            "language": "en-IN",
+            "currency": "INR",
+            "notifications": {
+              "email": true,
+              "push": false,
+              "sms": true
+            }
+          }
+        }
       }
     };
     const jsonText = JSON.stringify(sampleData, null, 2);
@@ -643,7 +396,20 @@ function App() {
   }, [searchMatchIndices, currentMatchIndex, filteredNodes]);
 
   return (
-    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
+    <>
+      {/* Fullscreen styles */}
+      <style>{`
+        #json-tree-fullscreen:fullscreen {
+          background: white;
+          padding: 0;
+          margin: 0;
+        }
+        html.dark #json-tree-fullscreen:fullscreen {
+          background: rgb(17 24 39);
+        }
+      `}</style>
+      
+      <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
       {/* Top Tab Bar - Fixed */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <div className="flex items-center">
@@ -659,7 +425,7 @@ function App() {
               JSON
             </button>
             <button
-              onClick={() => setActiveTab('viewer')}
+              onClick={handleViewerTabClick}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'viewer'
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-gray-50 dark:bg-gray-700'
@@ -756,30 +522,41 @@ function App() {
             >
               <FoldVertical size={16} />
             </button>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value, caseSensitive)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  if (e.shiftKey) {
-                    handleNavigateToPrevMatch();
-                  } else {
-                    handleNavigateToNextMatch();
+            <div className="relative flex-1">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value, caseSensitive)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (e.shiftKey) {
+                      handleNavigateToPrevMatch();
+                    } else {
+                      handleNavigateToNextMatch();
+                    }
+                    e.preventDefault();
+                  } else if (e.key === 'F3') {
+                    if (e.shiftKey) {
+                      handleNavigateToPrevMatch();
+                    } else {
+                      handleNavigateToNextMatch();
+                    }
+                    e.preventDefault();
                   }
-                  e.preventDefault();
-                } else if (e.key === 'F3') {
-                  if (e.shiftKey) {
-                    handleNavigateToPrevMatch();
-                  } else {
-                    handleNavigateToNextMatch();
-                  }
-                  e.preventDefault();
-                }
-              }}
-              placeholder="Search JSON... (Enter: next, Shift+Enter: prev)"
-              className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+                }}
+                placeholder="Search JSON... (Enter: next, Shift+Enter: prev)"
+                className="w-full px-3 pr-10 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => handleSearch('', caseSensitive)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  title="Clear search"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
             <button
               onClick={() => setCaseSensitive(!caseSensitive)}
               className={`px-3 py-2 text-sm rounded transition-colors ${
@@ -790,13 +567,6 @@ function App() {
               title="Toggle case sensitivity - Match exact case when enabled"
             >
               Aa
-            </button>
-            <button
-              onClick={() => handleSearch('', caseSensitive)}
-              className="px-3 py-2 text-sm bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-              title="Clear search - Remove search query and show all nodes"
-            >
-              Clear
             </button>
             {searchQuery && searchMatchIndices.length > 0 && (
               <>
@@ -833,6 +603,9 @@ function App() {
               isLoading={isLoading}
               error={error}
               initialValue={inputText}
+              onError={setError}
+              onChange={setInputText}
+              errorDetails={errorDetails}
             />
           </div>
         )}
@@ -849,6 +622,18 @@ function App() {
             <div className="h-full bg-white dark:bg-gray-800 min-w-0 overflow-hidden">
               {jsonData ? (
                 <div className="h-full flex flex-col">
+                  {/* Tree Header */}
+                  <div className="flex items-center justify-between p-2 border-b border-gray-200 dark:border-gray-700">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">JSON Tree</span>
+                    <button
+                      onClick={enterFullscreen}
+                      className="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                      title="View in fullscreen"
+                    >
+                      <Maximize size={16} className="text-gray-500 dark:text-gray-400" />
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Fullscreen</span>
+                    </button>
+                  </div>
                   {/* Tree Content - Independent Scroll */}
                   <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 min-h-0 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
                     <div className="min-w-0">
@@ -898,7 +683,152 @@ function App() {
         )}
       </div>
 
-    </div>
+      {/* Footer */}
+      <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4">
+        <div className="px-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            {/* Logo, Company Name and Social Links */}
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-3">
+                <img 
+                  src="/favicon.png" 
+                  alt="NonStop io Logo" 
+                  className="w-6 h-6"
+                />
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  NonStop io Technologies Pvt. Ltd.
+                </span>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <a 
+                  href="https://github.com/nonstopio" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  title="GitHub"
+                >
+                  <Github size={16} />
+                </a>
+                <a 
+                  href="https://www.linkedin.com/company/nonstop-io" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  title="LinkedIn"
+                >
+                  <Linkedin size={16} />
+                </a>
+                <a 
+                  href="https://twitter.com/nonstopio" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  title="Twitter"
+                >
+                  <Twitter size={16} />
+                </a>
+                <a 
+                  href="https://nonstopio.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  title="Website"
+                >
+                  <Globe size={16} />
+                </a>
+              </div>
+            </div>
+            
+            {/* Visit Counter with Creative Label - Center */}
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                <Heart size={14} className="mr-1 text-red-500" />
+                <span>Helped</span>
+              </div>
+              <img 
+                src="https://visit-counter.vercel.app/counter.png?page=https%3A%2F%2Fjson.nonstopio.com%2F&s=34&c=039d65&bg=00000000&no=1&ff=electrolize&tb=&ta=" 
+                alt="developers helped"
+                className="h-6"
+              />
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                developers parse JSON
+              </span>
+            </div>
+            
+            {/* Report Issues - Right */}
+            <div className="flex items-center space-x-2">
+              <a 
+                href="https://github.com/nonstopio/json-viewer/issues" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center space-x-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                title="Report Issues"
+              >
+                <Bug size={16} />
+                <span className="text-xs">Report Issues</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* Fullscreen Tree Container */}
+      <div 
+        id="json-tree-fullscreen" 
+        className={`${isFullscreen ? 'bg-white dark:bg-gray-900' : 'hidden'}`}
+        style={isFullscreen ? {
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          zIndex: 9999
+        } : {}}
+      >
+        {isFullscreen && (
+          <div className="h-full flex flex-col">
+            {/* Fullscreen Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">JSON Tree - Fullscreen View</h2>
+              <button
+                onClick={exitFullscreen}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                title="Exit fullscreen (ESC)"
+              >
+                <X size={20} className="text-gray-500 dark:text-gray-400" />
+              </button>
+            </div>
+            
+            {/* Fullscreen Tree Content */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 min-h-0 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+              {jsonData ? (
+                <JsonTree
+                  nodes={filteredNodes}
+                  onToggleNode={handleToggleNode}
+                  onSelectNode={handleSelectNode}
+                  selectedNodePath={selectedNodePath}
+                  searchQuery={searchQuery}
+                  caseSensitive={caseSensitive}
+                  searchMatchIndices={searchMatchIndices}
+                  currentMatchIndex={currentMatchIndex}
+                />
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <div className="text-center text-gray-500 dark:text-gray-400">
+                    <FileCode className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                    <p className="text-lg mb-2">No JSON data loaded</p>
+                    <p className="text-sm">Use the JSON tab or toolbar buttons to load JSON</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      </div>
+    </>
   );
 }
 
