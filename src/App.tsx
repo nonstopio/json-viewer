@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { FileCode, BarChart3, Upload, Copy, Square, Trash2, FileText, FoldVertical, UnfoldVertical, ChevronUp, ChevronDown, X, Github, Linkedin, Twitter, Globe, Heart } from 'lucide-react';
+import { FileCode, BarChart3, Upload, Copy, Square, Trash2, FileText, FoldVertical, UnfoldVertical, ChevronUp, ChevronDown, X, Github, Linkedin, Twitter, Globe, Heart, Bug } from 'lucide-react';
 import { JsonInput } from './components/JsonInput';
 import { JsonTree } from './components/JsonTree';
 import { ThemeToggle } from './components/ThemeToggle';
@@ -907,59 +907,60 @@ function App() {
       <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4">
         <div className="px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            {/* Logo and Company Name */}
-            <div className="flex items-center space-x-3">
-              <img 
-                src="/favicon.png" 
-                alt="NonStop io Logo" 
-                className="w-6 h-6"
-              />
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                NonStop io Technologies Pvt. Ltd.
-              </span>
+            {/* Logo, Company Name and Social Links */}
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-3">
+                <img 
+                  src="/favicon.png" 
+                  alt="NonStop io Logo" 
+                  className="w-6 h-6"
+                />
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  NonStop io Technologies Pvt. Ltd.
+                </span>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <a 
+                  href="https://github.com/nonstopio" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  title="GitHub"
+                >
+                  <Github size={16} />
+                </a>
+                <a 
+                  href="https://www.linkedin.com/company/nonstop-io" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  title="LinkedIn"
+                >
+                  <Linkedin size={16} />
+                </a>
+                <a 
+                  href="https://twitter.com/nonstopio" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  title="Twitter"
+                >
+                  <Twitter size={16} />
+                </a>
+                <a 
+                  href="https://nonstopio.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  title="Website"
+                >
+                  <Globe size={16} />
+                </a>
+              </div>
             </div>
             
-            {/* Social Links */}
-            <div className="flex items-center space-x-4">
-              <a 
-                href="https://github.com/nonstopio" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                title="GitHub"
-              >
-                <Github size={18} />
-              </a>
-              <a 
-                href="https://linkedin.com/company/nonstopio" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                title="LinkedIn"
-              >
-                <Linkedin size={18} />
-              </a>
-              <a 
-                href="https://twitter.com/nonstopio" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                title="Twitter"
-              >
-                <Twitter size={18} />
-              </a>
-              <a 
-                href="https://nonstopio.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                title="Website"
-              >
-                <Globe size={18} />
-              </a>
-            </div>
-            
-            {/* Visit Counter with Creative Label */}
+            {/* Visit Counter with Creative Label - Center */}
             <div className="flex items-center space-x-2">
               <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
                 <Heart size={14} className="mr-1 text-red-500" />
@@ -973,6 +974,20 @@ function App() {
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 developers parse JSON
               </span>
+            </div>
+            
+            {/* Report Issues - Right */}
+            <div className="flex items-center space-x-2">
+              <a 
+                href="https://github.com/nonstopio/json-viewer/issues" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center space-x-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                title="Report Issues"
+              >
+                <Bug size={16} />
+                <span className="text-xs">Report Issues</span>
+              </a>
             </div>
           </div>
         </div>

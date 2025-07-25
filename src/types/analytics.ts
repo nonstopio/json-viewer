@@ -39,6 +39,7 @@ export interface AnalyticsProperties {
   expandedCount?: number;
   collapsedCount?: number;
   totalMatches?: number;
+  property?: string;
 }
 
 export type AnalyticsEventType = 
@@ -54,6 +55,7 @@ export type AnalyticsEventType =
   | 'expand_all_nodes'
   | 'collapse_all_nodes'
   | 'value_copied'
+  | 'property_detail_copied'
   | 'theme_changed'
   | 'session_started'
   | 'feature_used'

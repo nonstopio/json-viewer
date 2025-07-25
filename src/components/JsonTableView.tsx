@@ -1,6 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { Copy, Check } from 'lucide-react';
 import { JsonValue } from '../types/json';
 import { JsonNode } from '../types/json';
+import { trackEvent } from '../utils/analytics';
 
 interface JsonTableViewProps {
   data: JsonValue;
@@ -17,6 +19,23 @@ interface TableRow {
 }
 
 export const JsonTableView: React.FC<JsonTableViewProps> = ({ data, searchQuery = '', selectedNodePath, nodes = [] }) => {
+  const [copiedValue, setCopiedValue] = useState<string>('');
+
+  const copyToClipboard = (text: string, type: 'name' | 'value' | 'path') => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedValue(text);
+      setTimeout(() => setCopiedValue(''), 2000);
+      
+      trackEvent('property_detail_copied', {
+        property: type,
+        nodeType: 'table_view',
+        valueLength: text.length
+      });
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+    });
+  };
+
   const getValueType = (value: any): string => {
     if (value === null) return 'null';
     if (Array.isArray(value)) return 'array';
@@ -177,9 +196,10 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({ data, searchQuery 
 
       {/* Table Header - Fixed */}
       <div className="bg-gray-100 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex-shrink-0">
-        <div className="grid grid-cols-2 gap-2 p-2 text-xs font-medium text-gray-700 dark:text-gray-300">
+        <div className="grid grid-cols-[1fr_2fr_60px] gap-2 p-2 text-xs font-medium text-gray-700 dark:text-gray-300">
           <div>Name</div>
           <div>Value</div>
+          <div className="text-center">Actions</div>
         </div>
       </div>
 
@@ -190,7 +210,7 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({ data, searchQuery 
             {filteredRows.map((row, index) => (
               <div
                 key={`${row.path}-${index}`}
-                className="grid grid-cols-2 gap-2 p-2 text-xs border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                className="grid grid-cols-[1fr_2fr_60px] gap-2 p-2 text-xs border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
               >
                 <div className="flex items-center space-x-1">
                   <span className="font-medium text-gray-800 dark:text-gray-200 truncate" title={row.name}>
@@ -204,6 +224,32 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({ data, searchQuery 
                   <span className="text-gray-600 dark:text-gray-400 truncate flex-1 font-mono" title={row.value}>
                     {highlightText(row.value)}
                   </span>
+                </div>
+                <div className="flex items-center justify-center space-x-1 opacity-100 transition-opacity">
+                  {/* Copy Name Button */}
+                  <button
+                    onClick={() => copyToClipboard(row.name, 'name')}
+                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                    title="Copy name"
+                  >
+                    {copiedValue === row.name ? (
+                      <Check size={10} className="text-green-500" />
+                    ) : (
+                      <Copy size={10} />
+                    )}
+                  </button>
+                  {/* Copy Value Button */}
+                  <button
+                    onClick={() => copyToClipboard(row.value, 'value')}
+                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                    title="Copy value"
+                  >
+                    {copiedValue === row.value ? (
+                      <Check size={10} className="text-green-500" />
+                    ) : (
+                      <Copy size={10} />
+                    )}
+                  </button>
                 </div>
               </div>
             ))}
@@ -238,6 +284,23 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({ data, searchQuery 
               <span className="font-medium text-gray-700 dark:text-gray-300">Properties:</span>
               <span className="ml-1 text-gray-600 dark:text-gray-400">{filteredRows.length}</span>
             </div>
+          </div>
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+            <div className="flex items-center space-x-2">
+              <span className="font-medium text-gray-700 dark:text-gray-300">Path:</span>
+              <span className="text-gray-600 dark:text-gray-400 font-mono text-xs">{selectedNodePath}</span>
+            </div>
+            <button
+              onClick={() => copyToClipboard(selectedNodePath, 'path')}
+              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors ml-2"
+              title="Copy path"
+            >
+              {copiedValue === selectedNodePath ? (
+                <Check size={12} className="text-green-500" />
+              ) : (
+                <Copy size={12} />
+              )}
+            </button>
           </div>
         </div>
       )}

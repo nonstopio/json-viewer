@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   Plus, 
   Minus, 
@@ -11,7 +11,8 @@ import {
   ToggleLeft,
   Circle,
   FileText,
-  Package
+  Package,
+  Info
 } from 'lucide-react';
 import { JsonNode as JsonNodeType } from '../types/json';
 import { trackEvent } from '../utils/analytics';
@@ -40,6 +41,7 @@ export const JsonNode: React.FC<JsonNodeProps> = ({
   isCurrentMatch = false
 }) => {
   const nodeRef = useRef<HTMLDivElement>(null);
+  const [showDetails, setShowDetails] = useState(false);
   const hasChildren = node.type === 'object' || node.type === 'array';
   const canExpand = hasChildren && node.childCount && node.childCount > 0;
 
@@ -170,6 +172,46 @@ export const JsonNode: React.FC<JsonNodeProps> = ({
       default:
         return 'text-gray-600 dark:text-gray-300';
     }
+  };
+
+  const getPropertyDetails = () => {
+    const details = [];
+    
+    // Basic info
+    details.push({ label: 'Type', value: node.type });
+    details.push({ label: 'Path', value: node.path });
+    details.push({ label: 'Depth', value: node.depth.toString() });
+    
+    // Type-specific details
+    if (node.type === 'string') {
+      details.push({ label: 'Length', value: String(node.value).length.toString() });
+      details.push({ label: 'Value', value: String(node.value) });
+    } else if (node.type === 'number') {
+      details.push({ label: 'Value', value: String(node.value) });
+    } else if (node.type === 'boolean') {
+      details.push({ label: 'Value', value: String(node.value) });
+    } else if (node.type === 'array') {
+      details.push({ label: 'Length', value: node.childCount?.toString() || '0' });
+    } else if (node.type === 'object') {
+      details.push({ label: 'Properties', value: node.childCount?.toString() || '0' });
+    }
+    
+    if (node.key) {
+      details.push({ label: 'Key', value: node.key });
+    }
+    
+    return details;
+  };
+
+  const copyPropertyDetail = (label: string, value: string) => {
+    navigator.clipboard.writeText(value).then(() => {
+      onCopy?.(value, 'value');
+      trackEvent('property_detail_copied', {
+        property: label.toLowerCase(),
+        nodeType: node.type,
+        nodeDepth: node.depth
+      });
+    });
   };
 
   const renderValue = (): React.ReactNode => {
@@ -305,6 +347,59 @@ export const JsonNode: React.FC<JsonNodeProps> = ({
             <Package size={12} />
           )}
         </button>
+
+        {/* Property Details Button */}
+        <div className="relative">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowDetails(!showDetails);
+            }}
+            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all duration-150"
+            title="Property details"
+          >
+            <Info size={12} />
+          </button>
+
+          {/* Property Details Popup */}
+          {showDetails && (
+            <div 
+              className="absolute right-0 top-full mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 p-3"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                Property Details
+              </div>
+              <div className="space-y-2">
+                {getPropertyDetails().map((detail, index) => (
+                  <div key={index} className="flex items-center justify-between group/detail">
+                    <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                      {detail.label}:
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-gray-900 dark:text-gray-100 font-mono max-w-32 truncate" title={detail.value}>
+                        {detail.value}
+                      </span>
+                      <button
+                        onClick={() => copyPropertyDetail(detail.label, detail.value)}
+                        className="opacity-0 group-hover/detail:opacity-100 p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all duration-150"
+                        title={`Copy ${detail.label.toLowerCase()}`}
+                      >
+                        <Copy size={10} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => setShowDetails(false)}
+                className="w-full mt-3 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 py-1 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
