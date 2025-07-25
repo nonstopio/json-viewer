@@ -6,7 +6,7 @@
   <p><em>Transform complex JSON data into beautiful, interactive visualizations</em></p>
   
   [![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-json.nonstopio.com-blue?style=for-the-badge&logo=vercel)](https://json.nonstopio.com)
-  [![Visitor Count](https://hits.sh/json.nonstopio.com.svg?style=for-the-badge&label=Visitors&color=brightgreen)](https://json.nonstopio.com)
+  <img src="https://visit-counter.vercel.app/counter.png?page=https%3A%2F%2Fjson.nonstopio.com%2F&s=40&c=039d65&bg=00000000&no=1&ff=electrolize&tb=&ta=" alt="visits">
   [![Built with React](https://img.shields.io/badge/Built_with-React_18-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
   [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
   [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)

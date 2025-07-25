@@ -1035,7 +1035,7 @@ function App() {
                 <span>Helped</span>
               </div>
               <img 
-                src="https://visit-counter.vercel.app/counter.png?page=http%3A%2F%2Fjson.nonstopio.com%2F&s=34&c=039d65&bg=00000000&no=10&ff=electrolize&tb=&ta=" 
+                src="https://visit-counter.vercel.app/counter.png?page=https%3A%2F%2Fjson.nonstopio.com%2F&s=34&c=039d65&bg=00000000&no=1&ff=electrolize&tb=&ta=" 
                 alt="developers helped"
                 className="h-6"
               />
