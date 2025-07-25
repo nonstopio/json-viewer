@@ -45,4 +45,43 @@
   .expand-collapse-btn {
     @apply inline-flex items-center justify-center w-5 h-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-150 cursor-pointer select-none;
   }
+
+  /* Tree connecting lines using CSS */
+  .tree-node {
+    position: relative;
+  }
+
+  .tree-node::before {
+    content: '';
+    position: absolute;
+    left: -10px;
+    top: 0;
+    height: 50%;
+    width: 1px;
+    border-left: 1px dotted #9CA3AF;
+  }
+
+  .tree-node::after {
+    content: '';
+    position: absolute;
+    left: -10px;
+    top: 50%;
+    height: 1px;
+    width: 10px;
+    border-top: 1px dotted #9CA3AF;
+  }
+
+  .tree-node:not(.tree-node-last)::before {
+    height: 100%;
+  }
+
+  .tree-node-last::before {
+    height: 50%;
+  }
+
+  /* Dark mode styles */
+  .dark .tree-node::before,
+  .dark .tree-node::after {
+    border-color: #6B7280;
+  }
 }

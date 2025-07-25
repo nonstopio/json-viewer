@@ -27,6 +27,7 @@ interface JsonNodeProps {
   caseSensitive?: boolean;
   copiedValue?: string;
   isCurrentMatch?: boolean;
+  isLastChild?: boolean;
 }
 
 export const JsonNode: React.FC<JsonNodeProps> = ({
@@ -38,7 +39,8 @@ export const JsonNode: React.FC<JsonNodeProps> = ({
   searchQuery,
   caseSensitive = false,
   copiedValue,
-  isCurrentMatch = false
+  isCurrentMatch = false,
+  isLastChild = false
 }) => {
   const nodeRef = useRef<HTMLDivElement>(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -251,8 +253,10 @@ export const JsonNode: React.FC<JsonNodeProps> = ({
   return (
     <div 
       ref={nodeRef}
-      className={`json-node flex items-center py-1 px-2 group transition-all duration-150 ${
-        node.depth > 0 ? 'ml-2' : ''
+      className={`json-node relative flex items-center py-1 px-2 group transition-all duration-150 ${
+        node.depth > 0 ? 'tree-node' : ''
+      } ${
+        isLastChild ? 'tree-node-last' : ''
       } ${
         isSelected 
           ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500 shadow-sm' 
@@ -260,7 +264,7 @@ export const JsonNode: React.FC<JsonNodeProps> = ({
       } ${
         isCurrentMatch ? 'ring-2 ring-orange-400 ring-opacity-50' : ''
       } cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-r`}
-      style={{ marginLeft: `${node.depth * 16}px` }}
+      style={{ marginLeft: `${node.depth * 20}px` }}
       onClick={handleRowClick}
     >
       {/* Expand/Collapse Button */}
