@@ -973,10 +973,11 @@ function App() {
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">JSON Tree</span>
                     <button
                       onClick={enterFullscreen}
-                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                      className="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
                       title="View in fullscreen"
                     >
                       <Maximize size={16} className="text-gray-500 dark:text-gray-400" />
+                      <span className="text-xs text-gray-500 dark:text-gray-400">Fullscreen</span>
                     </button>
                   </div>
                   {/* Tree Content - Independent Scroll */}

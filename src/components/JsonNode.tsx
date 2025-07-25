@@ -59,19 +59,6 @@ export const JsonNode: React.FC<JsonNodeProps> = ({
     }
   }, [isCurrentMatch]);
 
-  // Auto-scroll to center when node is selected
-  useEffect(() => {
-    if (isSelected && nodeRef.current) {
-      // Small delay to ensure DOM is updated and avoid conflicts with search scrolling
-      setTimeout(() => {
-        nodeRef.current?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-          inline: 'nearest'
-        });
-      }, 150);
-    }
-  }, [isSelected]);
 
   const handleToggle = () => {
     if (canExpand && onToggle) {

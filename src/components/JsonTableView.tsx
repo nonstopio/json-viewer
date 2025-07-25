@@ -30,15 +30,48 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({ data, searchQuery 
       const cleanPath = path.startsWith('root.') ? path.substring(5) : path;
       if (!cleanPath) return data;
       
-      const parts = cleanPath.split(/\.(?![^[]*])|[|]/).filter(Boolean);
+      // Improved path parsing to handle array indices like [0]
+      const parts: string[] = [];
+      let currentPart = '';
+      let inBrackets = false;
+      
+      for (let i = 0; i < cleanPath.length; i++) {
+        const char = cleanPath[i];
+        
+        if (char === '[') {
+          if (currentPart) {
+            parts.push(currentPart);
+            currentPart = '';
+          }
+          inBrackets = true;
+        } else if (char === ']') {
+          if (inBrackets && currentPart) {
+            parts.push(currentPart);
+            currentPart = '';
+          }
+          inBrackets = false;
+        } else if (char === '.' && !inBrackets) {
+          if (currentPart) {
+            parts.push(currentPart);
+            currentPart = '';
+          }
+        } else {
+          currentPart += char;
+        }
+      }
+      
+      if (currentPart) {
+        parts.push(currentPart);
+      }
+      
       let current = data;
       
       for (const part of parts) {
         if (current === null || current === undefined) return null;
         
-        if (Array.isArray(current)) {
-          const index = parseInt(part, 10);
-          if (isNaN(index)) return null;
+        // Check if this part is a numeric index for arrays
+        const index = parseInt(part, 10);
+        if (!isNaN(index) && Array.isArray(current)) {
           current = current[index];
         } else if (typeof current === 'object' && current !== null) {
           current = (current as Record<string, unknown>)[part];
@@ -134,15 +167,48 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({ data, searchQuery 
       const cleanPath = path.startsWith('root.') ? path.substring(5) : path;
       if (!cleanPath) return data;
       
-      const parts = cleanPath.split(/\.(?![^[]*])|[|]/).filter(Boolean);
+      // Improved path parsing to handle array indices like [0]
+      const parts: string[] = [];
+      let currentPart = '';
+      let inBrackets = false;
+      
+      for (let i = 0; i < cleanPath.length; i++) {
+        const char = cleanPath[i];
+        
+        if (char === '[') {
+          if (currentPart) {
+            parts.push(currentPart);
+            currentPart = '';
+          }
+          inBrackets = true;
+        } else if (char === ']') {
+          if (inBrackets && currentPart) {
+            parts.push(currentPart);
+            currentPart = '';
+          }
+          inBrackets = false;
+        } else if (char === '.' && !inBrackets) {
+          if (currentPart) {
+            parts.push(currentPart);
+            currentPart = '';
+          }
+        } else {
+          currentPart += char;
+        }
+      }
+      
+      if (currentPart) {
+        parts.push(currentPart);
+      }
+      
       let current = data;
       
       for (const part of parts) {
         if (current === null || current === undefined) return null;
         
-        if (Array.isArray(current)) {
-          const index = parseInt(part, 10);
-          if (isNaN(index)) return null;
+        // Check if this part is a numeric index for arrays
+        const index = parseInt(part, 10);
+        if (!isNaN(index) && Array.isArray(current)) {
           current = current[index];
         } else if (typeof current === 'object' && current !== null) {
           current = (current as Record<string, unknown>)[part];
