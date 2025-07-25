@@ -71,36 +71,12 @@ export const JsonTree: React.FC<JsonTreeProps> = ({
     );
   }
 
-  // Helper function to determine if a node is the last child at its depth
-  const isLastChild = (currentIndex: number, nodes: JsonNodeType[]): boolean => {
-    const currentNode = nodes[currentIndex];
-    
-    // Look for any subsequent node at the same depth
-    for (let i = currentIndex + 1; i < nodes.length; i++) {
-      const nextNode = nodes[i];
-      
-      // If we encounter a node at a shallower depth, current node was the last
-      if (nextNode.depth < currentNode.depth) {
-        return true;
-      }
-      
-      // If we find a sibling at the same depth, current node is not the last
-      if (nextNode.depth === currentNode.depth) {
-        return false;
-      }
-    }
-    
-    // Reached end of array, so this is the last child
-    return true;
-  };
 
   return (
-    <div className="json-tree text-sm space-y-0">
+    <div className="json-tree-container">
       {nodes.map((node, index) => {
         const isCurrentMatch = searchMatchIndices.length > 0 && 
           searchMatchIndices[currentMatchIndex] === index;
-        
-        const isLast = isLastChild(index, nodes);
         
         return (
           <JsonNodeComponent
@@ -114,7 +90,6 @@ export const JsonTree: React.FC<JsonTreeProps> = ({
             caseSensitive={caseSensitive}
             copiedValue={copiedValue}
             isCurrentMatch={isCurrentMatch}
-            isLastChild={isLast}
           />
         );
       })}

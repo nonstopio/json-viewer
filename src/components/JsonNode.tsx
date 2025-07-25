@@ -27,7 +27,6 @@ interface JsonNodeProps {
   caseSensitive?: boolean;
   copiedValue?: string;
   isCurrentMatch?: boolean;
-  isLastChild?: boolean;
 }
 
 export const JsonNode: React.FC<JsonNodeProps> = ({
@@ -39,8 +38,7 @@ export const JsonNode: React.FC<JsonNodeProps> = ({
   searchQuery,
   caseSensitive = false,
   copiedValue,
-  isCurrentMatch = false,
-  isLastChild = false
+  isCurrentMatch = false
 }) => {
   const nodeRef = useRef<HTMLDivElement>(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -253,11 +251,7 @@ export const JsonNode: React.FC<JsonNodeProps> = ({
   return (
     <div 
       ref={nodeRef}
-      className={`json-node relative flex items-center py-1 px-2 group transition-all duration-150 ${
-        node.depth > 0 ? 'tree-node' : ''
-      } ${
-        isLastChild ? 'tree-node-last' : ''
-      } ${
+      className={`json-node flex items-center py-1 px-2 group transition-all duration-150 ${
         isSelected 
           ? 'bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500 shadow-sm' 
           : 'border-l-2 border-transparent hover:border-gray-300 dark:hover:border-gray-600'
