@@ -28,12 +28,20 @@ export const JsonInput: React.FC<JsonInputProps> = ({
   const [jsonText, setJsonText] = useState(initialValue);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isJumpingToError, setIsJumpingToError] = useState(false);
+  const [hasAutoJumped, setHasAutoJumped] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setJsonText(initialValue);
   }, [initialValue]);
+
+  // Reset auto-jump flag when error changes or is cleared
+  useEffect(() => {
+    if (!error) {
+      setHasAutoJumped(false);
+    }
+  }, [error]);
 
   const handleJumpToError = useCallback(async () => {
     if (!textareaRef.current || !errorDetails || !jsonText) {
@@ -86,12 +94,73 @@ export const JsonInput: React.FC<JsonInputProps> = ({
         cursorPosition = jsonText.length;
       }
 
-      // Focus and position cursor
+      // Calculate selection range for the error
+      let selectionStart = cursorPosition;
+      let selectionEnd = cursorPosition;
+      
+      if (error && error.toLowerCase().includes('unterminated string')) {
+        // Find the start of the string by looking backwards for the opening quote
+        let startQuotePos = cursorPosition - 1;
+        while (startQuotePos > 0 && jsonText[startQuotePos] !== '"') {
+          startQuotePos--;
+        }
+        selectionStart = startQuotePos;
+        
+        // Select to end of line or next quote
+        let endPos = cursorPosition;
+        while (endPos < jsonText.length && jsonText[endPos] !== '\n') {
+          endPos++;
+        }
+        selectionEnd = endPos;
+      } else if (error && (error.toLowerCase().includes('trailing comma') || error.toLowerCase().includes('remove the trailing comma'))) {
+        // For trailing comma errors, select the comma
+        selectionStart = cursorPosition;
+        selectionEnd = cursorPosition + 1;
+      } else if (error && (error.toLowerCase().includes('unexpected character') || error.toLowerCase().includes('invalid character'))) {
+        // For invalid character errors, select the invalid character
+        selectionStart = cursorPosition;
+        selectionEnd = Math.min(cursorPosition + 1, jsonText.length);
+      } else if (error && error.toLowerCase().includes('missing comma')) {
+        // For missing comma errors, select the line that needs the comma
+        const lines = jsonText.split('\n');
+        if (errorDetails.line && errorDetails.line > 0) {
+          const lineIndex = errorDetails.line - 1;
+          if (lineIndex < lines.length) {
+            // Calculate the start of the line
+            let lineStart = 0;
+            for (let i = 0; i < lineIndex; i++) {
+              lineStart += lines[i].length + 1;
+            }
+            selectionStart = lineStart;
+            selectionEnd = lineStart + lines[lineIndex].length;
+          }
+        }
+      } else {
+        // For other errors, select a word or small range around the error
+        // Find word boundaries
+        const wordBoundaries = /[\s,{}[\]:"]/;
+        
+        // Find start of word
+        selectionStart = cursorPosition;
+        while (selectionStart > 0 && !wordBoundaries.test(jsonText[selectionStart - 1])) {
+          selectionStart--;
+        }
+        
+        // Find end of word
+        selectionEnd = cursorPosition;
+        while (selectionEnd < jsonText.length && !wordBoundaries.test(jsonText[selectionEnd])) {
+          selectionEnd++;
+        }
+        
+        // If no word found, select a small range
+        if (selectionStart === selectionEnd) {
+          selectionStart = Math.max(0, cursorPosition - 5);
+          selectionEnd = Math.min(jsonText.length, cursorPosition + 5);
+        }
+      }
+
+      // Focus and select the error text
       textarea.focus();
-      
-      const selectionStart = cursorPosition;
-      const selectionEnd = Math.min(cursorPosition + 5, jsonText.length);
-      
       textarea.setSelectionRange(selectionStart, selectionEnd);
       
       // Scroll to position
@@ -101,7 +170,8 @@ export const JsonInput: React.FC<JsonInputProps> = ({
         textarea.scrollTop = scrollPosition;
       }
       
-      console.log('✅ Jumped to error position:', selectionStart, 'to', selectionEnd);
+      console.log('✅ Jumped to error position:', cursorPosition);
+      console.log('🎯 Selected text from:', selectionStart, 'to', selectionEnd);
       
       trackEvent('error_cursor_positioned', {
         errorLine: errorDetails.line,
@@ -115,7 +185,20 @@ export const JsonInput: React.FC<JsonInputProps> = ({
     } finally {
       setIsJumpingToError(false);
     }
-  }, [errorDetails, jsonText]);
+  }, [errorDetails, jsonText, error]);
+
+  // Automatically jump to error when error details are available
+  useEffect(() => {
+    if (errorDetails && (errorDetails.line || errorDetails.column || errorDetails.position !== undefined) && !hasAutoJumped) {
+      // Add a small delay to ensure the text has been rendered
+      const timeoutId = setTimeout(() => {
+        handleJumpToError();
+        setHasAutoJumped(true);
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [errorDetails, handleJumpToError, hasAutoJumped]);
 
   const handleTextSubmit = useCallback(() => {
     if (jsonText.trim()) {
@@ -289,15 +372,18 @@ export const JsonInput: React.FC<JsonInputProps> = ({
           <div className="text-sm text-red-800 dark:text-red-200">
             <div className="font-medium">JSON Parse Error</div>
             <div className="mt-1">{error}</div>
-            {errorDetails && (errorDetails.line || errorDetails.column) && (
+            {errorDetails && (errorDetails.line || errorDetails.column || errorDetails.position !== undefined) && (
               <div className="mt-1 text-xs text-red-600 dark:text-red-300">
                 {errorDetails.line && errorDetails.column 
                   ? `Error at line ${errorDetails.line}, column ${errorDetails.column}`
                   : errorDetails.line 
                     ? `Error at line ${errorDetails.line}`
-                    : `Error at column ${errorDetails.column}`
+                    : errorDetails.column
+                      ? `Error at column ${errorDetails.column}`
+                      : `Error at position ${errorDetails.position}`
                 }
                 {errorDetails.position && ` (position ${errorDetails.position})`}
+                {hasAutoJumped && <span className="ml-2 text-green-600 dark:text-green-400">✓ Auto-jumped to error</span>}
                 <button
                   onClick={handleJumpToError}
                   disabled={isJumpingToError}
@@ -309,6 +395,8 @@ export const JsonInput: React.FC<JsonInputProps> = ({
                       <span className="inline-block animate-spin w-3 h-3 border border-red-500 border-t-transparent rounded-full mr-1"></span>
                       Finding...
                     </>
+                  ) : hasAutoJumped ? (
+                    <>🔄 Jump Again</>
                   ) : (
                     <>📍 Jump to Error</>
                   )}

@@ -1,5 +1,14 @@
 import {JsonValue, JsonNode, JsonStats, ParseResult} from "../types/json";
 import {trackEvent} from "./analytics";
+import parseJson from "json-parse-even-better-errors";
+
+// Type definition for json-parse-even-better-errors
+interface JsonParseError extends Error {
+  line?: number;
+  column?: number;
+  position?: number;
+  offset?: number;
+}
 
 export class JsonParser {
   private stats: JsonStats = {
@@ -20,21 +29,20 @@ export class JsonParser {
 
     try {
       const startTime = performance.now();
-
-      // Try parsing as-is first
-      let cleanedInput = input;
       let data: JsonValue;
+      let needsCleanup = false;
 
       try {
-        data = JSON.parse(input) as JsonValue;
+        // First try with the better error parser
+        data = parseJson(input) as JsonValue;
       } catch (firstError) {
-        // Apply comprehensive cleaning
-        cleanedInput = this.cleanJsonString(input);
+        // If that fails, try our cleanup methods
+        needsCleanup = true;
+        let cleanedInput = this.cleanJsonString(input);
 
         try {
-          data = JSON.parse(cleanedInput) as JsonValue;
+          data = parseJson(cleanedInput) as JsonValue;
 
-          // Track that we had to clean the JSON but don't show error to user
           trackEvent("json_parse_error", {
             errorType: "json_auto_fixed",
             fileSize: input.length,
@@ -45,7 +53,7 @@ export class JsonParser {
           cleanedInput = this.aggressiveCleanup(cleanedInput);
 
           try {
-            data = JSON.parse(cleanedInput) as JsonValue;
+            data = parseJson(cleanedInput) as JsonValue;
 
             trackEvent("json_parse_error", {
               errorType: "json_aggressively_fixed",
@@ -57,7 +65,7 @@ export class JsonParser {
             const extracted = this.extractJsonFromString(input);
             if (extracted) {
               try {
-                data = JSON.parse(extracted) as JsonValue;
+                data = parseJson(extracted) as JsonValue;
 
                 trackEvent("json_parse_error", {
                   errorType: "json_extracted_and_fixed",
@@ -65,16 +73,12 @@ export class JsonParser {
                   errorMessage: `JSON was extracted from string wrapper and fixed`,
                 });
               } catch {
-                // Final fallback - if we still can't parse, show error
-                throw new Error(
-                  `Unable to parse JSON after all cleanup attempts. This may not be valid JSON data.`
-                );
+                // If all else fails, throw the original error with better details
+                throw firstError;
               }
             } else {
-              // Final fallback - if we still can't parse, show error
-              throw new Error(
-                `Unable to parse JSON after all cleanup attempts. This may not be valid JSON data.`
-              );
+              // If all else fails, throw the original error with better details
+              throw firstError;
             }
           }
         }
@@ -86,6 +90,7 @@ export class JsonParser {
         fileSize: input.length,
         nodeCount: this.countNodes(data),
         parseTime,
+        wasFixed: needsCleanup,
       });
 
       return {
@@ -93,7 +98,10 @@ export class JsonParser {
         data,
       };
     } catch (error) {
-      const errorMessage = this.getDetailedError(error as SyntaxError, input);
+      const errorMessage = this.getDetailedErrorFromBetterParser(
+        error as JsonParseError,
+        input
+      );
 
       trackEvent("json_parse_error", {
         errorType: "final_parse_failure",
@@ -105,40 +113,55 @@ export class JsonParser {
     }
   }
 
-  private getDetailedError(error: SyntaxError, input: string): ParseResult {
-    const message = error.message;
-    console.log("Original error message:", message);
+  private getDetailedErrorFromBetterParser(
+    error: JsonParseError,
+    input: string
+  ): ParseResult {
+    console.log("Better parser error:", error);
 
     const errorDetails: {line?: number; column?: number; position?: number} =
       {};
+    let friendlyError = "Invalid JSON format";
 
-    // Extract position information from common JSON error messages
-    const positionMatch = message.match(/position (\d+)/i);
-    if (positionMatch) {
-      const position = parseInt(positionMatch[1], 10);
-      errorDetails.position = position;
+    // The json-parse-even-better-errors library provides better error information
+    if (error && typeof error === "object") {
+      // Extract position information if available
+      if (error.line !== undefined) {
+        errorDetails.line = error.line;
+      }
+      if (error.column !== undefined) {
+        errorDetails.column = error.column;
+      }
+      if (error.position !== undefined) {
+        errorDetails.position = error.position;
+      }
 
-      // Calculate line and column
-      const lines = input.substring(0, position).split("\n");
-      errorDetails.line = lines.length;
-      errorDetails.column = lines[lines.length - 1].length + 1;
+      // If we have position but missing line/column, calculate them
+      if (
+        errorDetails.position !== undefined &&
+        (!errorDetails.line || !errorDetails.column)
+      ) {
+        const lines = input.substring(0, errorDetails.position).split("\n");
+        errorDetails.line = lines.length;
+        errorDetails.column = lines[lines.length - 1].length + 1;
+
+        console.log(
+          `🧮 Calculated line ${errorDetails.line}, column ${errorDetails.column} from position ${errorDetails.position}`
+        );
+      }
+
+      // Use the error message from the better parser
+      if (error.message) {
+        friendlyError = this.getFriendlyErrorMessage(error.message);
+      }
     }
 
-    // Extract line information
-    const lineMatch = message.match(/line (\d+)/i);
-    if (lineMatch) {
-      errorDetails.line = parseInt(lineMatch[1], 10);
-    }
-
-    // Extract column information
-    const columnMatch = message.match(/column (\d+)/i);
-    if (columnMatch) {
-      errorDetails.column = parseInt(columnMatch[1], 10);
-    }
-
-    // If no position info found, try to find the error location manually
+    // If still no position info, try manual detection as fallback
     if (!errorDetails.position && !errorDetails.line && !errorDetails.column) {
-      console.log("No position info found, attempting manual detection");
+      console.log(
+        "No position info from better parser, attempting manual detection"
+      );
+      const message = error?.message || error?.toString() || "Unknown error";
       const manualError = this.findErrorLocationManually(input, message);
       if (manualError) {
         Object.assign(errorDetails, manualError);
@@ -146,8 +169,6 @@ export class JsonParser {
     }
 
     console.log("Final error details:", errorDetails);
-
-    let friendlyError = this.getFriendlyErrorMessage(message);
 
     if (errorDetails.line && errorDetails.column) {
       friendlyError += ` (Line ${errorDetails.line}, Column ${errorDetails.column})`;
@@ -167,6 +188,61 @@ export class JsonParser {
     console.log("🔍 Attempting manual error detection for:", errorMessage);
 
     const lines = input.split("\n");
+
+    // Strategy 0: Look for unterminated strings (missing closing quotes)
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      const line = lines[lineIndex];
+      let inString = false;
+      let stringStartCol = -1;
+      let escapeNext = false;
+
+      for (let col = 0; col < line.length; col++) {
+        const char = line[col];
+
+        if (escapeNext) {
+          escapeNext = false;
+          continue;
+        }
+
+        if (char === "\\") {
+          escapeNext = true;
+          continue;
+        }
+
+        if (char === '"') {
+          if (!inString) {
+            inString = true;
+            stringStartCol = col;
+          } else {
+            inString = false;
+            stringStartCol = -1;
+          }
+        }
+      }
+
+      // If we're still in a string at the end of the line, check if it's really unterminated
+      if (inString && stringStartCol !== -1) {
+        // Check if this is a multiline string by looking at the next line
+        const nextLine = lines[lineIndex + 1];
+        if (!nextLine || !nextLine.trim().startsWith('"')) {
+          // This string is unterminated
+          const position = this.getPositionFromLineColumn(
+            input,
+            lineIndex + 1,
+            line.length + 1
+          );
+          console.log("🎯 Found unterminated string at line", lineIndex + 1);
+          console.log("📄 Line content:", JSON.stringify(line));
+          console.log("📍 String starts at column:", stringStartCol + 1);
+
+          return {
+            line: lineIndex + 1,
+            column: line.length + 1,
+            position,
+          };
+        }
+      }
+    }
 
     // Strategy 1: Look for missing commas by examining line patterns
     for (let lineIndex = 0; lineIndex < lines.length - 1; lineIndex++) {
@@ -209,37 +285,58 @@ export class JsonParser {
       }
     }
 
-    // Strategy 2: Character-by-character parsing to find exact error
+    // Strategy 2: Use a simple JSON validator to find the exact error position
+    console.log("🔄 Using JSON validator to find exact error...");
+    const validationError = this.validateJsonAndFindError(input);
+    if (validationError) {
+      return validationError;
+    }
+
+    // Strategy 3: Character-by-character parsing to find exact error
     console.log("🔄 Trying character-by-character parsing...");
     try {
+      const stack: string[] = [];
+      let inString = false;
+      let escapeNext = false;
+
       for (let i = 0; i < input.length; i++) {
-        const partial = input.substring(0, i + 1);
-        try {
-          JSON.parse(partial);
-        } catch (e) {
-          const errorMsg = e instanceof Error ? e.message : String(e);
+        const char = input[i];
 
-          // Skip "incomplete" errors, look for actual syntax errors
-          if (
-            !errorMsg.includes("Unexpected end") &&
-            !errorMsg.includes("Unexpected EOF") &&
-            !errorMsg.includes("Unterminated") &&
-            i > 10
-          ) {
-            console.log("🎯 Found syntax error at character", i);
-            console.log("📍 Error character:", JSON.stringify(input[i]));
-            console.log(
-              "🔤 Context:",
-              JSON.stringify(input.substring(Math.max(0, i - 15), i + 15))
-            );
-            console.log("📋 Error message:", errorMsg);
+        if (escapeNext) {
+          escapeNext = false;
+          continue;
+        }
 
-            const beforeError = input.substring(0, i);
-            const lines = beforeError.split("\n");
-            const line = lines.length;
-            const column = lines[lines.length - 1].length + 1;
+        if (char === "\\" && inString) {
+          escapeNext = true;
+          continue;
+        }
 
-            return {line, column, position: i};
+        if (char === '"' && !escapeNext) {
+          inString = !inString;
+          continue;
+        }
+
+        if (!inString) {
+          if (char === "{" || char === "[") {
+            stack.push(char);
+          } else if (char === "}" || char === "]") {
+            const expected = char === "}" ? "{" : "[";
+            if (stack.length === 0 || stack[stack.length - 1] !== expected) {
+              const lines = input.substring(0, i).split("\n");
+              const line = lines.length;
+              const column = lines[lines.length - 1].length + 1;
+
+              console.log("🎯 Found bracket mismatch at character", i);
+              console.log("📍 Error character:", JSON.stringify(char));
+              console.log(
+                "🔤 Context:",
+                JSON.stringify(input.substring(Math.max(0, i - 15), i + 15))
+              );
+
+              return {line, column, position: i};
+            }
+            stack.pop();
           }
         }
       }
@@ -247,7 +344,34 @@ export class JsonParser {
       console.log("❌ Error during character parsing:", e);
     }
 
-    // Strategy 3: Look for specific patterns like "processingTime": 0.234\n    "checksum"
+    // Strategy 3: Look for trailing commas
+    console.log("🔄 Looking for trailing comma patterns...");
+    const trailingCommaRegex = /,\s*([}\]])/g;
+    let match;
+    while ((match = trailingCommaRegex.exec(input)) !== null) {
+      const commaPosition = match.index;
+      const beforeComma = input.substring(0, commaPosition);
+      const lines = beforeComma.split("\n");
+      const line = lines.length;
+      const column = lines[lines.length - 1].length + 1;
+
+      console.log("🎯 Found trailing comma at position", commaPosition);
+      console.log("📍 Before closing bracket:", JSON.stringify(match[1]));
+      console.log(
+        "🔤 Context:",
+        JSON.stringify(
+          input.substring(Math.max(0, commaPosition - 20), commaPosition + 20)
+        )
+      );
+
+      return {
+        line,
+        column,
+        position: commaPosition,
+      };
+    }
+
+    // Strategy 4: Look for specific patterns like "processingTime": 0.234\n    "checksum"
     console.log("🔄 Looking for specific missing comma patterns...");
     const processingTimeMatch = input.match(
       /"processingTime":\s*[\d.]+\s*\n\s*"checksum"/
@@ -285,6 +409,217 @@ export class JsonParser {
     }
 
     console.log("❌ Could not determine error location");
+    return null;
+  }
+
+  private validateJsonAndFindError(
+    input: string
+  ): {line?: number; column?: number; position?: number} | null {
+    let line = 1;
+    let column = 1;
+    let inString = false;
+    let escapeNext = false;
+    const stack: Array<{char: string; line: number; column: number}> = [];
+
+    for (let i = 0; i < input.length; i++) {
+      const char = input[i];
+
+      // Update line and column tracking
+      if (char === "\n") {
+        line++;
+        column = 1;
+      } else {
+        column++;
+      }
+
+      if (escapeNext) {
+        escapeNext = false;
+        continue;
+      }
+
+      if (char === "\\" && inString) {
+        escapeNext = true;
+        continue;
+      }
+
+      if (char === '"') {
+        if (!inString) {
+          // Starting a string
+          inString = true;
+
+          // Check if we're at the end of input or if the string is never closed
+          let j = i + 1;
+          let foundClosingQuote = false;
+          let localEscapeNext = false;
+
+          while (j < input.length) {
+            if (localEscapeNext) {
+              localEscapeNext = false;
+              j++;
+              continue;
+            }
+
+            if (input[j] === "\\") {
+              localEscapeNext = true;
+              j++;
+              continue;
+            }
+
+            if (input[j] === '"') {
+              foundClosingQuote = true;
+              break;
+            }
+
+            if (input[j] === "\n") {
+              // Newline in string without closing quote
+              break;
+            }
+
+            j++;
+          }
+
+          if (!foundClosingQuote) {
+            console.log("🎯 Found unterminated string starting at position", i);
+            console.log("📍 Line:", line, "Column:", column);
+            console.log(
+              "🔤 Context:",
+              JSON.stringify(
+                input.substring(
+                  Math.max(0, i - 10),
+                  Math.min(input.length, i + 30)
+                )
+              )
+            );
+
+            return {
+              line,
+              column,
+              position: i,
+            };
+          }
+        } else {
+          // Ending a string
+          inString = false;
+        }
+        continue;
+      }
+
+      if (!inString) {
+        if (char === "{" || char === "[") {
+          stack.push({char, line, column});
+        } else if (char === "}" || char === "]") {
+          const expected = char === "}" ? "{" : "[";
+          if (stack.length === 0) {
+            console.log("🎯 Found unexpected closing bracket", char);
+            return {line, column, position: i};
+          }
+          const last = stack[stack.length - 1];
+          if (last.char !== expected) {
+            console.log(
+              "🎯 Found bracket mismatch. Expected",
+              expected === "{" ? "}" : "]",
+              "but found",
+              char
+            );
+            return {line, column, position: i};
+          }
+          stack.pop();
+
+          // Check if this might be the end of the JSON
+          if (stack.length === 0) {
+            // Look ahead for any non-whitespace characters
+            for (let j = i + 1; j < input.length; j++) {
+              if (!/\s/.test(input[j])) {
+                const invalidChar = input[j];
+                const beforeError = input.substring(0, j);
+                const errorLines = beforeError.split("\n");
+                const errorLine = errorLines.length;
+                const errorColumn =
+                  errorLines[errorLines.length - 1].length + 1;
+
+                console.log(
+                  "🎯 Found invalid character '",
+                  invalidChar,
+                  "' after JSON structure ended"
+                );
+                console.log(
+                  "📍 Position:",
+                  j,
+                  "Line:",
+                  errorLine,
+                  "Column:",
+                  errorColumn
+                );
+                console.log(
+                  "🔤 Context:",
+                  JSON.stringify(
+                    input.substring(
+                      Math.max(0, j - 20),
+                      Math.min(input.length, j + 20)
+                    )
+                  )
+                );
+
+                return {
+                  line: errorLine,
+                  column: errorColumn,
+                  position: j,
+                };
+              }
+            }
+          }
+        } else if (char === ":" || char === ",") {
+          // Valid JSON syntax characters
+        } else if (!/\s/.test(char) && stack.length > 0) {
+          // Found an invalid character inside JSON structure
+          console.log("🎯 Found invalid character '", char, "' at position", i);
+          console.log("📍 Line:", line, "Column:", column);
+          console.log(
+            "🔤 Context:",
+            JSON.stringify(
+              input.substring(
+                Math.max(0, i - 10),
+                Math.min(input.length, i + 10)
+              )
+            )
+          );
+          return {
+            line,
+            column,
+            position: i,
+          };
+        }
+      }
+    }
+
+    // Check for unclosed brackets
+    if (stack.length > 0) {
+      const unclosed = stack[stack.length - 1];
+      console.log(
+        "🎯 Found unclosed bracket",
+        unclosed.char,
+        "at line",
+        unclosed.line,
+        "column",
+        unclosed.column
+      );
+      return {
+        line: unclosed.line,
+        column: unclosed.column,
+        position: -1,
+      };
+    }
+
+    // Check if we're still in a string
+    if (inString) {
+      console.log("🎯 JSON ends while still inside a string");
+      return {
+        line,
+        column,
+        position: input.length - 1,
+      };
+    }
+
     return null;
   }
 
@@ -452,8 +787,14 @@ export class JsonParser {
         "Missing property name or invalid object syntax - property names must be quoted",
       ],
       [/expected ',' or '}'/i, "Missing comma between object properties"],
+      [/unterminated string/i, "String is missing closing quote"],
       [/expected ',' or ']'/i, "Missing comma between array elements"],
       [/trailing comma/i, "Remove the trailing comma"],
+      [/unexpected token.*,/i, "Trailing comma is not allowed in JSON"],
+      [
+        /unexpected token.*position.*,/i,
+        "Trailing comma found - JSON doesn't allow trailing commas",
+      ],
       [/duplicate.*key/i, "Duplicate property names are not allowed"],
       [
         /control character/i,
@@ -470,6 +811,10 @@ export class JsonParser {
       [
         /invalid character/i,
         "Invalid characters detected - URLs and emails must be quoted",
+      ],
+      [
+        /unexpected token/i,
+        "Unexpected character found - check for invalid characters or syntax",
       ],
     ];
 
