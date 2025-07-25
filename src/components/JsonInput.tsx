@@ -7,13 +7,15 @@ interface JsonInputProps {
   isLoading?: boolean;
   error?: string;
   initialValue?: string;
+  onError?: (error: string) => void;
 }
 
 export const JsonInput: React.FC<JsonInputProps> = ({
   onJsonSubmit,
   isLoading = false,
   error,
-  initialValue = ''
+  initialValue = '',
+  onError
 }) => {
   const [jsonText, setJsonText] = useState(initialValue);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -34,7 +36,10 @@ export const JsonInput: React.FC<JsonInputProps> = ({
   }, [jsonText, onJsonSubmit]);
 
   const handleFileRead = useCallback((file: File) => {
-    if (file.size > 1024 * 1024) { // 1MB limit
+    const maxSize = 5 * 1024 * 1024; // 5MB limit
+    if (file.size > maxSize) {
+      const errorMsg = `File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds the maximum allowed size of 5MB`;
+      onError?.(errorMsg);
       trackEvent('error_encountered', {
         errorType: 'file_too_large',
         fileSize: file.size
@@ -62,7 +67,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
       });
     };
     reader.readAsText(file);
-  }, [onJsonSubmit]);
+  }, [onJsonSubmit, onError]);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -225,7 +230,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
               {' '}or drag and drop your JSON file here
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-500">
-              Supports .json files up to 1MB
+              Supports .json files up to 5MB
             </div>
             <input
               ref={fileInputRef}
