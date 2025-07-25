@@ -1,56 +1,79 @@
-<p align="center">
+<div align="center">
   <a href="https://nonstopio.com">
     <img src="https://github.com/nonstopio.png" alt="Nonstop Logo" height="128" />
   </a>
-  <h1 align="center">NonStop</h1>
-  <p align="center">Digital Product Development Experts for Startups & Enterprises</p>
-  <p align="center">
-    <a href="https://nonstopio.com/about-us">About</a> |
-    <a href="https://nonstopio.com">Website</a>
+  <h1>JSON Viewer</h1>
+  <p><em>Transform complex JSON data into beautiful, interactive visualizations</em></p>
+  
+  [![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-json.nonstopio.com-blue?style=for-the-badge&logo=vercel)](https://json.nonstopio.com)
+  [![Visitor Count](https://hits.sh/json.nonstopio.com.svg?style=for-the-badge&label=Visitors&color=brightgreen)](https://json.nonstopio.com)
+  [![Built with React](https://img.shields.io/badge/Built_with-React_18-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+  [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+  
+  <p>
+    <a href="https://nonstopio.com/about-us">About NonStop</a> •
+    <a href="https://nonstopio.com">Our Website</a> •
+    <a href="https://json.nonstopio.com">Try the App</a>
   </p>
-</p>
+</div>
 
-# JSON Viewer
+---
 
-A modern, intuitive JSON viewer that transforms complex JSON data into a visually appealing, easily navigable interface with comprehensive usage analytics.
+## 🚀 **What is JSON Viewer?**
 
-## Features
+A modern, intuitive JSON viewer that transforms complex JSON data into a visually appealing, easily navigable interface. Perfect for developers, data analysts, and anyone working with JSON data.
 
-### Core Functionality
-- **Smart JSON Parsing & Validation** - Real-time syntax validation with clear error messages
-- **Interactive Tree View** - Collapsible/expandable nodes with smooth animations
-- **Multiple Input Methods** - Paste, upload, or drag & drop JSON files
-- **Advanced Search** - Global search with real-time highlighting and navigation
-- **Theme Support** - Dark/light/system theme with automatic detection
-- **Copy Functionality** - Copy values and JSON paths with one click
+## ✨ **Features**
 
-### Analytics & Insights
-- **Usage Tracking** - Daily active users, session duration, feature adoption
-- **Interaction Analytics** - Node expansion, search queries, copy actions
-- **Performance Metrics** - Parse times, file sizes, error rates
-- **Privacy-First** - Anonymous tracking with local storage (production-ready for external services)
+### 🔧 **Core Functionality**
+| Feature | Description |
+|---------|-------------|
+| 🧠 **Smart JSON Parsing** | Real-time syntax validation with clear error messages |
+| 🌳 **Interactive Tree View** | Collapsible/expandable nodes with smooth animations |
+| 📥 **Multiple Input Methods** | Paste, upload, or drag & drop JSON files |
+| 🔍 **Advanced Search** | Global search with real-time highlighting and navigation |
+| 🎨 **Theme Support** | Dark/light/system theme with automatic detection |
+| 📋 **Copy Functionality** | Copy values and JSON paths with one click |
 
-## Getting Started
 
-### Prerequisites
-- Node.js 16+ 
-- npm or yarn
+## 📸 **Screenshots**
 
-### Installation
+<div align="center">
+  <h3>🌟 Beautiful JSON Visualization</h3>
+  <p><em>Experience JSON data like never before</em></p>
+  
+  <!-- Add screenshots here when available -->
+  <p>
+    <a href="https://json.nonstopio.com">
+      <img src="https://img.shields.io/badge/🎯_See_Live_Demo-json.nonstopio.com-success?style=for-the-badge" alt="Live Demo" />
+    </a>
+  </p>
+</div>
+
+---
+
+## 🚀 **Getting Started**
+
+### 📋 **Prerequisites**
+- 📦 Node.js 16+ 
+- 🔧 npm or yarn
+
+### ⚡ **Quick Start**
 
 ```bash
-# Clone the repository
+# 1️⃣ Clone the repository
 git clone <repository-url>
-cd json-viewer-analytics
+cd json-viewer
 
-# Install dependencies
+# 2️⃣ Install dependencies
 npm install
 
-# Start development server
+# 3️⃣ Start development server
 npm run dev
 ```
 
-### Build for Production
+### 🏗️ **Build for Production**
 
 ```bash
 # Build the application
@@ -60,53 +83,79 @@ npm run build
 npm run preview
 ```
 
-## Usage
+### 🌐 **Live Demo**
+Visit our hosted version at **[json.nonstopio.com](https://json.nonstopio.com)** to try it out instantly!
 
-1. **Input JSON**: Paste JSON directly, upload a .json file, or drag & drop
-2. **Explore**: Click to expand/collapse nodes, use search to find specific keys/values  
-3. **Copy**: Hover over nodes to copy values or JSON paths
-4. **Customize**: Toggle between light/dark themes or use system preference
+## 📖 **How to Use**
 
-### Keyboard Shortcuts
-- `Ctrl+Enter` / `Cmd+Enter` - Parse JSON
-- `Ctrl+F` / `Cmd+F` - Open search
-- `Enter` - Next search result
-- `Shift+Enter` - Previous search result
-- `Escape` - Clear search
+<div align="center">
 
-## Analytics Features
+| Step | Action | Description |
+|------|--------|-------------|
+| 1️⃣ | **Input JSON** | Paste JSON directly, upload a .json file, or drag & drop |
+| 2️⃣ | **Explore** | Click to expand/collapse nodes, use search to find specific keys/values |
+| 3️⃣ | **Copy** | Hover over nodes to copy values or JSON paths |
+| 4️⃣ | **Customize** | Toggle between light/dark themes or use system preference |
 
-The application tracks user interactions to provide insights into usage patterns:
+</div>
 
-- **Core Events**: JSON parsing, file uploads, search queries
-- **Interaction Events**: Node expansion/collapse, value copying, theme changes
-- **Session Analytics**: User engagement, feature adoption, error tracking
+### ⌨️ **Keyboard Shortcuts**
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+Enter` / `Cmd+Enter` | Parse JSON |
+| `Ctrl+F` / `Cmd+F` | Open search |
+| `Enter` | Next search result |
+| `Shift+Enter` | Previous search result |
+| `Escape` | Clear search |
 
-All analytics data is stored locally by default and can be easily integrated with external analytics services.
+## 🛠️ **Technology Stack**
 
-## Technology Stack
+<div align="center">
 
-- **Frontend**: React 18 + TypeScript
-- **Styling**: Tailwind CSS with custom components
-- **Icons**: Lucide React
-- **Build Tool**: Vite
-- **Analytics**: Custom event tracking system
+| Category | Technology |
+|----------|------------|
+| 🎨 **Frontend** | React 18 + TypeScript |
+| 💄 **Styling** | Tailwind CSS with custom components |
+| 🎭 **Icons** | Lucide React |
+| ⚡ **Build Tool** | Vite |
+| 🚀 **Deployment** | Hosted at [json.nonstopio.com](https://json.nonstopio.com) |
 
-## Architecture
+</div>
+
+## 🏗️ **Architecture**
 
 ```
-src/
-├── components/          # React components
-├── hooks/              # Custom React hooks  
-├── types/              # TypeScript type definitions
-├── utils/              # Utility functions and services
-└── App.tsx             # Main application component
+📦 src/
+├── 🧩 components/          # React components
+├── 🪝 hooks/              # Custom React hooks  
+├── 📝 types/              # TypeScript type definitions
+├── 🔧 utils/              # Utility functions and services
+└── 🎯 App.tsx             # Main application component
 ```
 
-## Contributing
+## 🤝 **Contributing**
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+We welcome contributions! Here's how to get started:
+
+| Step | Command | Description |
+|------|---------|-------------|
+| 1️⃣ | `Fork` | Fork the repository on GitHub |
+| 2️⃣ | `git checkout -b feature/amazing-feature` | Create a feature branch |
+| 3️⃣ | `git commit -m 'Add amazing feature'` | Commit your changes |
+| 4️⃣ | `git push origin feature/amazing-feature` | Push to the branch |
+| 5️⃣ | `Open PR` | Open a Pull Request |
+
+---
+
+<div align="center">
+  <h3>🌟 **Made with ❤️ by NonStop Team**</h3>
+  <p>
+    <a href="https://nonstopio.com">🌐 Visit NonStop</a> •
+    <a href="https://json.nonstopio.com">🚀 Try JSON Viewer</a> •
+    <a href="https://github.com/nonstopio">💻 GitHub</a>
+  </p>
+  
+  <p>
+    <img src="https://img.shields.io/badge/⭐_Star_this_repo-if_it_helped_you!-yellow?style=for-the-badge" alt="Star this repo" />
+  </p>
+</div>

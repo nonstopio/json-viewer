@@ -167,30 +167,39 @@ export class JsonParser {
     console.log("🔍 Attempting manual error detection for:", errorMessage);
 
     const lines = input.split("\n");
-    
+
     // Strategy 1: Look for missing commas by examining line patterns
     for (let lineIndex = 0; lineIndex < lines.length - 1; lineIndex++) {
       const currentLine = lines[lineIndex];
       const nextLine = lines[lineIndex + 1];
-      
+
       // Check if current line ends with a value and next line starts with a property
       const currentTrimmed = currentLine.trim();
       const nextTrimmed = nextLine.trim();
-      
+
       // Pattern: line ends with number, string, boolean, or } and next line starts with "
-      if (currentTrimmed && nextTrimmed.startsWith('"') && nextTrimmed.includes(':')) {
+      if (
+        currentTrimmed &&
+        nextTrimmed.startsWith('"') &&
+        nextTrimmed.includes(":")
+      ) {
         // Check if current line should have a comma
-        if (!currentTrimmed.endsWith(',') && 
-            !currentTrimmed.endsWith('{') && 
-            !currentTrimmed.endsWith('[')) {
-          
+        if (
+          !currentTrimmed.endsWith(",") &&
+          !currentTrimmed.endsWith("{") &&
+          !currentTrimmed.endsWith("[")
+        ) {
           // This line is missing a comma
-          const position = this.getPositionFromLineColumn(input, lineIndex + 1, currentLine.length + 1);
+          const position = this.getPositionFromLineColumn(
+            input,
+            lineIndex + 1,
+            currentLine.length + 1
+          );
           console.log("🎯 Found missing comma at end of line", lineIndex + 1);
           console.log("📄 Current line:", JSON.stringify(currentLine));
           console.log("📄 Next line:", JSON.stringify(nextLine));
           console.log("📍 Position:", position);
-          
+
           return {
             line: lineIndex + 1,
             column: currentLine.length + 1,
@@ -209,23 +218,27 @@ export class JsonParser {
           JSON.parse(partial);
         } catch (e) {
           const errorMsg = e instanceof Error ? e.message : String(e);
-          
+
           // Skip "incomplete" errors, look for actual syntax errors
-          if (!errorMsg.includes("Unexpected end") && 
-              !errorMsg.includes("Unexpected EOF") && 
-              !errorMsg.includes("Unterminated") &&
-              i > 10) {
-            
+          if (
+            !errorMsg.includes("Unexpected end") &&
+            !errorMsg.includes("Unexpected EOF") &&
+            !errorMsg.includes("Unterminated") &&
+            i > 10
+          ) {
             console.log("🎯 Found syntax error at character", i);
             console.log("📍 Error character:", JSON.stringify(input[i]));
-            console.log("🔤 Context:", JSON.stringify(input.substring(Math.max(0, i - 15), i + 15)));
+            console.log(
+              "🔤 Context:",
+              JSON.stringify(input.substring(Math.max(0, i - 15), i + 15))
+            );
             console.log("📋 Error message:", errorMsg);
-            
+
             const beforeError = input.substring(0, i);
             const lines = beforeError.split("\n");
             const line = lines.length;
             const column = lines[lines.length - 1].length + 1;
-            
+
             return {line, column, position: i};
           }
         }
@@ -236,22 +249,33 @@ export class JsonParser {
 
     // Strategy 3: Look for specific patterns like "processingTime": 0.234\n    "checksum"
     console.log("🔄 Looking for specific missing comma patterns...");
-    const processingTimeMatch = input.match(/"processingTime":\s*[\d.]+\s*\n\s*"checksum"/);
+    const processingTimeMatch = input.match(
+      /"processingTime":\s*[\d.]+\s*\n\s*"checksum"/
+    );
     if (processingTimeMatch) {
       const matchStart = input.indexOf(processingTimeMatch[0]);
-      
+
       // Find the position right after the number
-      const numberMatch = input.substring(matchStart).match(/"processingTime":\s*([\d.]+)/);
+      const numberMatch = input
+        .substring(matchStart)
+        .match(/"processingTime":\s*([\d.]+)/);
       if (numberMatch) {
-        const numberEnd = matchStart + numberMatch.index! + numberMatch[0].length;
+        const numberEnd =
+          matchStart + numberMatch.index! + numberMatch[0].length;
         const beforeError = input.substring(0, numberEnd);
         const lines = beforeError.split("\n");
         const line = lines.length;
         const column = lines[lines.length - 1].length + 1;
-        
-        console.log("🎯 Found missing comma after processingTime at position", numberEnd);
-        console.log("📄 Context:", JSON.stringify(input.substring(numberEnd - 10, numberEnd + 10)));
-        
+
+        console.log(
+          "🎯 Found missing comma after processingTime at position",
+          numberEnd
+        );
+        console.log(
+          "📄 Context:",
+          JSON.stringify(input.substring(numberEnd - 10, numberEnd + 10))
+        );
+
         return {
           line,
           column,
