@@ -7,10 +7,10 @@ import { JsonTableView } from './components/JsonTableView';
 import { ResizablePanel } from './components/ResizablePanel';
 import { jsonParser } from './utils/jsonParser';
 import { trackEvent } from './utils/analytics';
-import { JsonNode } from './types/json';
+import { JsonNode, JsonValue } from './types/json';
 
 function App() {
-  const [jsonData, setJsonData] = useState<any>(null);
+  const [jsonData, setJsonData] = useState<JsonValue | null>(null);
   const [nodes, setNodes] = useState<JsonNode[]>([]);
   const [filteredNodes, setFilteredNodes] = useState<JsonNode[]>([]);
   const [originalNodes, setOriginalNodes] = useState<JsonNode[]>([]);
@@ -22,6 +22,7 @@ function App() {
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<'viewer' | 'text'>('text');
   const [inputText, setInputText] = useState<string>('');
+  const [lastParsedInput, setLastParsedInput] = useState<string>('');
   const [selectedNodePath, setSelectedNodePath] = useState<string>('');
 
   useEffect(() => {
@@ -50,6 +51,8 @@ function App() {
         setNodes(newNodes);
         setFilteredNodes(newNodes);
         setOriginalNodes(newNodes);
+        // Track the input that was successfully parsed
+        setLastParsedInput(jsonText);
         // Auto-select root node when data is loaded
         setSelectedNodePath('root');
         // Switch to viewer tab only if parsing was successful and requested
@@ -171,12 +174,27 @@ function App() {
     }
   }, [jsonData]);
 
+  const handleViewerTabClick = useCallback(() => {
+    // Check if there's unparsed text or text that has changed since last parse
+    const currentInputText = inputText.trim();
+    
+    if (currentInputText && currentInputText !== lastParsedInput) {
+      // Auto-parse the text when switching to viewer tab if:
+      // 1. There's input text AND it's different from what was last successfully parsed
+      handleJsonSubmit(currentInputText, true);
+    } else {
+      // Just switch to viewer tab if input is the same as last parsed or no input text
+      setActiveTab('viewer');
+    }
+  }, [inputText, lastParsedInput, handleJsonSubmit]);
+
   const handleClear = useCallback(() => {
     setJsonData(null);
     setNodes([]);
     setFilteredNodes([]);
     setOriginalNodes([]);
     setInputText('');
+    setLastParsedInput('');
     setError('');
     setSearchQuery('');
     setSearchMatchIndices([]);
@@ -659,7 +677,7 @@ function App() {
               JSON
             </button>
             <button
-              onClick={() => setActiveTab('viewer')}
+              onClick={handleViewerTabClick}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === 'viewer'
                   ? 'border-blue-500 text-blue-600 dark:text-blue-400 bg-gray-50 dark:bg-gray-700'

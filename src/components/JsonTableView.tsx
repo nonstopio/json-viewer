@@ -5,7 +5,7 @@ import { JsonNode } from '../types/json';
 import { trackEvent } from '../utils/analytics';
 
 interface JsonTableViewProps {
-  data: JsonValue;
+  data: JsonValue | null;
   searchQuery?: string;
   selectedNodePath?: string;
   nodes?: JsonNode[];
@@ -21,28 +21,93 @@ interface TableRow {
 export const JsonTableView: React.FC<JsonTableViewProps> = ({ data, searchQuery = '', selectedNodePath, nodes = [] }) => {
   const [copiedValue, setCopiedValue] = useState<string>('');
 
-  const copyToClipboard = (text: string, type: 'name' | 'value' | 'path') => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopiedValue(text);
+  const getActualValue = (rowData: TableRow): string => {
+    // Get the actual value from the data using the path
+    const getValueFromPath = (data: unknown, path: string): unknown => {
+      if (!path || path === 'root') return data;
+      
+      // Remove 'root.' prefix if present
+      const cleanPath = path.startsWith('root.') ? path.substring(5) : path;
+      if (!cleanPath) return data;
+      
+      const parts = cleanPath.split(/\.(?![^[]*])|[|]/).filter(Boolean);
+      let current = data;
+      
+      for (const part of parts) {
+        if (current === null || current === undefined) return null;
+        
+        if (Array.isArray(current)) {
+          const index = parseInt(part, 10);
+          if (isNaN(index)) return null;
+          current = current[index];
+        } else if (typeof current === 'object' && current !== null) {
+          current = (current as Record<string, unknown>)[part];
+        } else {
+          return null;
+        }
+      }
+      
+      return current;
+    };
+
+    const actualValue = getValueFromPath(data, rowData.path);
+    
+    if (actualValue === null) return 'null';
+    if (typeof actualValue === 'string') return actualValue;
+    if (typeof actualValue === 'object') {
+      return JSON.stringify(actualValue, null, 2);
+    }
+    return String(actualValue);
+  };
+
+  const copyToClipboard = (rowData: TableRow, type: 'name' | 'value' | 'path') => {
+    let textToCopy: string;
+    
+    if (type === 'name') {
+      textToCopy = rowData.name;
+    } else if (type === 'path') {
+      textToCopy = rowData.path;
+    } else {
+      // For value, get the actual JSON content
+      textToCopy = getActualValue(rowData);
+    }
+    
+    navigator.clipboard.writeText(textToCopy).then(() => {
+      setCopiedValue(textToCopy);
       setTimeout(() => setCopiedValue(''), 2000);
       
       trackEvent('property_detail_copied', {
         property: type,
         nodeType: 'table_view',
-        valueLength: text.length
+        valueLength: textToCopy.length
       });
     }).catch(err => {
       console.error('Failed to copy text: ', err);
     });
   };
 
-  const getValueType = (value: any): string => {
+  const copyPathToClipboard = (path: string) => {
+    navigator.clipboard.writeText(path).then(() => {
+      setCopiedValue(path);
+      setTimeout(() => setCopiedValue(''), 2000);
+      
+      trackEvent('property_detail_copied', {
+        property: 'path',
+        nodeType: 'table_view',
+        valueLength: path.length
+      });
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+    });
+  };
+
+  const getValueType = (value: unknown): string => {
     if (value === null) return 'null';
     if (Array.isArray(value)) return 'array';
     return typeof value;
   };
 
-  const getDisplayValue = (value: any): string => {
+  const getDisplayValue = (value: unknown): string => {
     if (value === null) return 'null';
     if (typeof value === 'string') return `"${value}"`;
     if (typeof value === 'object') {
@@ -62,14 +127,14 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({ data, searchQuery 
     if (!selectedNode) return null;
     
     // Get the actual value from the data using the path
-    const getValueFromPath = (data: any, path: string): any => {
+    const getValueFromPath = (data: unknown, path: string): unknown => {
       if (!path || path === 'root') return data;
       
       // Remove 'root.' prefix if present
       const cleanPath = path.startsWith('root.') ? path.substring(5) : path;
       if (!cleanPath) return data;
       
-      const parts = cleanPath.split(/\.(?![^\[]*\])|\[|\]/).filter(Boolean);
+      const parts = cleanPath.split(/\.(?![^[]*])|[|]/).filter(Boolean);
       let current = data;
       
       for (const part of parts) {
@@ -79,8 +144,8 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({ data, searchQuery 
           const index = parseInt(part, 10);
           if (isNaN(index)) return null;
           current = current[index];
-        } else if (typeof current === 'object') {
-          current = current[part];
+        } else if (typeof current === 'object' && current !== null) {
+          current = (current as Record<string, unknown>)[part];
         } else {
           return null;
         }
@@ -100,7 +165,7 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({ data, searchQuery 
     // If selected node is a primitive value, show just that value
     if (typeof selectedNodeData !== 'object' || selectedNodeData === null) {
       rows.push({
-        name: selectedNodePath?.split(/\.(?![^\[]*\])|\[|\]/).filter(Boolean).pop() || 'value',
+        name: selectedNodePath?.split(/\.(?![^[]*])|[|]/).filter(Boolean).pop() || 'value',
         value: getDisplayValue(selectedNodeData),
         type: getValueType(selectedNodeData),
         path: selectedNodePath || ''
@@ -228,7 +293,7 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({ data, searchQuery 
                 <div className="flex items-center justify-center space-x-1 opacity-100 transition-opacity">
                   {/* Copy Name Button */}
                   <button
-                    onClick={() => copyToClipboard(row.name, 'name')}
+                    onClick={() => copyToClipboard(row, 'name')}
                     className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
                     title="Copy name"
                   >
@@ -240,11 +305,11 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({ data, searchQuery 
                   </button>
                   {/* Copy Value Button */}
                   <button
-                    onClick={() => copyToClipboard(row.value, 'value')}
+                    onClick={() => copyToClipboard(row, 'value')}
                     className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
                     title="Copy value"
                   >
-                    {copiedValue === row.value ? (
+                    {copiedValue === getActualValue(row) ? (
                       <Check size={10} className="text-green-500" />
                     ) : (
                       <Copy size={10} />
@@ -291,7 +356,7 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({ data, searchQuery 
               <span className="text-gray-600 dark:text-gray-400 font-mono text-xs">{selectedNodePath}</span>
             </div>
             <button
-              onClick={() => copyToClipboard(selectedNodePath, 'path')}
+              onClick={() => copyPathToClipboard(selectedNodePath)}
               className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors ml-2"
               title="Copy path"
             >
