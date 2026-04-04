@@ -310,6 +310,26 @@ export const JsonInput: React.FC<JsonInputProps> = ({
     }
   }, [onChange]);
 
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const pastedText = e.clipboardData.getData('text/plain');
+    if (pastedText.trim()) {
+      // Defer to next tick so the browser updates the textarea value
+      setTimeout(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+          const finalValue = textarea.value;
+          if (finalValue.trim()) {
+            onJsonSubmit(finalValue.trim(), true);
+            trackEvent('json_pasted', {
+              fileSize: finalValue.length,
+              source: 'clipboard_paste',
+            });
+          }
+        }
+      }, 0);
+    }
+  }, [onJsonSubmit]);
+
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
@@ -349,6 +369,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
             setJsonText(newValue);
             onChange?.(newValue);
           }}
+          onPaste={handlePaste}
           onKeyDown={handleKeyDown}
           placeholder='Paste the JSON code here (your code is not saved anywhere)'
           className="flex-1 w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg resize-none font-mono text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors min-h-0"
@@ -357,7 +378,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
         
         <div className="flex items-center justify-between mt-2">
           <div className="text-xs text-gray-500 dark:text-gray-400">
-            Press Ctrl+Enter (Cmd+Enter on Mac) to parse • Auto-fixes: ALL JSON errors silently
+            Paste to auto-parse • Ctrl+Enter (Cmd+Enter) to parse manually • Auto-fixes: ALL JSON errors silently
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400">
             {jsonText.length} characters

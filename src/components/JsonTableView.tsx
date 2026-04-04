@@ -343,20 +343,20 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({ data, searchQuery 
                 key={`${row.path}-${index}`}
                 className="grid grid-cols-[1fr_2fr_60px] gap-2 p-2 text-xs border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
               >
-                <div className="flex items-center space-x-1">
-                  <span className="font-medium text-gray-800 dark:text-gray-200 truncate" title={row.name}>
+                <div className="flex items-start space-x-1">
+                  <span className="font-medium text-gray-800 dark:text-gray-200 break-all" title={row.name}>
                     {highlightText(row.name)}
                   </span>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-start space-x-2">
                   <span className={`px-1.5 py-0.5 rounded text-xs font-mono ${getTypeColor(row.type)} bg-gray-100 dark:bg-gray-700`}>
                     {row.type}
                   </span>
-                  <span className="text-gray-600 dark:text-gray-400 truncate flex-1 font-mono" title={row.value}>
+                  <span className="text-gray-600 dark:text-gray-400 break-all flex-1 font-mono" title={row.value}>
                     {highlightText(row.value)}
                   </span>
                 </div>
-                <div className="flex items-center justify-center space-x-1 opacity-100 transition-opacity">
+                <div className="flex items-start justify-center space-x-1 opacity-100 transition-opacity">
                   {/* Copy Name Button */}
                   <button
                     onClick={() => copyToClipboard(row, 'name')}

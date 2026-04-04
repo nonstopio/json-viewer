@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { FileCode, BarChart3, Upload, Copy, Square, Trash2, FileText, FoldVertical, UnfoldVertical, ChevronUp, ChevronDown, X, Github, Linkedin, Twitter, Globe, Heart, Bug, Maximize } from 'lucide-react';
+import { FileCode, BarChart3, Upload, Copy, Square, Trash2, FileText, FoldVertical, UnfoldVertical, ChevronUp, ChevronDown, X, Github, Linkedin, Twitter, Globe, Bug, Maximize } from 'lucide-react';
 import { JsonInput } from './components/JsonInput';
 import { JsonTree } from './components/JsonTree';
 import { ThemeToggle } from './components/ThemeToggle';
@@ -625,14 +625,24 @@ function App() {
                   {/* Tree Header */}
                   <div className="flex items-center justify-between p-2 border-b border-gray-200 dark:border-gray-700">
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">JSON Tree</span>
-                    <button
-                      onClick={enterFullscreen}
-                      className="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                      title="View in fullscreen"
-                    >
-                      <Maximize size={16} className="text-gray-500 dark:text-gray-400" />
-                      <span className="text-xs text-gray-500 dark:text-gray-400">Fullscreen</span>
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={handleCopy}
+                        className="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                        title="Copy JSON to clipboard"
+                      >
+                        <Copy size={16} className="text-gray-500 dark:text-gray-400" />
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Copy</span>
+                      </button>
+                      <button
+                        onClick={enterFullscreen}
+                        className="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                        title="View in fullscreen"
+                      >
+                        <Maximize size={16} className="text-gray-500 dark:text-gray-400" />
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Fullscreen</span>
+                      </button>
+                    </div>
                   </div>
                   {/* Tree Content - Independent Scroll */}
                   <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 min-h-0 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
@@ -740,21 +750,6 @@ function App() {
               </div>
             </div>
             
-            {/* Visit Counter with Creative Label - Center */}
-            <div className="flex items-center space-x-2">
-              <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-                <Heart size={14} className="mr-1 text-red-500" />
-                <span>Helped</span>
-              </div>
-              <img 
-                src="https://visit-counter.vercel.app/counter.png?page=https%3A%2F%2Fjson.nonstopio.com%2F&s=34&c=039d65&bg=00000000&no=1&ff=electrolize&tb=&ta=" 
-                alt="developers helped"
-                className="h-6"
-              />
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                developers parse JSON
-              </span>
-            </div>
             
             {/* Report Issues - Right */}
             <div className="flex items-center space-x-2">
