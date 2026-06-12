@@ -8,8 +8,8 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Free JSON Viewer Online | JSON Formatter & Validator | Tree View | NonStop.io</title>
-    <meta name="description" content="Free JSON Viewer and Formatter Online. Parse, validate and explore JSON with beautiful tree view. 5MB file support, search functionality, no signup required. Trusted by developers worldwide." />
+    <title>JSON Viewer Online – Free Formatter & Validator</title>
+    <meta name="description" content="Paste your JSON and instantly view it as a clean, collapsible tree. Free online JSON formatter, validator & explorer. No signup. Works in browser." />
     
     <!-- SEO Meta Tags -->
     <meta name="keywords" content="JSON viewer, JSON formatter, JSON parser, JSON validator, JSON explorer, JSON tree, JSON analyzer, online JSON tool, JSON beautify, JSON minify, JSON search, developer tools, API testing, data visualization, free JSON tool, pretty print JSON, JSON lint, JSON editor online, JSON to tree view, validate JSON online, format JSON code, JSON syntax checker, JSON file viewer, JSON data explorer, REST API JSON viewer" />
@@ -114,18 +114,18 @@
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "What is a JSON viewer and why do I need one?",
+          "name": "What is a JSON viewer?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "A JSON viewer is a tool that helps you visualize, format, and validate JSON data in a readable format. It's essential for developers working with APIs, configuration files, or data analysis."
+            "text": "A JSON viewer is a tool that formats and displays JSON data in a readable, collapsible tree structure, making it easy to explore and debug."
           }
         },
         {
           "@type": "Question",
-          "name": "Is this JSON viewer free to use?",
+          "name": "Is this JSON viewer free?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes, our JSON viewer is completely free to use. No registration, no limits, no hidden fees. Just paste your JSON and start exploring."
+            "text": "Yes, completely free. No signup, no limits, no hidden fees."
           }
         },
         {
@@ -133,35 +133,139 @@
           "name": "What is the maximum file size supported?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Our JSON viewer supports files up to 5MB in size, which is sufficient for most JSON data files and API responses."
+            "text": "Up to 5MB of JSON data."
           }
         },
         {
           "@type": "Question",
-          "name": "Can I search within my JSON data?",
+          "name": "Does it save my JSON data?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes, we provide powerful search functionality that allows you to find specific keys, values, or content within your JSON data with case-sensitive options."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is my JSON data secure and private?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Absolutely. All JSON processing happens locally in your browser. Your data never leaves your device and is not stored on our servers."
+            "text": "No. All processing happens in your browser. Nothing is sent to our servers."
           }
         }
       ]
     }
     </script>
+
+    <!-- Styling for the static SEO content section (independent of the JS bundle). -->
+    <style>
+      /* Reserve the full viewport for the app shell before React mounts, so the
+         static SEO content below stays below the fold and there is no layout
+         shift / flash when #root hydrates. */
+      #root { min-height: 100vh; }
+      .seo-content {
+        border-top: 1px solid #e5e7eb;
+        background: #ffffff;
+        color: #374151;
+        font-family: 'Inter', sans-serif;
+        line-height: 1.6;
+      }
+      .seo-content__inner {
+        max-width: 56rem;
+        margin: 0 auto;
+        padding: 3rem 1.5rem;
+      }
+      .seo-content h1 {
+        font-size: 1.875rem;
+        font-weight: 700;
+        color: #111827;
+        margin: 0 0 1rem;
+      }
+      .seo-content h2 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #111827;
+        margin: 2rem 0 0.75rem;
+      }
+      .seo-content h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 1.25rem 0 0.25rem;
+      }
+      .seo-content p { margin: 0 0 0.75rem; }
+      .seo-content ol { margin: 0 0 0.75rem; padding-left: 1.5rem; list-style: decimal; }
+      .seo-content ul { margin: 0 0 0.75rem; padding-left: 1.5rem; list-style: disc; }
+      .seo-content li { margin: 0.25rem 0; }
+      /* Dark mode — class-based (app toggle) and OS preference. */
+      html.dark .seo-content {
+        background: #1f2937;
+        color: #d1d5db;
+        border-top-color: #374151;
+      }
+      html.dark .seo-content h1,
+      html.dark .seo-content h2 { color: #ffffff; }
+      html.dark .seo-content h3 { color: #e5e7eb; }
+      @media (prefers-color-scheme: dark) {
+        html:not(.light) .seo-content {
+          background: #1f2937;
+          color: #d1d5db;
+          border-top-color: #374151;
+        }
+        html:not(.light) .seo-content h1,
+        html:not(.light) .seo-content h2 { color: #ffffff; }
+        html:not(.light) .seo-content h3 { color: #e5e7eb; }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+
+    <!-- Static, crawlable SEO content. Rendered in the raw HTML before JS runs.
+         React mounts only into #root, so this sibling content is never touched. -->
+    <section class="seo-content">
+      <div class="seo-content__inner">
+        <h1>Free JSON Viewer Online</h1>
+
+        <h2>JSON Formatter &amp; Validator</h2>
+        <p>
+          This free online JSON viewer formats and validates your JSON instantly. Paste raw or
+          minified JSON and it is pretty-printed into a clean, readable structure with syntax
+          highlighting. Invalid JSON is detected automatically and common errors are fixed
+          silently, so you can format and validate API responses, config files, and log data in
+          seconds — right in your browser.
+        </p>
+
+        <h2>How to Use the JSON Viewer</h2>
+        <ol>
+          <li>Paste your JSON into the input area (or upload a file).</li>
+          <li>Click the Viewer tab to format and validate it.</li>
+          <li>Explore the collapsible tree, search keys and values, and copy any value or path.</li>
+        </ol>
+
+        <h2>Features</h2>
+        <ul>
+          <li>Tree View — explore nested JSON as a collapsible tree</li>
+          <li>Search — find keys, values, and content instantly</li>
+          <li>Dark/Light Theme — comfortable viewing in any environment</li>
+          <li>5MB file support — handle large JSON files and API responses</li>
+          <li>No signup required — start using it immediately</li>
+          <li>Copy values and paths — grab exactly what you need</li>
+        </ul>
+
+        <h2>Frequently Asked Questions</h2>
+        <div class="seo-faq">
+          <h3>What is a JSON viewer?</h3>
+          <p>
+            A JSON viewer is a tool that formats and displays JSON data in a readable, collapsible
+            tree structure, making it easy to explore and debug.
+          </p>
+
+          <h3>Is this JSON viewer free?</h3>
+          <p>Yes, completely free. No signup, no limits, no hidden fees.</p>
+
+          <h3>What is the maximum file size supported?</h3>
+          <p>Up to 5MB of JSON data.</p>
+
+          <h3>Does it save my JSON data?</h3>
+          <p>No. All processing happens in your browser. Nothing is sent to our servers.</p>
+        </div>
+      </div>
+    </section>
+
     <noscript>
-      <h1>Free JSON Viewer Online - JSON Formatter & Validator</h1>
-      <p>Parse, validate, and explore JSON data with a beautiful tree view. Features include search functionality, dark/light themes, file upload support up to 5MB, and copy utilities. No signup required. All processing happens locally in your browser.</p>
-      <p>Please enable JavaScript to use the JSON Viewer application.</p>
+      <p>Please enable JavaScript to use the interactive JSON Viewer application.</p>
     </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>

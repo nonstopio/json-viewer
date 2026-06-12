@@ -711,39 +711,43 @@ function App() {
               </div>
               
               <div className="flex items-center space-x-3">
-                <a 
-                  href="https://github.com/nonstopio" 
-                  target="_blank" 
+                <a
+                  href="https://github.com/nonstopio"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
                   title="GitHub"
+                  aria-label="NonStop io on GitHub"
                 >
                   <Github size={16} />
                 </a>
-                <a 
-                  href="https://www.linkedin.com/company/nonstop-io" 
-                  target="_blank" 
+                <a
+                  href="https://www.linkedin.com/company/nonstop-io"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
                   title="LinkedIn"
+                  aria-label="NonStop io on LinkedIn"
                 >
                   <Linkedin size={16} />
                 </a>
-                <a 
-                  href="https://twitter.com/nonstopio" 
-                  target="_blank" 
+                <a
+                  href="https://twitter.com/nonstopio"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
                   title="Twitter"
+                  aria-label="NonStop io on Twitter"
                 >
                   <Twitter size={16} />
                 </a>
-                <a 
-                  href="https://nonstopio.com" 
-                  target="_blank" 
+                <a
+                  href="https://nonstopio.com"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
                   title="Website"
+                  aria-label="NonStop io Website"
                 >
                   <Globe size={16} />
                 </a>
