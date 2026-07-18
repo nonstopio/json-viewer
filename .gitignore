@@ -337,3 +337,5 @@ docker-compose*
 !vite.config.ts
 !tailwind.config.js
 !postcss.config.js
+# Playwright MCP test artifacts
+.playwright-mcp/
