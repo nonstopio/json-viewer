@@ -189,27 +189,34 @@ function App() {
   }, [handleJsonSubmit]);
 
   const handleCopy = useCallback(() => {
-    if (jsonData) {
-      navigator.clipboard.writeText(JSON.stringify(jsonData, null, 2));
-      trackEvent('feature_used', { featureName: 'copy' });
-    }
-  }, [jsonData]);
+    if (!inputText.trim()) return;
+    const result = jsonParser.parseJson(inputText);
+    // Copy formatted JSON when valid, otherwise copy the raw text as-is.
+    const text =
+      result.success && result.data !== undefined
+        ? JSON.stringify(result.data, null, 2)
+        : inputText;
+    navigator.clipboard.writeText(text);
+    trackEvent('feature_used', { featureName: 'copy' });
+  }, [inputText]);
 
   const handleFormat = useCallback(() => {
-    if (jsonData) {
-      const formatted = JSON.stringify(jsonData, null, 2);
-      setInputText(formatted);
+    if (!inputText.trim()) return;
+    const result = jsonParser.parseJson(inputText);
+    if (result.success && result.data !== undefined) {
+      setInputText(JSON.stringify(result.data, null, 2));
       trackEvent('feature_used', { featureName: 'format' });
     }
-  }, [jsonData]);
+  }, [inputText]);
 
   const handleRemoveWhitespace = useCallback(() => {
-    if (jsonData) {
-      const compressed = JSON.stringify(jsonData);
-      setInputText(compressed);
+    if (!inputText.trim()) return;
+    const result = jsonParser.parseJson(inputText);
+    if (result.success && result.data !== undefined) {
+      setInputText(JSON.stringify(result.data));
       trackEvent('feature_used', { featureName: 'remove_whitespace' });
     }
-  }, [jsonData]);
+  }, [inputText]);
 
   const handleViewerTabClick = useCallback(async () => {
     // Check if there's unparsed text or text that has changed since last parse
@@ -456,7 +463,7 @@ function App() {
             
             <button
               onClick={handleCopy}
-              disabled={!jsonData}
+              disabled={!inputText.trim()}
               className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Copy formatted JSON"
             >
@@ -466,7 +473,7 @@ function App() {
             
             <button
               onClick={handleFormat}
-              disabled={!jsonData}
+              disabled={!inputText.trim()}
               className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Format JSON"
             >
@@ -476,7 +483,7 @@ function App() {
             
             <button
               onClick={handleRemoveWhitespace}
-              disabled={!jsonData}
+              disabled={!inputText.trim()}
               className="px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Remove whitespace"
             >
