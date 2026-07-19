@@ -1,3 +1,21 @@
+# [1.1.0](https://github.com/nonstopio/json-viewer/compare/v1.0.0...v1.1.0) (2026-07-19)
+
+
+### Bug Fixes
+
+* constrain editor height so long input scrolls inside the editor ([010fb90](https://github.com/nonstopio/json-viewer/commit/010fb90c4d508cb37cfd56592dd109bd1f583c5b))
+* expand large nodes without hitting the JS argument limit ([ffb7bcc](https://github.com/nonstopio/json-viewer/commit/ffb7bcc818d2374f6f702e236d7ea4c1bff250a6))
+
+
+### Features
+
+* virtualized code editor, faster parsing, and an about dialog ([cccc5cb](https://github.com/nonstopio/json-viewer/commit/cccc5cbc9b50be7fabb5b3e1119605b30c1dc313))
+
+
+### Performance Improvements
+
+* virtualize tree to fix large-file freeze and high memory use ([00b2aad](https://github.com/nonstopio/json-viewer/commit/00b2aadc8c5ce2fcc906efd6073c977343950d2e))
+
 # 1.0.0 (2026-07-19)
 
 
