@@ -2,7 +2,6 @@ import React, {useMemo, useState} from "react";
 import {Copy, Check} from "lucide-react";
 import {JsonValue} from "../types/json";
 import {JsonNode} from "../types/json";
-import {trackEvent} from "../utils/analytics";
 
 interface JsonTableViewProps {
   data: JsonValue | null;
@@ -60,12 +59,6 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({
       .then(() => {
         setCopiedValue(textToCopy);
         setTimeout(() => setCopiedValue(""), 2000);
-
-        trackEvent("property_detail_copied", {
-          property: type,
-          nodeType: "table_view",
-          valueLength: textToCopy.length,
-        });
       })
       .catch((err) => {
         console.error("Failed to copy text: ", err);
@@ -78,12 +71,6 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({
       .then(() => {
         setCopiedValue(path);
         setTimeout(() => setCopiedValue(""), 2000);
-
-        trackEvent("property_detail_copied", {
-          property: "path",
-          nodeType: "table_view",
-          valueLength: path.length,
-        });
       })
       .catch((err) => {
         console.error("Failed to copy text: ", err);

@@ -2,7 +2,6 @@ import React, {useState, useRef, useCallback, useEffect} from "react";
 import CodeMirror, {ReactCodeMirrorRef} from "@uiw/react-codemirror";
 import {json} from "@codemirror/lang-json";
 import {Upload, FileText, X, AlertCircle} from "lucide-react";
-import {trackEvent} from "../utils/analytics";
 
 interface JsonInputProps {
   onJsonSubmit: (json: string, shouldSwitchTab?: boolean) => void;
@@ -189,13 +188,6 @@ export const JsonInput: React.FC<JsonInputProps> = ({
         scrollIntoView: true,
       });
       view.focus();
-
-      trackEvent("error_cursor_positioned", {
-        errorLine: errorDetails.line,
-        errorColumn: errorDetails.column,
-        errorPosition: errorDetails.position,
-        calculatedPosition: cursorPosition,
-      });
     } catch (error) {
       console.error("❌ Error jumping to position:", error);
     } finally {
@@ -225,9 +217,6 @@ export const JsonInput: React.FC<JsonInputProps> = ({
   const handleTextSubmit = useCallback(() => {
     if (jsonText.trim()) {
       onJsonSubmit(jsonText.trim(), true); // Pass true to indicate tab switch should happen
-      trackEvent("json_pasted", {
-        fileSize: jsonText.length,
-      });
     }
   }, [jsonText, onJsonSubmit]);
 
@@ -237,10 +226,6 @@ export const JsonInput: React.FC<JsonInputProps> = ({
       if (file.size > maxSize) {
         const errorMsg = `File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds the maximum allowed size of 5MB`;
         onError?.(errorMsg);
-        trackEvent("error_encountered", {
-          errorType: "file_too_large",
-          fileSize: file.size,
-        });
         return;
       }
 
@@ -251,18 +236,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
           setJsonText(content);
           onChange?.(content);
           onJsonSubmit(content, true); // Pass true to indicate tab switch should happen
-          trackEvent("file_uploaded", {
-            fileSize: content.length,
-            fileName: file.name,
-            fileType: file.type,
-          });
         }
-      };
-      reader.onerror = () => {
-        trackEvent("error_encountered", {
-          errorType: "file_read_error",
-          fileName: file.name,
-        });
       };
       reader.readAsText(file);
     },
@@ -312,11 +286,6 @@ export const JsonInput: React.FC<JsonInputProps> = ({
 
       if (jsonFile) {
         handleFileRead(jsonFile);
-      } else if (files.length > 0) {
-        trackEvent("error_encountered", {
-          errorType: "unsupported_file_type",
-          fileType: files[0].type,
-        });
       }
 
       // Handle dropped text
@@ -325,10 +294,6 @@ export const JsonInput: React.FC<JsonInputProps> = ({
         setJsonText(droppedText);
         onChange?.(droppedText);
         onJsonSubmit(droppedText, true); // Pass true to indicate tab switch should happen
-        trackEvent("json_pasted", {
-          fileSize: droppedText.length,
-          source: "drag_drop",
-        });
       }
     },
     [handleFileRead, onJsonSubmit, onChange]

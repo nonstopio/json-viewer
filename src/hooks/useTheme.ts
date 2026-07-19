@@ -1,5 +1,4 @@
 import {useState, useEffect, useCallback} from "react";
-import {trackEvent} from "../utils/analytics";
 
 export type Theme = "light" | "dark" | "system";
 
@@ -59,26 +58,11 @@ export const useTheme = () => {
     const newTheme = currentEffective === "dark" ? "light" : "dark";
 
     setTheme(newTheme);
-
-    trackEvent("theme_changed", {
-      theme: newTheme,
-      previousTheme: currentEffective,
-    });
   }, [getEffectiveTheme]);
 
-  const setThemeMode = useCallback(
-    (newTheme: Theme) => {
-      const previousEffective = getEffectiveTheme();
-      setTheme(newTheme);
-
-      trackEvent("theme_changed", {
-        theme: newTheme === "system" ? getSystemTheme() : newTheme,
-        previousTheme: previousEffective,
-        isSystemMode: newTheme === "system",
-      });
-    },
-    [getEffectiveTheme, getSystemTheme]
-  );
+  const setThemeMode = useCallback((newTheme: Theme) => {
+    setTheme(newTheme);
+  }, []);
 
   return {
     theme,

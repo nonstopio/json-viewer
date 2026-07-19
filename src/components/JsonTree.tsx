@@ -3,7 +3,6 @@ import {Virtuoso, VirtuosoHandle} from "react-virtuoso";
 import {Package} from "lucide-react";
 import {JsonNode as JsonNodeComponent} from "./JsonNode";
 import {JsonNode as JsonNodeType} from "../types/json";
-import {trackEvent} from "../utils/analytics";
 
 interface JsonTreeProps {
   nodes: JsonNodeType[];
@@ -40,40 +39,32 @@ export const JsonTree: React.FC<JsonTreeProps> = ({
     }
   }, [searchMatchIndices, currentMatchIndex]);
 
-  const handleCopy = useCallback(
-    async (value: string, type: "value" | "path") => {
-      try {
-        await navigator.clipboard.writeText(value);
-        setCopiedValue(value);
+  const handleCopy = useCallback(async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedValue(value);
 
-        // Clear the copied state after 2 seconds
-        setTimeout(() => {
-          setCopiedValue("");
-        }, 2000);
+      // Clear the copied state after 2 seconds
+      setTimeout(() => {
+        setCopiedValue("");
+      }, 2000);
+    } catch (error) {
+      console.warn("Failed to copy to clipboard:", error);
 
-        trackEvent("value_copied", {
-          copyType: type,
-          valueLength: value.length,
-        });
-      } catch (error) {
-        console.warn("Failed to copy to clipboard:", error);
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = value;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
 
-        // Fallback for older browsers
-        const textArea = document.createElement("textarea");
-        textArea.value = value;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
-
-        setCopiedValue(value);
-        setTimeout(() => {
-          setCopiedValue("");
-        }, 2000);
-      }
-    },
-    []
-  );
+      setCopiedValue(value);
+      setTimeout(() => {
+        setCopiedValue("");
+      }, 2000);
+    }
+  }, []);
 
   const renderRow = useCallback(
     (index: number, node: JsonNodeType) => {

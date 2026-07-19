@@ -15,7 +15,6 @@ import {
   Info,
 } from "lucide-react";
 import {JsonNode as JsonNodeType} from "../types/json";
-import {trackEvent} from "../utils/analytics";
 
 interface JsonNodeProps {
   node: JsonNodeType;
@@ -59,21 +58,11 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
     e.stopPropagation();
     const value = getValueAsString(node.value);
     onCopy?.(value, "value");
-    trackEvent("value_copied", {
-      copyType: "value",
-      nodeType: node.type,
-      valueLength: value.length,
-    });
   };
 
   const handleCopyPath = (e: React.MouseEvent) => {
     e.stopPropagation();
     onCopy?.(node.path, "path");
-    trackEvent("value_copied", {
-      copyType: "path",
-      nodeType: node.type,
-      pathLength: node.path.length,
-    });
   };
 
   const getValueAsString = (value: unknown): string => {
@@ -183,14 +172,9 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
     return details;
   };
 
-  const copyPropertyDetail = (label: string, value: string) => {
+  const copyPropertyDetail = (_label: string, value: string) => {
     navigator.clipboard.writeText(value).then(() => {
       onCopy?.(value, "value");
-      trackEvent("property_detail_copied", {
-        property: label.toLowerCase(),
-        nodeType: node.type,
-        nodeDepth: node.depth,
-      });
     });
   };
 

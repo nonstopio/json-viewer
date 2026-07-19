@@ -29,7 +29,6 @@ import {ThemeToggle} from "./components/ThemeToggle";
 import {JsonTableView} from "./components/JsonTableView";
 import {ResizablePanel} from "./components/ResizablePanel";
 import {jsonParser} from "./utils/jsonParser";
-import {trackEvent} from "./utils/analytics";
 import {JsonNode, JsonValue} from "./types/json";
 
 // Injected at build time from package.json (see vite.config.ts).
@@ -56,16 +55,6 @@ function App() {
     {line?: number; column?: number; position?: number} | undefined
   >();
   const searchDebounce = useRef<ReturnType<typeof setTimeout>>();
-
-  useEffect(() => {
-    trackEvent("app_loaded", {
-      userAgent: navigator.userAgent,
-      viewport: {
-        width: window.innerWidth,
-        height: window.innerHeight,
-      },
-    });
-  }, []);
 
   // Handle fullscreen changes
   useEffect(() => {
@@ -134,13 +123,9 @@ function App() {
           setFilteredNodes([]);
           setOriginalNodes([]);
         }
-      } catch (err) {
+      } catch {
         setError("Unexpected error occurred while parsing JSON");
         setErrorDetails(undefined);
-        trackEvent("error_encountered", {
-          errorType: "unexpected_parse_error",
-          errorMessage: err instanceof Error ? err.message : "Unknown error",
-        });
       } finally {
         setIsLoading(false);
       }
@@ -233,7 +218,6 @@ function App() {
       }
 
       handleJsonSubmit(text, false); // Don't switch tabs for paste
-      trackEvent("feature_used", {featureName: "paste"});
     } catch (err) {
       console.warn("Failed to read clipboard:", err);
       setError(
@@ -244,31 +228,28 @@ function App() {
 
   const handleCopy = useCallback(() => {
     if (!inputText.trim()) return;
-    const result = jsonParser.parseJson(inputText, {track: false});
+    const result = jsonParser.parseJson(inputText);
     // Copy formatted JSON when valid, otherwise copy the raw text as-is.
     const text =
       result.success && result.data !== undefined
         ? JSON.stringify(result.data, null, 2)
         : inputText;
     navigator.clipboard.writeText(text);
-    trackEvent("feature_used", {featureName: "copy"});
   }, [inputText]);
 
   const handleFormat = useCallback(() => {
     if (!inputText.trim()) return;
-    const result = jsonParser.parseJson(inputText, {track: false});
+    const result = jsonParser.parseJson(inputText);
     if (result.success && result.data !== undefined) {
       setInputText(JSON.stringify(result.data, null, 2));
-      trackEvent("feature_used", {featureName: "format"});
     }
   }, [inputText]);
 
   const handleRemoveWhitespace = useCallback(() => {
     if (!inputText.trim()) return;
-    const result = jsonParser.parseJson(inputText, {track: false});
+    const result = jsonParser.parseJson(inputText);
     if (result.success && result.data !== undefined) {
       setInputText(JSON.stringify(result.data));
-      trackEvent("feature_used", {featureName: "remove_whitespace"});
     }
   }, [inputText]);
 
@@ -306,20 +287,12 @@ function App() {
           setFilteredNodes([]);
           setOriginalNodes([]);
           setActiveTab("text"); // Redirect back to JSON tab on error
-          trackEvent("auto_parse_error", {
-            errorType: "parse_failure",
-            errorMessage: result.error || "Unknown error",
-          });
         }
-      } catch (err) {
+      } catch {
         // If unexpected error occurs, show error and redirect back to JSON tab
         setError("Unexpected error occurred while parsing JSON");
         setErrorDetails(undefined);
         setActiveTab("text"); // Redirect back to JSON tab on error
-        trackEvent("auto_parse_error", {
-          errorType: "unexpected_error",
-          errorMessage: err instanceof Error ? err.message : "Unknown error",
-        });
       } finally {
         setIsLoading(false);
       }
@@ -343,7 +316,6 @@ function App() {
     setSearchMatchIndices([]);
     setCurrentMatchIndex(0);
     setSelectedNodePath("");
-    trackEvent("feature_used", {featureName: "clear"});
   }, []);
 
   const handleLoadData = useCallback(() => {
@@ -383,7 +355,6 @@ function App() {
     const jsonText = JSON.stringify(sampleData, null, 2);
     setInputText(jsonText);
     handleJsonSubmit(jsonText, false); // Don't switch tabs for load data
-    trackEvent("feature_used", {featureName: "load_sample"});
   }, [handleJsonSubmit]);
 
   const handleExpandAll = useCallback(() => {
@@ -404,8 +375,6 @@ function App() {
       setNodes(expandedNodes);
       setFilteredNodes(expandedNodes);
     }
-
-    trackEvent("feature_used", {featureName: "expand_all"});
   }, [originalNodes, searchQuery, caseSensitive]);
 
   const handleCollapseAll = useCallback(() => {
@@ -426,8 +395,6 @@ function App() {
       setNodes(collapsedNodes);
       setFilteredNodes(collapsedNodes);
     }
-
-    trackEvent("feature_used", {featureName: "collapse_all"});
   }, [originalNodes, searchQuery, caseSensitive]);
 
   const handleNavigateToNextMatch = useCallback(() => {
@@ -439,12 +406,6 @@ function App() {
       if (node) {
         setSelectedNodePath(node.path);
       }
-
-      trackEvent("search_navigation", {
-        direction: "next",
-        currentIndex: nextIndex,
-        totalMatches: searchMatchIndices.length,
-      });
     }
   }, [searchMatchIndices, currentMatchIndex, filteredNodes]);
 
@@ -460,12 +421,6 @@ function App() {
       if (node) {
         setSelectedNodePath(node.path);
       }
-
-      trackEvent("search_navigation", {
-        direction: "prev",
-        currentIndex: prevIndex,
-        totalMatches: searchMatchIndices.length,
-      });
     }
   }, [searchMatchIndices, currentMatchIndex, filteredNodes]);
 

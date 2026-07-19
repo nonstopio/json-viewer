@@ -1,5 +1,4 @@
 import {JsonValue, JsonNode, JsonStats, ParseResult} from "../types/json";
-import {trackEvent} from "./analytics";
 import parseJson from "json-parse-even-better-errors";
 
 // Type definition for json-parse-even-better-errors
@@ -19,11 +18,7 @@ export class JsonParser {
     objectSizes: [],
   };
 
-  // `track` defaults to true for user-initiated parses (Parse JSON, paste).
-  // Formatting helpers (Copy/Format/Remove-whitespace) pass track: false so
-  // they don't emit json_parsed analytics or run countNodes on every click.
-  parseJson(input: string, options: {track?: boolean} = {}): ParseResult {
-    const {track = true} = options;
+  parseJson(input: string): ParseResult {
     if (!input.trim()) {
       return {
         success: false,
@@ -37,23 +32,13 @@ export class JsonParser {
     // large input. Only fall through to the lenient + cleanup pipeline below
     // when the input isn't already valid JSON.
     try {
-      const startTime = performance.now();
       const data = JSON.parse(input) as JsonValue;
-      if (track) {
-        trackEvent("json_parsed", {
-          fileSize: input.length,
-          nodeCount: this.countNodes(data),
-          parseTime: performance.now() - startTime,
-          wasFixed: false,
-        });
-      }
       return {success: true, data, wasModified: false};
     } catch {
       // Not strict-valid JSON — fall through to the lenient/cleanup pipeline.
     }
 
     try {
-      const startTime = performance.now();
       let data: JsonValue;
       let needsCleanup = false;
 
@@ -67,42 +52,18 @@ export class JsonParser {
 
         try {
           data = parseJson(cleanedInput) as JsonValue;
-
-          if (track) {
-            trackEvent("json_parse_error", {
-              errorType: "json_auto_fixed",
-              fileSize: input.length,
-              errorMessage: `JSON was automatically fixed. Issues: quotes, URLs, control chars`,
-            });
-          }
         } catch (secondError) {
           // Try even more aggressive fixes
           cleanedInput = this.aggressiveCleanup(cleanedInput);
 
           try {
             data = parseJson(cleanedInput) as JsonValue;
-
-            if (track) {
-              trackEvent("json_parse_error", {
-                errorType: "json_aggressively_fixed",
-                fileSize: input.length,
-                errorMessage: `JSON required aggressive fixes but succeeded`,
-              });
-            }
           } catch (thirdError) {
             // Last resort: try to extract JSON from the string if it's wrapped
             const extracted = this.extractJsonFromString(input);
             if (extracted) {
               try {
                 data = parseJson(extracted) as JsonValue;
-
-                if (track) {
-                  trackEvent("json_parse_error", {
-                    errorType: "json_extracted_and_fixed",
-                    fileSize: input.length,
-                    errorMessage: `JSON was extracted from string wrapper and fixed`,
-                  });
-                }
               } catch {
                 // If all else fails, throw the original error with better details
                 throw firstError;
@@ -115,17 +76,6 @@ export class JsonParser {
         }
       }
 
-      if (track) {
-        const parseTime = performance.now() - startTime;
-
-        trackEvent("json_parsed", {
-          fileSize: input.length,
-          nodeCount: this.countNodes(data),
-          parseTime,
-          wasFixed: needsCleanup,
-        });
-      }
-
       return {
         success: true,
         data,
@@ -136,14 +86,6 @@ export class JsonParser {
         error as JsonParseError,
         input
       );
-
-      if (track) {
-        trackEvent("json_parse_error", {
-          errorType: "final_parse_failure",
-          fileSize: input.length,
-          errorMessage: errorMessage.error,
-        });
-      }
 
       return errorMessage;
     }
@@ -890,12 +832,6 @@ export class JsonParser {
 
     result.splice(nodeIndex + 1, 0, ...childNodes);
 
-    trackEvent("node_expanded", {
-      nodeType: node.type,
-      nodeDepth: node.depth,
-      childCount: node.childCount,
-    });
-
     return result;
   }
 
@@ -925,35 +861,11 @@ export class JsonParser {
 
     result.splice(nodeIndex + 1, removeCount);
 
-    trackEvent("node_collapsed", {
-      nodeType: node.type,
-      nodeDepth: node.depth,
-      childCount: node.childCount,
-    });
-
     return result;
   }
 
   getStats(): JsonStats {
     return {...this.stats};
-  }
-
-  private countNodes(value: JsonValue): number {
-    let count = 1;
-
-    if (Array.isArray(value)) {
-      count += value.reduce(
-        (sum: number, item: JsonValue) => sum + this.countNodes(item),
-        0
-      );
-    } else if (value !== null && typeof value === "object") {
-      count += Object.values(value as Record<string, JsonValue>).reduce(
-        (sum: number, item: JsonValue) => sum + this.countNodes(item),
-        0
-      );
-    }
-
-    return count;
   }
 
   searchNodes(
@@ -986,11 +898,6 @@ export class JsonParser {
 
     // If no matches found, return original nodes
     if (matchingPaths.size === 0) {
-      trackEvent("search_performed", {
-        searchQuery: query,
-        searchResultCount: 0,
-        caseSensitive,
-      });
       return {nodes, matchIndices: []};
     }
 
@@ -1012,12 +919,6 @@ export class JsonParser {
       if (matchingPaths.has(node.path)) {
         matchIndices.push(index);
       }
-    });
-
-    trackEvent("search_performed", {
-      searchQuery: query,
-      searchResultCount: matchIndices.length,
-      caseSensitive,
     });
 
     return {nodes: expandedNodes, matchIndices};
@@ -1185,13 +1086,6 @@ export class JsonParser {
       expandedNodes
     );
 
-    trackEvent("expand_all_nodes", {
-      totalNodes: expandedNodes.length,
-      expandedCount: expandedNodes.filter(
-        (node) => node.type === "object" || node.type === "array"
-      ).length,
-    });
-
     return expandedNodes;
   }
 
@@ -1258,11 +1152,6 @@ export class JsonParser {
     // root node collapsed. No need to walk/splice the whole array.
     const rootNode = nodes.find((node) => node.key === "root");
     if (!rootNode) return nodes;
-
-    trackEvent("collapse_all_nodes", {
-      totalNodes: 1,
-      collapsedCount: nodes.length - 1,
-    });
 
     return [{...rootNode, isExpanded: false}];
   }
