@@ -1,8 +1,8 @@
-import React, {useState, useCallback} from "react";
+import React, {useState, useCallback, useEffect, useRef} from "react";
+import {Virtuoso, VirtuosoHandle} from "react-virtuoso";
 import {Package} from "lucide-react";
 import {JsonNode as JsonNodeComponent} from "./JsonNode";
 import {JsonNode as JsonNodeType} from "../types/json";
-import {trackEvent} from "../utils/analytics";
 
 interface JsonTreeProps {
   nodes: JsonNodeType[];
@@ -26,40 +26,77 @@ export const JsonTree: React.FC<JsonTreeProps> = ({
   currentMatchIndex = 0,
 }) => {
   const [copiedValue, setCopiedValue] = useState<string>("");
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
 
-  const handleCopy = useCallback(
-    async (value: string, type: "value" | "path") => {
-      try {
-        await navigator.clipboard.writeText(value);
-        setCopiedValue(value);
-
-        // Clear the copied state after 2 seconds
-        setTimeout(() => {
-          setCopiedValue("");
-        }, 2000);
-
-        trackEvent("value_copied", {
-          copyType: type,
-          valueLength: value.length,
-        });
-      } catch (error) {
-        console.warn("Failed to copy to clipboard:", error);
-
-        // Fallback for older browsers
-        const textArea = document.createElement("textarea");
-        textArea.value = value;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
-
-        setCopiedValue(value);
-        setTimeout(() => {
-          setCopiedValue("");
-        }, 2000);
+  // Keep the active search match scrolled into view. With virtualization the
+  // matched row may not be mounted, so scroll the list to it by index.
+  useEffect(() => {
+    if (searchMatchIndices.length > 0) {
+      const target = searchMatchIndices[currentMatchIndex];
+      if (target !== undefined) {
+        virtuosoRef.current?.scrollToIndex({index: target, align: "center"});
       }
+    }
+  }, [searchMatchIndices, currentMatchIndex]);
+
+  const handleCopy = useCallback(async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedValue(value);
+
+      // Clear the copied state after 2 seconds
+      setTimeout(() => {
+        setCopiedValue("");
+      }, 2000);
+    } catch (error) {
+      console.warn("Failed to copy to clipboard:", error);
+
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = value;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+
+      setCopiedValue(value);
+      setTimeout(() => {
+        setCopiedValue("");
+      }, 2000);
+    }
+  }, []);
+
+  const renderRow = useCallback(
+    (index: number, node: JsonNodeType) => {
+      const isCurrentMatch =
+        searchMatchIndices.length > 0 &&
+        searchMatchIndices[currentMatchIndex] === index;
+
+      return (
+        <JsonNodeComponent
+          node={node}
+          onToggle={onToggleNode}
+          onSelect={onSelectNode}
+          isSelected={selectedNodePath === node.path}
+          onCopy={handleCopy}
+          searchQuery={searchQuery}
+          caseSensitive={caseSensitive}
+          copiedValue={copiedValue}
+          isCurrentMatch={isCurrentMatch}
+        />
+      );
     },
-    []
+    [
+      searchMatchIndices,
+      currentMatchIndex,
+      onToggleNode,
+      onSelectNode,
+      selectedNodePath,
+      handleCopy,
+      searchQuery,
+      caseSensitive,
+      copiedValue,
+    ]
   );
 
   if (!nodes.length) {
@@ -74,28 +111,17 @@ export const JsonTree: React.FC<JsonTreeProps> = ({
     );
   }
 
+  // Virtuoso only mounts visible rows (+overscan), so multi-MB / 100k-node
+  // documents stay responsive, while rows keep their natural (wrapping) height
+  // so full values are always shown.
   return (
-    <div className="json-tree-container">
-      {nodes.map((node, index) => {
-        const isCurrentMatch =
-          searchMatchIndices.length > 0 &&
-          searchMatchIndices[currentMatchIndex] === index;
-
-        return (
-          <JsonNodeComponent
-            key={`${node.path}-${index}`}
-            node={node}
-            onToggle={onToggleNode}
-            onSelect={onSelectNode}
-            isSelected={selectedNodePath === node.path}
-            onCopy={handleCopy}
-            searchQuery={searchQuery}
-            caseSensitive={caseSensitive}
-            copiedValue={copiedValue}
-            isCurrentMatch={isCurrentMatch}
-          />
-        );
-      })}
-    </div>
+    <Virtuoso
+      ref={virtuosoRef}
+      data={nodes}
+      itemContent={renderRow}
+      overscan={400}
+      className="json-tree-container scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
+      style={{height: "100%"}}
+    />
   );
 };

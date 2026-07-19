@@ -1,6 +1,7 @@
 import React, {useState, useRef, useCallback, useEffect} from "react";
+import CodeMirror, {ReactCodeMirrorRef} from "@uiw/react-codemirror";
+import {json} from "@codemirror/lang-json";
 import {Upload, FileText, X, AlertCircle} from "lucide-react";
-import {trackEvent} from "../utils/analytics";
 
 interface JsonInputProps {
   onJsonSubmit: (json: string, shouldSwitchTab?: boolean) => void;
@@ -14,6 +15,7 @@ interface JsonInputProps {
     column?: number;
     position?: number;
   };
+  wasModified?: boolean;
 }
 
 export const JsonInput: React.FC<JsonInputProps> = ({
@@ -24,13 +26,30 @@ export const JsonInput: React.FC<JsonInputProps> = ({
   onError,
   onChange,
   errorDetails,
+  wasModified = false,
 }) => {
   const [jsonText, setJsonText] = useState(initialValue);
   const [isDragOver, setIsDragOver] = useState(false);
   const [isJumpingToError, setIsJumpingToError] = useState(false);
   const [hasAutoJumped, setHasAutoJumped] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<ReactCodeMirrorRef>(null);
+
+  // Mirror the app's dark mode (toggled via the `dark` class on <html>) so the
+  // editor theme matches.
+  const [isDark, setIsDark] = useState(() =>
+    document.documentElement.classList.contains("dark")
+  );
+  useEffect(() => {
+    const observer = new MutationObserver(() =>
+      setIsDark(document.documentElement.classList.contains("dark"))
+    );
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     setJsonText(initialValue);
@@ -44,54 +63,24 @@ export const JsonInput: React.FC<JsonInputProps> = ({
   }, [error]);
 
   const handleJumpToError = useCallback(async () => {
-    if (!textareaRef.current || !errorDetails || !jsonText) {
-      console.log("Cannot position cursor - missing refs or data:", {
-        hasTextarea: !!textareaRef.current,
-        hasErrorDetails: !!errorDetails,
-        hasJsonText: !!jsonText,
-      });
+    if (!editorRef.current?.view || !errorDetails || !jsonText) {
       return;
     }
 
     setIsJumpingToError(true);
 
     try {
-      // Add a small delay to show the loading state
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
-      const textarea = textareaRef.current;
       let cursorPosition = 0;
-
-      console.log("🎯 Jumping to error:", errorDetails);
-      console.log("📝 Text length:", jsonText.length);
 
       // Calculate cursor position based on available error details
       if (errorDetails.position !== undefined) {
         cursorPosition = Math.min(errorDetails.position, jsonText.length);
-        console.log(
-          "📍 Using direct position:",
-          errorDetails.position,
-          "clamped to:",
-          cursorPosition
-        );
       } else if (
         errorDetails.line !== undefined &&
         errorDetails.column !== undefined
       ) {
         const lines = jsonText.split("\n");
         const targetLine = errorDetails.line - 1;
-
-        console.log(
-          "📊 Calculating from line/column:",
-          errorDetails.line,
-          errorDetails.column
-        );
-        console.log(
-          "📋 Total lines:",
-          lines.length,
-          "Target line index:",
-          targetLine
-        );
 
         if (targetLine >= 0 && targetLine < lines.length) {
           for (let i = 0; i < targetLine; i++) {
@@ -102,20 +91,8 @@ export const JsonInput: React.FC<JsonInputProps> = ({
             lines[targetLine].length
           );
           cursorPosition += Math.max(0, targetColumn);
-
-          console.log(
-            "🧮 Calculated position:",
-            cursorPosition,
-            "from line",
-            targetLine,
-            "column",
-            targetColumn
-          );
-          console.log("📄 Line content:", JSON.stringify(lines[targetLine]));
         }
       }
-
-      console.log("✅ Final cursor position:", cursorPosition);
 
       if (cursorPosition > jsonText.length) {
         cursorPosition = jsonText.length;
@@ -200,30 +177,17 @@ export const JsonInput: React.FC<JsonInputProps> = ({
         }
       }
 
-      // Focus and select the error text
-      textarea.focus();
-      textarea.setSelectionRange(selectionStart, selectionEnd);
-
-      // Scroll to position
-      if (errorDetails.line) {
-        const lineHeight =
-          parseInt(getComputedStyle(textarea).lineHeight) || 20;
-        const scrollPosition = Math.max(
-          0,
-          (errorDetails.line - 3) * lineHeight
-        );
-        textarea.scrollTop = scrollPosition;
-      }
-
-      console.log("✅ Jumped to error position:", cursorPosition);
-      console.log("🎯 Selected text from:", selectionStart, "to", selectionEnd);
-
-      trackEvent("error_cursor_positioned", {
-        errorLine: errorDetails.line,
-        errorColumn: errorDetails.column,
-        errorPosition: errorDetails.position,
-        calculatedPosition: cursorPosition,
+      // Select the error range and scroll it into view in the editor.
+      const view = editorRef.current.view;
+      const max = view.state.doc.length;
+      view.dispatch({
+        selection: {
+          anchor: Math.min(selectionStart, max),
+          head: Math.min(selectionEnd, max),
+        },
+        scrollIntoView: true,
       });
+      view.focus();
     } catch (error) {
       console.error("❌ Error jumping to position:", error);
     } finally {
@@ -253,9 +217,6 @@ export const JsonInput: React.FC<JsonInputProps> = ({
   const handleTextSubmit = useCallback(() => {
     if (jsonText.trim()) {
       onJsonSubmit(jsonText.trim(), true); // Pass true to indicate tab switch should happen
-      trackEvent("json_pasted", {
-        fileSize: jsonText.length,
-      });
     }
   }, [jsonText, onJsonSubmit]);
 
@@ -265,10 +226,6 @@ export const JsonInput: React.FC<JsonInputProps> = ({
       if (file.size > maxSize) {
         const errorMsg = `File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds the maximum allowed size of 5MB`;
         onError?.(errorMsg);
-        trackEvent("error_encountered", {
-          errorType: "file_too_large",
-          fileSize: file.size,
-        });
         return;
       }
 
@@ -279,18 +236,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
           setJsonText(content);
           onChange?.(content);
           onJsonSubmit(content, true); // Pass true to indicate tab switch should happen
-          trackEvent("file_uploaded", {
-            fileSize: content.length,
-            fileName: file.name,
-            fileType: file.type,
-          });
         }
-      };
-      reader.onerror = () => {
-        trackEvent("error_encountered", {
-          errorType: "file_read_error",
-          fileName: file.name,
-        });
       };
       reader.readAsText(file);
     },
@@ -340,11 +286,6 @@ export const JsonInput: React.FC<JsonInputProps> = ({
 
       if (jsonFile) {
         handleFileRead(jsonFile);
-      } else if (files.length > 0) {
-        trackEvent("error_encountered", {
-          errorType: "unsupported_file_type",
-          fileType: files[0].type,
-        });
       }
 
       // Handle dropped text
@@ -353,10 +294,6 @@ export const JsonInput: React.FC<JsonInputProps> = ({
         setJsonText(droppedText);
         onChange?.(droppedText);
         onJsonSubmit(droppedText, true); // Pass true to indicate tab switch should happen
-        trackEvent("json_pasted", {
-          fileSize: droppedText.length,
-          source: "drag_drop",
-        });
       }
     },
     [handleFileRead, onJsonSubmit, onChange]
@@ -365,9 +302,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
   const handleClear = useCallback(() => {
     setJsonText("");
     onChange?.("");
-    if (textareaRef.current) {
-      textareaRef.current.focus();
-    }
+    editorRef.current?.view?.focus();
   }, [onChange]);
 
   const handleKeyDown = useCallback(
@@ -386,8 +321,11 @@ export const JsonInput: React.FC<JsonInputProps> = ({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Text Input Area - Now takes most of the space */}
-      <div className="flex-1 flex flex-col">
+      {/* Text Input Area - Now takes most of the space.
+          min-h-0 lets this flex item shrink to the available height instead of
+          growing to the editor's full content height (flex default is
+          min-height:auto), which is what keeps scrolling inside the editor. */}
+      <div className="flex-1 flex flex-col min-h-0">
         <div className="flex items-center justify-between mb-2">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Paste your JSON here
@@ -403,30 +341,58 @@ export const JsonInput: React.FC<JsonInputProps> = ({
           )}
         </div>
 
-        <textarea
-          ref={textareaRef}
-          value={jsonText}
-          onChange={(e) => {
-            const newValue = e.target.value;
-            setJsonText(newValue);
-            onChange?.(newValue);
-          }}
+        {/* CodeMirror virtualizes line rendering, so it stays fast on
+            multi-MB / hundreds-of-thousands-of-lines input where a plain
+            <textarea> would block the main thread laying out every line. */}
+        <div
+          className="min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 dark:border-gray-600"
           onKeyDown={handleKeyDown}
-          placeholder="Paste the JSON code here (your code is not saved anywhere)"
-          className="flex-1 w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg resize-none font-mono text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors min-h-0"
-          disabled={isLoading}
-        />
+        >
+          <CodeMirror
+            ref={editorRef}
+            value={jsonText}
+            height="100%"
+            theme={isDark ? "dark" : "light"}
+            extensions={[json()]}
+            editable={!isLoading}
+            placeholder="Paste the JSON code here (your code is not saved anywhere)"
+            onChange={(value) => {
+              setJsonText(value);
+              onChange?.(value);
+            }}
+            basicSetup={{
+              lineNumbers: true,
+              foldGutter: true,
+              highlightActiveLine: true,
+            }}
+            style={{height: "100%", fontSize: "13px"}}
+          />
+        </div>
 
         <div className="flex items-center justify-between mt-2">
           <div className="text-xs text-gray-500 dark:text-gray-400">
-            Ctrl+Enter (Cmd+Enter) to parse • Auto-fixes: ALL JSON errors
-            silently
+            Ctrl+Enter (Cmd+Enter) to parse • Attempts to auto-fix common errors
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400">
             {jsonText.length} characters
           </div>
         </div>
       </div>
+
+      {/* Auto-fix notice — the parsed result may differ from the raw input */}
+      {!error && wasModified && (
+        <div className="mt-3 flex items-start space-x-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+          <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-500" />
+          <div className="text-sm text-amber-800 dark:text-amber-200">
+            <div className="font-medium">Input was auto-corrected</div>
+            <div className="mt-1 text-xs">
+              Your JSON didn&apos;t parse as-is, so it was cleaned up before
+              displaying. The result may differ from what you pasted — verify it
+              looks right.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Error Display */}
       {error && (

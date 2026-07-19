@@ -1,5 +1,4 @@
 import {JsonValue, JsonNode, JsonStats, ParseResult} from "../types/json";
-import {trackEvent} from "./analytics";
 import parseJson from "json-parse-even-better-errors";
 
 // Type definition for json-parse-even-better-errors
@@ -19,11 +18,7 @@ export class JsonParser {
     objectSizes: [],
   };
 
-  // `track` defaults to true for user-initiated parses (Parse JSON, paste).
-  // Formatting helpers (Copy/Format/Remove-whitespace) pass track: false so
-  // they don't emit json_parsed analytics or run countNodes on every click.
-  parseJson(input: string, options: {track?: boolean} = {}): ParseResult {
-    const {track = true} = options;
+  parseJson(input: string): ParseResult {
     if (!input.trim()) {
       return {
         success: false,
@@ -31,8 +26,19 @@ export class JsonParser {
       };
     }
 
+    // Fast path: the native parser is many times faster than the lenient
+    // json-parse-even-better-errors parser and covers the common case (valid
+    // JSON). This is what keeps Format / Remove-whitespace / Parse snappy on
+    // large input. Only fall through to the lenient + cleanup pipeline below
+    // when the input isn't already valid JSON.
     try {
-      const startTime = performance.now();
+      const data = JSON.parse(input) as JsonValue;
+      return {success: true, data, wasModified: false};
+    } catch {
+      // Not strict-valid JSON — fall through to the lenient/cleanup pipeline.
+    }
+
+    try {
       let data: JsonValue;
       let needsCleanup = false;
 
@@ -46,42 +52,18 @@ export class JsonParser {
 
         try {
           data = parseJson(cleanedInput) as JsonValue;
-
-          if (track) {
-            trackEvent("json_parse_error", {
-              errorType: "json_auto_fixed",
-              fileSize: input.length,
-              errorMessage: `JSON was automatically fixed. Issues: quotes, URLs, control chars`,
-            });
-          }
         } catch (secondError) {
           // Try even more aggressive fixes
           cleanedInput = this.aggressiveCleanup(cleanedInput);
 
           try {
             data = parseJson(cleanedInput) as JsonValue;
-
-            if (track) {
-              trackEvent("json_parse_error", {
-                errorType: "json_aggressively_fixed",
-                fileSize: input.length,
-                errorMessage: `JSON required aggressive fixes but succeeded`,
-              });
-            }
           } catch (thirdError) {
             // Last resort: try to extract JSON from the string if it's wrapped
             const extracted = this.extractJsonFromString(input);
             if (extracted) {
               try {
                 data = parseJson(extracted) as JsonValue;
-
-                if (track) {
-                  trackEvent("json_parse_error", {
-                    errorType: "json_extracted_and_fixed",
-                    fileSize: input.length,
-                    errorMessage: `JSON was extracted from string wrapper and fixed`,
-                  });
-                }
               } catch {
                 // If all else fails, throw the original error with better details
                 throw firstError;
@@ -94,34 +76,16 @@ export class JsonParser {
         }
       }
 
-      if (track) {
-        const parseTime = performance.now() - startTime;
-
-        trackEvent("json_parsed", {
-          fileSize: input.length,
-          nodeCount: this.countNodes(data),
-          parseTime,
-          wasFixed: needsCleanup,
-        });
-      }
-
       return {
         success: true,
         data,
+        wasModified: needsCleanup,
       };
     } catch (error) {
       const errorMessage = this.getDetailedErrorFromBetterParser(
         error as JsonParseError,
         input
       );
-
-      if (track) {
-        trackEvent("json_parse_error", {
-          errorType: "final_parse_failure",
-          fileSize: input.length,
-          errorMessage: errorMessage.error,
-        });
-      }
 
       return errorMessage;
     }
@@ -131,8 +95,6 @@ export class JsonParser {
     error: JsonParseError,
     input: string
   ): ParseResult {
-    console.log("Better parser error:", error);
-
     const errorDetails: {line?: number; column?: number; position?: number} =
       {};
     let friendlyError = "Invalid JSON format";
@@ -158,10 +120,6 @@ export class JsonParser {
         const lines = input.substring(0, errorDetails.position).split("\n");
         errorDetails.line = lines.length;
         errorDetails.column = lines[lines.length - 1].length + 1;
-
-        console.log(
-          `🧮 Calculated line ${errorDetails.line}, column ${errorDetails.column} from position ${errorDetails.position}`
-        );
       }
 
       // Use the error message from the better parser
@@ -172,17 +130,11 @@ export class JsonParser {
 
     // If still no position info, try manual detection as fallback
     if (!errorDetails.position && !errorDetails.line && !errorDetails.column) {
-      console.log(
-        "No position info from better parser, attempting manual detection"
-      );
-      const message = error?.message || error?.toString() || "Unknown error";
-      const manualError = this.findErrorLocationManually(input, message);
+      const manualError = this.findErrorLocationManually(input);
       if (manualError) {
         Object.assign(errorDetails, manualError);
       }
     }
-
-    console.log("Final error details:", errorDetails);
 
     if (errorDetails.line && errorDetails.column) {
       friendlyError += ` (Line ${errorDetails.line}, Column ${errorDetails.column})`;
@@ -196,11 +148,8 @@ export class JsonParser {
   }
 
   private findErrorLocationManually(
-    input: string,
-    errorMessage: string
+    input: string
   ): {line?: number; column?: number; position?: number} | null {
-    console.log("🔍 Attempting manual error detection for:", errorMessage);
-
     const lines = input.split("\n");
 
     // Strategy 0: Look for unterminated strings (missing closing quotes)
@@ -245,9 +194,6 @@ export class JsonParser {
             lineIndex + 1,
             line.length + 1
           );
-          console.log("🎯 Found unterminated string at line", lineIndex + 1);
-          console.log("📄 Line content:", JSON.stringify(line));
-          console.log("📍 String starts at column:", stringStartCol + 1);
 
           return {
             line: lineIndex + 1,
@@ -285,10 +231,6 @@ export class JsonParser {
             lineIndex + 1,
             currentLine.length + 1
           );
-          console.log("🎯 Found missing comma at end of line", lineIndex + 1);
-          console.log("📄 Current line:", JSON.stringify(currentLine));
-          console.log("📄 Next line:", JSON.stringify(nextLine));
-          console.log("📍 Position:", position);
 
           return {
             line: lineIndex + 1,
@@ -300,14 +242,12 @@ export class JsonParser {
     }
 
     // Strategy 2: Use a simple JSON validator to find the exact error position
-    console.log("🔄 Using JSON validator to find exact error...");
     const validationError = this.validateJsonAndFindError(input);
     if (validationError) {
       return validationError;
     }
 
     // Strategy 3: Character-by-character parsing to find exact error
-    console.log("🔄 Trying character-by-character parsing...");
     try {
       const stack: string[] = [];
       let inString = false;
@@ -341,25 +281,17 @@ export class JsonParser {
               const line = lines.length;
               const column = lines[lines.length - 1].length + 1;
 
-              console.log("🎯 Found bracket mismatch at character", i);
-              console.log("📍 Error character:", JSON.stringify(char));
-              console.log(
-                "🔤 Context:",
-                JSON.stringify(input.substring(Math.max(0, i - 15), i + 15))
-              );
-
               return {line, column, position: i};
             }
             stack.pop();
           }
         }
       }
-    } catch (e) {
-      console.log("❌ Error during character parsing:", e);
+    } catch {
+      // ignore; fall through to other strategies
     }
 
     // Strategy 3: Look for trailing commas
-    console.log("🔄 Looking for trailing comma patterns...");
     const trailingCommaRegex = /,\s*([}\]])/g;
     let match;
     while ((match = trailingCommaRegex.exec(input)) !== null) {
@@ -369,15 +301,6 @@ export class JsonParser {
       const line = lines.length;
       const column = lines[lines.length - 1].length + 1;
 
-      console.log("🎯 Found trailing comma at position", commaPosition);
-      console.log("📍 Before closing bracket:", JSON.stringify(match[1]));
-      console.log(
-        "🔤 Context:",
-        JSON.stringify(
-          input.substring(Math.max(0, commaPosition - 20), commaPosition + 20)
-        )
-      );
-
       return {
         line,
         column,
@@ -386,7 +309,6 @@ export class JsonParser {
     }
 
     // Strategy 4: Look for specific patterns like "processingTime": 0.234\n    "checksum"
-    console.log("🔄 Looking for specific missing comma patterns...");
     const processingTimeMatch = input.match(
       /"processingTime":\s*[\d.]+\s*\n\s*"checksum"/
     );
@@ -405,15 +327,6 @@ export class JsonParser {
         const line = lines.length;
         const column = lines[lines.length - 1].length + 1;
 
-        console.log(
-          "🎯 Found missing comma after processingTime at position",
-          numberEnd
-        );
-        console.log(
-          "📄 Context:",
-          JSON.stringify(input.substring(numberEnd - 10, numberEnd + 10))
-        );
-
         return {
           line,
           column,
@@ -422,7 +335,6 @@ export class JsonParser {
       }
     }
 
-    console.log("❌ Could not determine error location");
     return null;
   }
 
@@ -493,18 +405,6 @@ export class JsonParser {
           }
 
           if (!foundClosingQuote) {
-            console.log("🎯 Found unterminated string starting at position", i);
-            console.log("📍 Line:", line, "Column:", column);
-            console.log(
-              "🔤 Context:",
-              JSON.stringify(
-                input.substring(
-                  Math.max(0, i - 10),
-                  Math.min(input.length, i + 30)
-                )
-              )
-            );
-
             return {
               line,
               column,
@@ -524,17 +424,10 @@ export class JsonParser {
         } else if (char === "}" || char === "]") {
           const expected = char === "}" ? "{" : "[";
           if (stack.length === 0) {
-            console.log("🎯 Found unexpected closing bracket", char);
             return {line, column, position: i};
           }
           const last = stack[stack.length - 1];
           if (last.char !== expected) {
-            console.log(
-              "🎯 Found bracket mismatch. Expected",
-              expected === "{" ? "}" : "]",
-              "but found",
-              char
-            );
             return {line, column, position: i};
           }
           stack.pop();
@@ -544,35 +437,11 @@ export class JsonParser {
             // Look ahead for any non-whitespace characters
             for (let j = i + 1; j < input.length; j++) {
               if (!/\s/.test(input[j])) {
-                const invalidChar = input[j];
                 const beforeError = input.substring(0, j);
                 const errorLines = beforeError.split("\n");
                 const errorLine = errorLines.length;
                 const errorColumn =
                   errorLines[errorLines.length - 1].length + 1;
-
-                console.log(
-                  "🎯 Found invalid character '",
-                  invalidChar,
-                  "' after JSON structure ended"
-                );
-                console.log(
-                  "📍 Position:",
-                  j,
-                  "Line:",
-                  errorLine,
-                  "Column:",
-                  errorColumn
-                );
-                console.log(
-                  "🔤 Context:",
-                  JSON.stringify(
-                    input.substring(
-                      Math.max(0, j - 20),
-                      Math.min(input.length, j + 20)
-                    )
-                  )
-                );
 
                 return {
                   line: errorLine,
@@ -586,17 +455,6 @@ export class JsonParser {
           // Valid JSON syntax characters
         } else if (!/\s/.test(char) && stack.length > 0) {
           // Found an invalid character inside JSON structure
-          console.log("🎯 Found invalid character '", char, "' at position", i);
-          console.log("📍 Line:", line, "Column:", column);
-          console.log(
-            "🔤 Context:",
-            JSON.stringify(
-              input.substring(
-                Math.max(0, i - 10),
-                Math.min(input.length, i + 10)
-              )
-            )
-          );
           return {
             line,
             column,
@@ -609,14 +467,6 @@ export class JsonParser {
     // Check for unclosed brackets
     if (stack.length > 0) {
       const unclosed = stack[stack.length - 1];
-      console.log(
-        "🎯 Found unclosed bracket",
-        unclosed.char,
-        "at line",
-        unclosed.line,
-        "column",
-        unclosed.column
-      );
       return {
         line: unclosed.line,
         column: unclosed.column,
@@ -626,7 +476,6 @@ export class JsonParser {
 
     // Check if we're still in a string
     if (inString) {
-      console.log("🎯 JSON ends while still inside a string");
       return {
         line,
         column,
@@ -858,6 +707,19 @@ export class JsonParser {
     };
   }
 
+  // Build a unique, stable path segment. Normal identifier keys keep dot
+  // notation (root.user.name) and array items keep bracket notation
+  // (root.items[0]) so existing output is unchanged. Keys that aren't plain
+  // identifiers (dots, spaces, quotes, unicode) are JSON-encoded in brackets
+  // (root["a.b"]) so distinct nodes can never collide on the same path.
+  private appendPath(parentPath: string, key: string): string {
+    if (/^\[\d+\]$/.test(key)) return `${parentPath}${key}`;
+    if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key)) {
+      return parentPath ? `${parentPath}.${key}` : key;
+    }
+    return `${parentPath}[${JSON.stringify(key)}]`;
+  }
+
   private processValue(
     value: JsonValue,
     key: string,
@@ -865,7 +727,7 @@ export class JsonParser {
     depth: number,
     nodes: JsonNode[]
   ): void {
-    const currentPath = path ? `${path}.${key}` : key;
+    const currentPath = this.appendPath(path, key);
     const type = this.getValueType(value);
 
     this.stats.totalNodes++;
@@ -968,15 +830,16 @@ export class JsonParser {
       });
     }
 
-    result.splice(nodeIndex + 1, 0, ...childNodes);
-
-    trackEvent("node_expanded", {
-      nodeType: node.type,
-      nodeDepth: node.depth,
-      childCount: node.childCount,
-    });
-
-    return result;
+    // Insert children WITHOUT spreading into splice's arguments: a spread call
+    // like splice(i, 0, ...childNodes) passes each child as a function argument
+    // and blows the JS arg-count limit (~130k) on large containers, throwing
+    // "Maximum call stack size exceeded" — which silently aborted re-expansion
+    // of big nodes. Array-literal spread iterates instead, so it has no limit.
+    return [
+      ...result.slice(0, nodeIndex + 1),
+      ...childNodes,
+      ...result.slice(nodeIndex + 1),
+    ];
   }
 
   collapseNode(nodes: JsonNode[], targetPath: string): JsonNode[] {
@@ -991,13 +854,12 @@ export class JsonParser {
     node.isExpanded = false;
     result[nodeIndex] = {...node};
 
-    // Remove child nodes
+    // Remove child nodes. Children are always the contiguous run of deeper
+    // nodes immediately after this one, so match on depth (collision-proof)
+    // instead of string prefixes.
     let removeCount = 0;
     for (let i = nodeIndex + 1; i < result.length; i++) {
-      if (
-        result[i].path.startsWith(targetPath + ".") ||
-        result[i].path.startsWith(targetPath + "[")
-      ) {
+      if (result[i].depth > node.depth) {
         removeCount++;
       } else {
         break;
@@ -1006,35 +868,11 @@ export class JsonParser {
 
     result.splice(nodeIndex + 1, removeCount);
 
-    trackEvent("node_collapsed", {
-      nodeType: node.type,
-      nodeDepth: node.depth,
-      childCount: node.childCount,
-    });
-
     return result;
   }
 
   getStats(): JsonStats {
     return {...this.stats};
-  }
-
-  private countNodes(value: JsonValue): number {
-    let count = 1;
-
-    if (Array.isArray(value)) {
-      count += value.reduce(
-        (sum: number, item: JsonValue) => sum + this.countNodes(item),
-        0
-      );
-    } else if (value !== null && typeof value === "object") {
-      count += Object.values(value as Record<string, JsonValue>).reduce(
-        (sum: number, item: JsonValue) => sum + this.countNodes(item),
-        0
-      );
-    }
-
-    return count;
   }
 
   searchNodes(
@@ -1050,6 +888,9 @@ export class JsonParser {
 
     const searchQuery = caseSensitive ? query : query.toLowerCase();
     const matchingPaths = new Set<string>();
+    // Ancestor containers that must be expanded to reveal a match. Filled
+    // during the walk below, so it works regardless of how paths are encoded.
+    const pathsToExpand = new Set<string>();
 
     // Search through the complete data structure to find all matches
     this.findMatchingPaths(
@@ -1058,35 +899,14 @@ export class JsonParser {
       "",
       searchQuery,
       caseSensitive,
-      matchingPaths
+      matchingPaths,
+      pathsToExpand
     );
 
     // If no matches found, return original nodes
     if (matchingPaths.size === 0) {
-      trackEvent("search_performed", {
-        searchQuery: query,
-        searchResultCount: 0,
-        caseSensitive,
-      });
       return {nodes, matchIndices: []};
     }
-
-    // Find all parent paths that need to be expanded
-    const pathsToExpand = new Set<string>();
-    matchingPaths.forEach((matchPath) => {
-      let currentPath = "";
-      const pathParts = matchPath.split(".");
-      pathParts.forEach((part, index) => {
-        if (index === 0) {
-          currentPath = part;
-        } else {
-          currentPath += "." + part;
-        }
-        if (currentPath !== matchPath) {
-          pathsToExpand.add(currentPath);
-        }
-      });
-    });
 
     // Rebuild the tree with necessary nodes expanded
     const expandedNodes: JsonNode[] = [];
@@ -1108,24 +928,21 @@ export class JsonParser {
       }
     });
 
-    trackEvent("search_performed", {
-      searchQuery: query,
-      searchResultCount: matchIndices.length,
-      caseSensitive,
-    });
-
     return {nodes: expandedNodes, matchIndices};
   }
 
+  // Returns true if this node or any descendant matched. Containers with a
+  // matching descendant are added to pathsToExpand so they get expanded.
   private findMatchingPaths(
     value: JsonValue,
     key: string,
     path: string,
     searchQuery: string,
     caseSensitive: boolean,
-    matchingPaths: Set<string>
-  ): void {
-    const currentPath = path ? `${path}.${key}` : key;
+    matchingPaths: Set<string>,
+    pathsToExpand: Set<string>
+  ): boolean {
+    const currentPath = this.appendPath(path, key);
 
     // Check if current key or value matches
     const keyMatch = caseSensitive
@@ -1137,35 +954,53 @@ export class JsonParser {
       ? searchableValue.includes(searchQuery)
       : searchableValue.toLowerCase().includes(searchQuery);
 
-    if (keyMatch || valueMatch) {
+    const selfMatch = keyMatch || valueMatch;
+    if (selfMatch) {
       matchingPaths.add(currentPath);
     }
 
     // Recursively check children
+    let descendantMatch = false;
     if (Array.isArray(value)) {
       value.forEach((item, index) => {
-        this.findMatchingPaths(
-          item,
-          `[${index}]`,
-          currentPath,
-          searchQuery,
-          caseSensitive,
-          matchingPaths
-        );
+        if (
+          this.findMatchingPaths(
+            item,
+            `[${index}]`,
+            currentPath,
+            searchQuery,
+            caseSensitive,
+            matchingPaths,
+            pathsToExpand
+          )
+        ) {
+          descendantMatch = true;
+        }
       });
     } else if (value !== null && typeof value === "object") {
       const objectValue = value as Record<string, JsonValue>;
       Object.keys(objectValue).forEach((objKey) => {
-        this.findMatchingPaths(
-          objectValue[objKey],
-          objKey,
-          currentPath,
-          searchQuery,
-          caseSensitive,
-          matchingPaths
-        );
+        if (
+          this.findMatchingPaths(
+            objectValue[objKey],
+            objKey,
+            currentPath,
+            searchQuery,
+            caseSensitive,
+            matchingPaths,
+            pathsToExpand
+          )
+        ) {
+          descendantMatch = true;
+        }
       });
     }
+
+    if (descendantMatch) {
+      pathsToExpand.add(currentPath);
+    }
+
+    return selfMatch || descendantMatch;
   }
 
   private processValueWithSearch(
@@ -1177,7 +1012,7 @@ export class JsonParser {
     pathsToExpand: Set<string>,
     matchingPaths: Set<string>
   ): void {
-    const currentPath = path ? `${path}.${key}` : key;
+    const currentPath = this.appendPath(path, key);
     const type = this.getValueType(value);
 
     const shouldExpand =
@@ -1258,13 +1093,6 @@ export class JsonParser {
       expandedNodes
     );
 
-    trackEvent("expand_all_nodes", {
-      totalNodes: expandedNodes.length,
-      expandedCount: expandedNodes.filter(
-        (node) => node.type === "object" || node.type === "array"
-      ).length,
-    });
-
     return expandedNodes;
   }
 
@@ -1275,7 +1103,7 @@ export class JsonParser {
     depth: number,
     nodes: JsonNode[]
   ): void {
-    const currentPath = path ? `${path}.${key}` : key;
+    const currentPath = this.appendPath(path, key);
     const type = this.getValueType(value);
 
     const node: JsonNode = {
@@ -1327,23 +1155,12 @@ export class JsonParser {
   }
 
   collapseAllNodes(nodes: JsonNode[]): JsonNode[] {
-    const result = [...nodes];
-    const collapsibleNodes = result.filter(
-      (node) =>
-        (node.type === "object" || node.type === "array") && node.isExpanded
-    );
+    // Collapsing everything hides all descendants, so the result is just the
+    // root node collapsed. No need to walk/splice the whole array.
+    const rootNode = nodes.find((node) => node.key === "root");
+    if (!rootNode) return nodes;
 
-    for (const node of collapsibleNodes) {
-      const collapsedNodes = this.collapseNode(result, node.path);
-      result.splice(0, result.length, ...collapsedNodes);
-    }
-
-    trackEvent("collapse_all_nodes", {
-      totalNodes: result.length,
-      collapsedCount: collapsibleNodes.length,
-    });
-
-    return result;
+    return [{...rootNode, isExpanded: false}];
   }
 }
 

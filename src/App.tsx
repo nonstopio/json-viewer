@@ -1,4 +1,4 @@
-import {useState, useCallback, useEffect} from "react";
+import {useState, useCallback, useEffect, useRef, lazy, Suspense} from "react";
 import {
   FileCode,
   BarChart3,
@@ -18,14 +18,17 @@ import {
   Globe,
   Bug,
   Maximize,
+  Info,
 } from "lucide-react";
-import {JsonInput} from "./components/JsonInput";
+// Lazy-loaded so the CodeMirror editor bundle stays off the initial load.
+const JsonInput = lazy(() =>
+  import("./components/JsonInput").then((m) => ({default: m.JsonInput}))
+);
 import {JsonTree} from "./components/JsonTree";
 import {ThemeToggle} from "./components/ThemeToggle";
 import {JsonTableView} from "./components/JsonTableView";
 import {ResizablePanel} from "./components/ResizablePanel";
 import {jsonParser} from "./utils/jsonParser";
-import {trackEvent} from "./utils/analytics";
 import {JsonNode, JsonValue} from "./types/json";
 
 // Injected at build time from package.json (see vite.config.ts).
@@ -47,19 +50,11 @@ function App() {
   const [lastParsedInput, setLastParsedInput] = useState<string>("");
   const [selectedNodePath, setSelectedNodePath] = useState<string>("");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [wasModified, setWasModified] = useState(false);
   const [errorDetails, setErrorDetails] = useState<
     {line?: number; column?: number; position?: number} | undefined
   >();
-
-  useEffect(() => {
-    trackEvent("app_loaded", {
-      userAgent: navigator.userAgent,
-      viewport: {
-        width: window.innerWidth,
-        height: window.innerHeight,
-      },
-    });
-  }, []);
+  const searchDebounce = useRef<ReturnType<typeof setTimeout>>();
 
   // Handle fullscreen changes
   useEffect(() => {
@@ -102,12 +97,11 @@ function App() {
       setInputText(jsonText);
 
       try {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
         const result = jsonParser.parseJson(jsonText);
 
         if (result.success && result.data !== undefined) {
           setJsonData(result.data);
+          setWasModified(!!result.wasModified);
           const newNodes = jsonParser.convertToNodes(result.data);
           setNodes(newNodes);
           setFilteredNodes(newNodes);
@@ -124,17 +118,14 @@ function App() {
           setError(result.error || "Failed to parse JSON");
           setErrorDetails(result.errorDetails);
           setJsonData(null);
+          setWasModified(false);
           setNodes([]);
           setFilteredNodes([]);
           setOriginalNodes([]);
         }
-      } catch (err) {
+      } catch {
         setError("Unexpected error occurred while parsing JSON");
         setErrorDetails(undefined);
-        trackEvent("error_encountered", {
-          errorType: "unexpected_parse_error",
-          errorMessage: err instanceof Error ? err.message : "Unknown error",
-        });
       } finally {
         setIsLoading(false);
       }
@@ -171,10 +162,21 @@ function App() {
 
   const handleSearch = useCallback(
     (query: string, isCaseSensitive: boolean) => {
+      // Keep the input responsive; debounce the expensive tree walk/rebuild so
+      // typing on a large document doesn't run searchNodes on every keystroke.
       setSearchQuery(query);
       setCaseSensitive(isCaseSensitive);
+      clearTimeout(searchDebounce.current);
 
-      if (query.trim()) {
+      if (!query.trim()) {
+        // Restore to current state of nodes (which may have been manually expanded/collapsed)
+        setFilteredNodes(nodes);
+        setSearchMatchIndices([]);
+        setCurrentMatchIndex(0);
+        return;
+      }
+
+      searchDebounce.current = setTimeout(() => {
         const searchResult = jsonParser.searchNodes(
           originalNodes,
           query,
@@ -194,12 +196,7 @@ function App() {
             setSelectedNodePath(firstMatchNode.path);
           }
         }
-      } else {
-        // Restore to current state of nodes (which may have been manually expanded/collapsed)
-        setFilteredNodes(nodes);
-        setSearchMatchIndices([]);
-        setCurrentMatchIndex(0);
-      }
+      }, 250);
     },
     [originalNodes, nodes]
   );
@@ -221,7 +218,6 @@ function App() {
       }
 
       handleJsonSubmit(text, false); // Don't switch tabs for paste
-      trackEvent("feature_used", {featureName: "paste"});
     } catch (err) {
       console.warn("Failed to read clipboard:", err);
       setError(
@@ -232,31 +228,28 @@ function App() {
 
   const handleCopy = useCallback(() => {
     if (!inputText.trim()) return;
-    const result = jsonParser.parseJson(inputText, {track: false});
+    const result = jsonParser.parseJson(inputText);
     // Copy formatted JSON when valid, otherwise copy the raw text as-is.
     const text =
       result.success && result.data !== undefined
         ? JSON.stringify(result.data, null, 2)
         : inputText;
     navigator.clipboard.writeText(text);
-    trackEvent("feature_used", {featureName: "copy"});
   }, [inputText]);
 
   const handleFormat = useCallback(() => {
     if (!inputText.trim()) return;
-    const result = jsonParser.parseJson(inputText, {track: false});
+    const result = jsonParser.parseJson(inputText);
     if (result.success && result.data !== undefined) {
       setInputText(JSON.stringify(result.data, null, 2));
-      trackEvent("feature_used", {featureName: "format"});
     }
   }, [inputText]);
 
   const handleRemoveWhitespace = useCallback(() => {
     if (!inputText.trim()) return;
-    const result = jsonParser.parseJson(inputText, {track: false});
+    const result = jsonParser.parseJson(inputText);
     if (result.success && result.data !== undefined) {
       setInputText(JSON.stringify(result.data));
-      trackEvent("feature_used", {featureName: "remove_whitespace"});
     }
   }, [inputText]);
 
@@ -272,12 +265,11 @@ function App() {
       setErrorDetails(undefined);
 
       try {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
         const result = jsonParser.parseJson(currentInputText);
 
         if (result.success && result.data !== undefined) {
           setJsonData(result.data);
+          setWasModified(!!result.wasModified);
           const newNodes = jsonParser.convertToNodes(result.data);
           setNodes(newNodes);
           setFilteredNodes(newNodes);
@@ -290,24 +282,17 @@ function App() {
           setError(result.error || "Failed to parse JSON");
           setErrorDetails(result.errorDetails);
           setJsonData(null);
+          setWasModified(false);
           setNodes([]);
           setFilteredNodes([]);
           setOriginalNodes([]);
           setActiveTab("text"); // Redirect back to JSON tab on error
-          trackEvent("auto_parse_error", {
-            errorType: "parse_failure",
-            errorMessage: result.error || "Unknown error",
-          });
         }
-      } catch (err) {
+      } catch {
         // If unexpected error occurs, show error and redirect back to JSON tab
         setError("Unexpected error occurred while parsing JSON");
         setErrorDetails(undefined);
         setActiveTab("text"); // Redirect back to JSON tab on error
-        trackEvent("auto_parse_error", {
-          errorType: "unexpected_error",
-          errorMessage: err instanceof Error ? err.message : "Unknown error",
-        });
       } finally {
         setIsLoading(false);
       }
@@ -326,11 +311,11 @@ function App() {
     setLastParsedInput("");
     setError("");
     setErrorDetails(undefined);
+    setWasModified(false);
     setSearchQuery("");
     setSearchMatchIndices([]);
     setCurrentMatchIndex(0);
     setSelectedNodePath("");
-    trackEvent("feature_used", {featureName: "clear"});
   }, []);
 
   const handleLoadData = useCallback(() => {
@@ -370,7 +355,6 @@ function App() {
     const jsonText = JSON.stringify(sampleData, null, 2);
     setInputText(jsonText);
     handleJsonSubmit(jsonText, false); // Don't switch tabs for load data
-    trackEvent("feature_used", {featureName: "load_sample"});
   }, [handleJsonSubmit]);
 
   const handleExpandAll = useCallback(() => {
@@ -391,8 +375,6 @@ function App() {
       setNodes(expandedNodes);
       setFilteredNodes(expandedNodes);
     }
-
-    trackEvent("feature_used", {featureName: "expand_all"});
   }, [originalNodes, searchQuery, caseSensitive]);
 
   const handleCollapseAll = useCallback(() => {
@@ -413,8 +395,6 @@ function App() {
       setNodes(collapsedNodes);
       setFilteredNodes(collapsedNodes);
     }
-
-    trackEvent("feature_used", {featureName: "collapse_all"});
   }, [originalNodes, searchQuery, caseSensitive]);
 
   const handleNavigateToNextMatch = useCallback(() => {
@@ -426,12 +406,6 @@ function App() {
       if (node) {
         setSelectedNodePath(node.path);
       }
-
-      trackEvent("search_navigation", {
-        direction: "next",
-        currentIndex: nextIndex,
-        totalMatches: searchMatchIndices.length,
-      });
     }
   }, [searchMatchIndices, currentMatchIndex, filteredNodes]);
 
@@ -447,12 +421,6 @@ function App() {
       if (node) {
         setSelectedNodePath(node.path);
       }
-
-      trackEvent("search_navigation", {
-        direction: "prev",
-        currentIndex: prevIndex,
-        totalMatches: searchMatchIndices.length,
-      });
     }
   }, [searchMatchIndices, currentMatchIndex, filteredNodes]);
 
@@ -619,7 +587,7 @@ function App() {
                 )}
               </div>
               <button
-                onClick={() => setCaseSensitive(!caseSensitive)}
+                onClick={() => handleSearch(searchQuery, !caseSensitive)}
                 className={`px-3 py-2 text-sm rounded transition-colors ${
                   caseSensitive
                     ? "bg-blue-600 text-white"
@@ -659,15 +627,24 @@ function App() {
           {/* Left Panel - Text Input */}
           {activeTab === "text" && (
             <div className="w-full p-4 overflow-hidden">
-              <JsonInput
-                onJsonSubmit={handleJsonSubmit}
-                isLoading={isLoading}
-                error={error}
-                initialValue={inputText}
-                onError={setError}
-                onChange={setInputText}
-                errorDetails={errorDetails}
-              />
+              <Suspense
+                fallback={
+                  <div className="flex h-full items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+                    Loading editor…
+                  </div>
+                }
+              >
+                <JsonInput
+                  onJsonSubmit={handleJsonSubmit}
+                  isLoading={isLoading}
+                  error={error}
+                  initialValue={inputText}
+                  onError={setError}
+                  onChange={setInputText}
+                  errorDetails={errorDetails}
+                  wasModified={wasModified}
+                />
+              </Suspense>
             </div>
           )}
 
@@ -717,20 +694,18 @@ function App() {
                         </button>
                       </div>
                     </div>
-                    {/* Tree Content - Independent Scroll */}
-                    <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 min-h-0 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
-                      <div className="min-w-0">
-                        <JsonTree
-                          nodes={filteredNodes}
-                          onToggleNode={handleToggleNode}
-                          onSelectNode={handleSelectNode}
-                          selectedNodePath={selectedNodePath}
-                          searchQuery={searchQuery}
-                          caseSensitive={caseSensitive}
-                          searchMatchIndices={searchMatchIndices}
-                          currentMatchIndex={currentMatchIndex}
-                        />
-                      </div>
+                    {/* Tree Content - virtual list scrolls internally */}
+                    <div className="flex-1 min-h-0 p-2">
+                      <JsonTree
+                        nodes={filteredNodes}
+                        onToggleNode={handleToggleNode}
+                        onSelectNode={handleSelectNode}
+                        selectedNodePath={selectedNodePath}
+                        searchQuery={searchQuery}
+                        caseSensitive={caseSensitive}
+                        searchMatchIndices={searchMatchIndices}
+                        currentMatchIndex={currentMatchIndex}
+                      />
                     </div>
                   </div>
                 ) : (
@@ -839,6 +814,17 @@ function App() {
                 >
                   v{__APP_VERSION__}
                 </span>
+                {/* Opens the About dialog (the crawlable content in index.html)
+                    via the delegated handler there — no React state needed. */}
+                <button
+                  type="button"
+                  data-about-open
+                  className="flex items-center space-x-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  title="About this tool"
+                >
+                  <Info size={16} />
+                  <span className="text-xs">About</span>
+                </button>
                 <a
                   href="https://github.com/nonstopio/json-viewer/issues"
                   target="_blank"
@@ -887,8 +873,8 @@ function App() {
                 </button>
               </div>
 
-              {/* Fullscreen Tree Content */}
-              <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 min-h-0 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+              {/* Fullscreen Tree Content - virtual list scrolls internally */}
+              <div className="flex-1 min-h-0 p-4">
                 {jsonData ? (
                   <JsonTree
                     nodes={filteredNodes}
