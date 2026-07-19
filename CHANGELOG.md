@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/nonstopio/json-viewer/compare/v1.1.0...v1.2.0) (2026-07-19)
+
+
+### Features
+
+* replace native title tooltips with a styled custom tooltip ([d653370](https://github.com/nonstopio/json-viewer/commit/d65337089e674407e6473e8650d2e2999d801013))
+
 # [1.1.0](https://github.com/nonstopio/json-viewer/compare/v1.0.0...v1.1.0) (2026-07-19)
 
 
