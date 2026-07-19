@@ -1,12 +1,12 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Search, X, ChevronUp, ChevronDown, MoreHorizontal } from 'lucide-react';
-import { trackEvent } from '../utils/analytics';
+import React, {useState, useCallback, useRef, useEffect} from "react";
+import {Search, X, ChevronUp, ChevronDown, MoreHorizontal} from "lucide-react";
+import {trackEvent} from "../utils/analytics";
 
 interface SearchBarProps {
   onSearch: (query: string, caseSensitive: boolean) => void;
   resultCount?: number;
   currentResult?: number;
-  onNavigate?: (direction: 'next' | 'prev') => void;
+  onNavigate?: (direction: "next" | "prev") => void;
   isVisible?: boolean;
 }
 
@@ -15,9 +15,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   resultCount = 0,
   currentResult = 0,
   onNavigate,
-  isVisible = true
+  isVisible = true,
 }) => {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState("");
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -25,13 +25,16 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (optionsRef.current && !optionsRef.current.contains(event.target as Node)) {
+      if (
+        optionsRef.current &&
+        !optionsRef.current.contains(event.target as Node)
+      ) {
         setShowOptions(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   useEffect(() => {
@@ -40,23 +43,29 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     }
   }, [isVisible]);
 
-  const handleSearch = useCallback((searchQuery: string, isCaseSensitive: boolean) => {
-    onSearch(searchQuery, isCaseSensitive);
-    
-    if (searchQuery.trim()) {
-      trackEvent('search_performed', {
-        searchQuery: searchQuery,
-        caseSensitive: isCaseSensitive,
-        queryLength: searchQuery.length
-      });
-    }
-  }, [onSearch]);
+  const handleSearch = useCallback(
+    (searchQuery: string, isCaseSensitive: boolean) => {
+      onSearch(searchQuery, isCaseSensitive);
 
-  const handleQueryChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const newQuery = e.target.value;
-    setQuery(newQuery);
-    handleSearch(newQuery, caseSensitive);
-  }, [caseSensitive, handleSearch]);
+      if (searchQuery.trim()) {
+        trackEvent("search_performed", {
+          searchQuery: searchQuery,
+          caseSensitive: isCaseSensitive,
+          queryLength: searchQuery.length,
+        });
+      }
+    },
+    [onSearch]
+  );
+
+  const handleQueryChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newQuery = e.target.value;
+      setQuery(newQuery);
+      handleSearch(newQuery, caseSensitive);
+    },
+    [caseSensitive, handleSearch]
+  );
 
   const handleCaseSensitiveToggle = useCallback(() => {
     const newCaseSensitive = !caseSensitive;
@@ -65,40 +74,43 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   }, [caseSensitive, query, handleSearch]);
 
   const handleClear = useCallback(() => {
-    setQuery('');
-    handleSearch('', caseSensitive);
+    setQuery("");
+    handleSearch("", caseSensitive);
     inputRef.current?.focus();
   }, [caseSensitive, handleSearch]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    switch (e.key) {
-      case 'Escape':
-        handleClear();
-        break;
-      case 'Enter':
-        if (e.shiftKey) {
-          onNavigate?.('prev');
-        } else {
-          onNavigate?.('next');
-        }
-        break;
-      case 'F3':
-        e.preventDefault();
-        if (e.shiftKey) {
-          onNavigate?.('prev');
-        } else {
-          onNavigate?.('next');
-        }
-        break;
-    }
-  }, [handleClear, onNavigate]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      switch (e.key) {
+        case "Escape":
+          handleClear();
+          break;
+        case "Enter":
+          if (e.shiftKey) {
+            onNavigate?.("prev");
+          } else {
+            onNavigate?.("next");
+          }
+          break;
+        case "F3":
+          e.preventDefault();
+          if (e.shiftKey) {
+            onNavigate?.("prev");
+          } else {
+            onNavigate?.("next");
+          }
+          break;
+      }
+    },
+    [handleClear, onNavigate]
+  );
 
   const handleNavigateNext = useCallback(() => {
-    onNavigate?.('next');
+    onNavigate?.("next");
   }, [onNavigate]);
 
   const handleNavigatePrev = useCallback(() => {
-    onNavigate?.('prev');
+    onNavigate?.("prev");
   }, [onNavigate]);
 
   if (!isVisible) return null;
@@ -138,7 +150,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
               {currentResult + 1} of {resultCount}
             </>
           ) : (
-            'No results'
+            "No results"
           )}
         </div>
       )}
