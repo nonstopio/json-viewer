@@ -31,6 +31,27 @@ export class JsonParser {
       };
     }
 
+    // Fast path: the native parser is many times faster than the lenient
+    // json-parse-even-better-errors parser and covers the common case (valid
+    // JSON). This is what keeps Format / Remove-whitespace / Parse snappy on
+    // large input. Only fall through to the lenient + cleanup pipeline below
+    // when the input isn't already valid JSON.
+    try {
+      const startTime = performance.now();
+      const data = JSON.parse(input) as JsonValue;
+      if (track) {
+        trackEvent("json_parsed", {
+          fileSize: input.length,
+          nodeCount: this.countNodes(data),
+          parseTime: performance.now() - startTime,
+          wasFixed: false,
+        });
+      }
+      return {success: true, data, wasModified: false};
+    } catch {
+      // Not strict-valid JSON — fall through to the lenient/cleanup pipeline.
+    }
+
     try {
       const startTime = performance.now();
       let data: JsonValue;

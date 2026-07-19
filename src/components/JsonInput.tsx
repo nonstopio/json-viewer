@@ -1,4 +1,6 @@
 import React, {useState, useRef, useCallback, useEffect} from "react";
+import CodeMirror, {ReactCodeMirrorRef} from "@uiw/react-codemirror";
+import {json} from "@codemirror/lang-json";
 import {Upload, FileText, X, AlertCircle} from "lucide-react";
 import {trackEvent} from "../utils/analytics";
 
@@ -32,7 +34,23 @@ export const JsonInput: React.FC<JsonInputProps> = ({
   const [isJumpingToError, setIsJumpingToError] = useState(false);
   const [hasAutoJumped, setHasAutoJumped] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef = useRef<ReactCodeMirrorRef>(null);
+
+  // Mirror the app's dark mode (toggled via the `dark` class on <html>) so the
+  // editor theme matches.
+  const [isDark, setIsDark] = useState(() =>
+    document.documentElement.classList.contains("dark")
+  );
+  useEffect(() => {
+    const observer = new MutationObserver(() =>
+      setIsDark(document.documentElement.classList.contains("dark"))
+    );
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     setJsonText(initialValue);
@@ -46,14 +64,13 @@ export const JsonInput: React.FC<JsonInputProps> = ({
   }, [error]);
 
   const handleJumpToError = useCallback(async () => {
-    if (!textareaRef.current || !errorDetails || !jsonText) {
+    if (!editorRef.current?.view || !errorDetails || !jsonText) {
       return;
     }
 
     setIsJumpingToError(true);
 
     try {
-      const textarea = textareaRef.current;
       let cursorPosition = 0;
 
       // Calculate cursor position based on available error details
@@ -161,20 +178,17 @@ export const JsonInput: React.FC<JsonInputProps> = ({
         }
       }
 
-      // Focus and select the error text
-      textarea.focus();
-      textarea.setSelectionRange(selectionStart, selectionEnd);
-
-      // Scroll to position
-      if (errorDetails.line) {
-        const lineHeight =
-          parseInt(getComputedStyle(textarea).lineHeight) || 20;
-        const scrollPosition = Math.max(
-          0,
-          (errorDetails.line - 3) * lineHeight
-        );
-        textarea.scrollTop = scrollPosition;
-      }
+      // Select the error range and scroll it into view in the editor.
+      const view = editorRef.current.view;
+      const max = view.state.doc.length;
+      view.dispatch({
+        selection: {
+          anchor: Math.min(selectionStart, max),
+          head: Math.min(selectionEnd, max),
+        },
+        scrollIntoView: true,
+      });
+      view.focus();
 
       trackEvent("error_cursor_positioned", {
         errorLine: errorDetails.line,
@@ -323,9 +337,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
   const handleClear = useCallback(() => {
     setJsonText("");
     onChange?.("");
-    if (textareaRef.current) {
-      textareaRef.current.focus();
-    }
+    editorRef.current?.view?.focus();
   }, [onChange]);
 
   const handleKeyDown = useCallback(
@@ -361,19 +373,33 @@ export const JsonInput: React.FC<JsonInputProps> = ({
           )}
         </div>
 
-        <textarea
-          ref={textareaRef}
-          value={jsonText}
-          onChange={(e) => {
-            const newValue = e.target.value;
-            setJsonText(newValue);
-            onChange?.(newValue);
-          }}
+        {/* CodeMirror virtualizes line rendering, so it stays fast on
+            multi-MB / hundreds-of-thousands-of-lines input where a plain
+            <textarea> would block the main thread laying out every line. */}
+        <div
+          className="min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 dark:border-gray-600"
           onKeyDown={handleKeyDown}
-          placeholder="Paste the JSON code here (your code is not saved anywhere)"
-          className="flex-1 w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg resize-none font-mono text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors min-h-0"
-          disabled={isLoading}
-        />
+        >
+          <CodeMirror
+            ref={editorRef}
+            value={jsonText}
+            height="100%"
+            theme={isDark ? "dark" : "light"}
+            extensions={[json()]}
+            editable={!isLoading}
+            placeholder="Paste the JSON code here (your code is not saved anywhere)"
+            onChange={(value) => {
+              setJsonText(value);
+              onChange?.(value);
+            }}
+            basicSetup={{
+              lineNumbers: true,
+              foldGutter: true,
+              highlightActiveLine: true,
+            }}
+            style={{height: "100%", fontSize: "13px"}}
+          />
+        </div>
 
         <div className="flex items-center justify-between mt-2">
           <div className="text-xs text-gray-500 dark:text-gray-400">

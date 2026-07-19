@@ -1,4 +1,4 @@
-import {useState, useCallback, useEffect, useRef} from "react";
+import {useState, useCallback, useEffect, useRef, lazy, Suspense} from "react";
 import {
   FileCode,
   BarChart3,
@@ -18,8 +18,12 @@ import {
   Globe,
   Bug,
   Maximize,
+  Info,
 } from "lucide-react";
-import {JsonInput} from "./components/JsonInput";
+// Lazy-loaded so the CodeMirror editor bundle stays off the initial load.
+const JsonInput = lazy(() =>
+  import("./components/JsonInput").then((m) => ({default: m.JsonInput}))
+);
 import {JsonTree} from "./components/JsonTree";
 import {ThemeToggle} from "./components/ThemeToggle";
 import {JsonTableView} from "./components/JsonTableView";
@@ -668,16 +672,24 @@ function App() {
           {/* Left Panel - Text Input */}
           {activeTab === "text" && (
             <div className="w-full p-4 overflow-hidden">
-              <JsonInput
-                onJsonSubmit={handleJsonSubmit}
-                isLoading={isLoading}
-                error={error}
-                initialValue={inputText}
-                onError={setError}
-                onChange={setInputText}
-                errorDetails={errorDetails}
-                wasModified={wasModified}
-              />
+              <Suspense
+                fallback={
+                  <div className="flex h-full items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+                    Loading editor…
+                  </div>
+                }
+              >
+                <JsonInput
+                  onJsonSubmit={handleJsonSubmit}
+                  isLoading={isLoading}
+                  error={error}
+                  initialValue={inputText}
+                  onError={setError}
+                  onChange={setInputText}
+                  errorDetails={errorDetails}
+                  wasModified={wasModified}
+                />
+              </Suspense>
             </div>
           )}
 
@@ -847,6 +859,17 @@ function App() {
                 >
                   v{__APP_VERSION__}
                 </span>
+                {/* Opens the About dialog (the crawlable content in index.html)
+                    via the delegated handler there — no React state needed. */}
+                <button
+                  type="button"
+                  data-about-open
+                  className="flex items-center space-x-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  title="About this tool"
+                >
+                  <Info size={16} />
+                  <span className="text-xs">About</span>
+                </button>
                 <a
                   href="https://github.com/nonstopio/json-viewer/issues"
                   target="_blank"

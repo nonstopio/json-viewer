@@ -1,11 +1,15 @@
 import {test, expect} from "@playwright/test";
+import {writeFileSync} from "fs";
+import {join} from "path";
+import {tmpdir} from "os";
 
 // Regression guard for the large-file freeze: a multi-MB JSON array used to
 // mount tens of thousands of tree rows (and detail-panel rows), locking the
 // tab. The tree is now virtualized and the detail panel is capped, so only a
 // handful of rows should ever be mounted regardless of file size.
 
-// Build a >5MB JSON array of realistic records (mirrors the shape users load).
+// Build a JSON array of realistic records (mirrors the shape users load),
+// staying just under the app's 5MB file-upload limit.
 function buildLargeJson(targetBytes: number): string {
   const items: unknown[] = [];
   let size = 2; // "[]"
@@ -25,18 +29,25 @@ function buildLargeJson(targetBytes: number): string {
   return JSON.stringify(items);
 }
 
-test("loads a >5MB JSON without freezing and stays virtualized", async ({
-  page,
-}) => {
-  const json = buildLargeJson(5 * 1024 * 1024 + 200_000); // ~5.2MB
-  expect(json.length).toBeGreaterThan(5 * 1024 * 1024);
-
+// Load JSON through the file-upload path (the input is a virtualized editor,
+// not a fillable textarea). Uploading auto-switches to the Viewer tab.
+async function loadViaUpload(
+  page: import("@playwright/test").Page,
+  json: string,
+  name: string
+) {
+  const file = join(tmpdir(), name);
+  writeFileSync(file, json);
   await page.goto("/");
+  await page.locator('input[type="file"]').setInputFiles(file);
+}
 
-  // Paste into the input and parse (this switches to the Viewer tab).
-  await page.locator("textarea").fill(json);
+test("loads a large JSON without freezing and stays virtualized", async ({
+  page,
+}, testInfo) => {
+  const json = buildLargeJson(5_000_000); // under the 5MB upload limit
   const started = Date.now();
-  await page.getByRole("button", {name: "Parse JSON"}).click();
+  await loadViaUpload(page, json, `load-${testInfo.workerIndex}.json`);
 
   // The tree must render (not freeze). Generous timeout catches a real freeze;
   // in practice this is well under a second.
@@ -45,12 +56,12 @@ test("loads a >5MB JSON without freezing and stays virtualized", async ({
   const renderMs = Date.now() - started;
 
   // The core invariant: virtualization keeps the mounted row count tiny even
-  // though the document has ~30k top-level items. If virtualization regresses,
-  // this explodes into the thousands and the assertion fails.
+  // though the document has tens of thousands of top-level items. If it
+  // regresses, this explodes into the thousands and the assertion fails.
   const mountedRows = await page.locator(".json-node").count();
   expect(mountedRows).toBeLessThan(200);
 
-  // Detail panel (root array selected) must be capped, not rendering 30k rows.
+  // Detail panel (root array selected) must be capped, not rendering all rows.
   await expect(page.getByText(/Showing first \d+ of \d+/)).toBeVisible();
 
   // Memory guard: an un-virtualized render of this file consumed multiple GB.
@@ -79,16 +90,13 @@ test("loads a >5MB JSON without freezing and stays virtualized", async ({
 
 test("shows long values in full (wraps to multiple lines, not truncated)", async ({
   page,
-}) => {
+}, testInfo) => {
   const longValue =
     "LONG_VALUE_START " +
     "lorem ipsum dolor sit amet ".repeat(30) +
     "LONG_VALUE_END";
   const json = JSON.stringify({shortKey: "small", description: longValue});
-
-  await page.goto("/");
-  await page.locator("textarea").fill(json);
-  await page.getByRole("button", {name: "Parse JSON"}).click();
+  await loadViaUpload(page, json, `wrap-${testInfo.workerIndex}.json`);
 
   const descRow = page.locator(".json-node", {hasText: "description"});
   const shortRow = page.locator(".json-node", {hasText: "shortKey"});
@@ -105,4 +113,32 @@ test("shows long values in full (wraps to multiple lines, not truncated)", async
   expect(descBox).not.toBeNull();
   expect(shortBox).not.toBeNull();
   expect(descBox!.height).toBeGreaterThan(shortBox!.height * 3);
+});
+
+test("SEO content is crawlable and opens as an About dialog without page scroll", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  // The page itself must not scroll (the app fills the viewport; only content
+  // inside the tree/editor scrolls).
+  const pageScrolls = await page.evaluate(
+    () =>
+      document.documentElement.scrollHeight >
+      document.documentElement.clientHeight + 1
+  );
+  expect(pageScrolls).toBe(false);
+
+  // The SEO content is present in the DOM even while the dialog is closed, so
+  // crawlers read it without interacting.
+  const overlay = page.locator("#about-overlay");
+  await expect(overlay).toBeHidden();
+  await expect(overlay).toContainText("How to Use the JSON Viewer");
+  await expect(overlay).toContainText("Frequently Asked Questions");
+
+  // It opens from the About button and closes on Escape.
+  await page.getByRole("button", {name: "About"}).click();
+  await expect(overlay).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(overlay).toBeHidden();
 });
