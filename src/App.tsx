@@ -1,4 +1,4 @@
-import {useState, useCallback, useEffect} from "react";
+import {useState, useCallback, useEffect, useRef} from "react";
 import {
   FileCode,
   BarChart3,
@@ -47,9 +47,11 @@ function App() {
   const [lastParsedInput, setLastParsedInput] = useState<string>("");
   const [selectedNodePath, setSelectedNodePath] = useState<string>("");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [wasModified, setWasModified] = useState(false);
   const [errorDetails, setErrorDetails] = useState<
     {line?: number; column?: number; position?: number} | undefined
   >();
+  const searchDebounce = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     trackEvent("app_loaded", {
@@ -102,12 +104,11 @@ function App() {
       setInputText(jsonText);
 
       try {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
         const result = jsonParser.parseJson(jsonText);
 
         if (result.success && result.data !== undefined) {
           setJsonData(result.data);
+          setWasModified(!!result.wasModified);
           const newNodes = jsonParser.convertToNodes(result.data);
           setNodes(newNodes);
           setFilteredNodes(newNodes);
@@ -124,6 +125,7 @@ function App() {
           setError(result.error || "Failed to parse JSON");
           setErrorDetails(result.errorDetails);
           setJsonData(null);
+          setWasModified(false);
           setNodes([]);
           setFilteredNodes([]);
           setOriginalNodes([]);
@@ -171,10 +173,21 @@ function App() {
 
   const handleSearch = useCallback(
     (query: string, isCaseSensitive: boolean) => {
+      // Keep the input responsive; debounce the expensive tree walk/rebuild so
+      // typing on a large document doesn't run searchNodes on every keystroke.
       setSearchQuery(query);
       setCaseSensitive(isCaseSensitive);
+      clearTimeout(searchDebounce.current);
 
-      if (query.trim()) {
+      if (!query.trim()) {
+        // Restore to current state of nodes (which may have been manually expanded/collapsed)
+        setFilteredNodes(nodes);
+        setSearchMatchIndices([]);
+        setCurrentMatchIndex(0);
+        return;
+      }
+
+      searchDebounce.current = setTimeout(() => {
         const searchResult = jsonParser.searchNodes(
           originalNodes,
           query,
@@ -194,12 +207,7 @@ function App() {
             setSelectedNodePath(firstMatchNode.path);
           }
         }
-      } else {
-        // Restore to current state of nodes (which may have been manually expanded/collapsed)
-        setFilteredNodes(nodes);
-        setSearchMatchIndices([]);
-        setCurrentMatchIndex(0);
-      }
+      }, 250);
     },
     [originalNodes, nodes]
   );
@@ -272,12 +280,11 @@ function App() {
       setErrorDetails(undefined);
 
       try {
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
         const result = jsonParser.parseJson(currentInputText);
 
         if (result.success && result.data !== undefined) {
           setJsonData(result.data);
+          setWasModified(!!result.wasModified);
           const newNodes = jsonParser.convertToNodes(result.data);
           setNodes(newNodes);
           setFilteredNodes(newNodes);
@@ -290,6 +297,7 @@ function App() {
           setError(result.error || "Failed to parse JSON");
           setErrorDetails(result.errorDetails);
           setJsonData(null);
+          setWasModified(false);
           setNodes([]);
           setFilteredNodes([]);
           setOriginalNodes([]);
@@ -326,6 +334,7 @@ function App() {
     setLastParsedInput("");
     setError("");
     setErrorDetails(undefined);
+    setWasModified(false);
     setSearchQuery("");
     setSearchMatchIndices([]);
     setCurrentMatchIndex(0);
@@ -619,7 +628,7 @@ function App() {
                 )}
               </div>
               <button
-                onClick={() => setCaseSensitive(!caseSensitive)}
+                onClick={() => handleSearch(searchQuery, !caseSensitive)}
                 className={`px-3 py-2 text-sm rounded transition-colors ${
                   caseSensitive
                     ? "bg-blue-600 text-white"
@@ -667,6 +676,7 @@ function App() {
                 onError={setError}
                 onChange={setInputText}
                 errorDetails={errorDetails}
+                wasModified={wasModified}
               />
             </div>
           )}
@@ -717,20 +727,18 @@ function App() {
                         </button>
                       </div>
                     </div>
-                    {/* Tree Content - Independent Scroll */}
-                    <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 min-h-0 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
-                      <div className="min-w-0">
-                        <JsonTree
-                          nodes={filteredNodes}
-                          onToggleNode={handleToggleNode}
-                          onSelectNode={handleSelectNode}
-                          selectedNodePath={selectedNodePath}
-                          searchQuery={searchQuery}
-                          caseSensitive={caseSensitive}
-                          searchMatchIndices={searchMatchIndices}
-                          currentMatchIndex={currentMatchIndex}
-                        />
-                      </div>
+                    {/* Tree Content - virtual list scrolls internally */}
+                    <div className="flex-1 min-h-0 p-2">
+                      <JsonTree
+                        nodes={filteredNodes}
+                        onToggleNode={handleToggleNode}
+                        onSelectNode={handleSelectNode}
+                        selectedNodePath={selectedNodePath}
+                        searchQuery={searchQuery}
+                        caseSensitive={caseSensitive}
+                        searchMatchIndices={searchMatchIndices}
+                        currentMatchIndex={currentMatchIndex}
+                      />
                     </div>
                   </div>
                 ) : (
@@ -887,8 +895,8 @@ function App() {
                 </button>
               </div>
 
-              {/* Fullscreen Tree Content */}
-              <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 min-h-0 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+              {/* Fullscreen Tree Content - virtual list scrolls internally */}
+              <div className="flex-1 min-h-0 p-4">
                 {jsonData ? (
                   <JsonTree
                     nodes={filteredNodes}

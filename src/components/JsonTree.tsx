@@ -1,4 +1,5 @@
-import React, {useState, useCallback} from "react";
+import React, {useState, useCallback, useEffect, useRef} from "react";
+import {Virtuoso, VirtuosoHandle} from "react-virtuoso";
 import {Package} from "lucide-react";
 import {JsonNode as JsonNodeComponent} from "./JsonNode";
 import {JsonNode as JsonNodeType} from "../types/json";
@@ -26,6 +27,18 @@ export const JsonTree: React.FC<JsonTreeProps> = ({
   currentMatchIndex = 0,
 }) => {
   const [copiedValue, setCopiedValue] = useState<string>("");
+  const virtuosoRef = useRef<VirtuosoHandle>(null);
+
+  // Keep the active search match scrolled into view. With virtualization the
+  // matched row may not be mounted, so scroll the list to it by index.
+  useEffect(() => {
+    if (searchMatchIndices.length > 0) {
+      const target = searchMatchIndices[currentMatchIndex];
+      if (target !== undefined) {
+        virtuosoRef.current?.scrollToIndex({index: target, align: "center"});
+      }
+    }
+  }, [searchMatchIndices, currentMatchIndex]);
 
   const handleCopy = useCallback(
     async (value: string, type: "value" | "path") => {
@@ -62,6 +75,39 @@ export const JsonTree: React.FC<JsonTreeProps> = ({
     []
   );
 
+  const renderRow = useCallback(
+    (index: number, node: JsonNodeType) => {
+      const isCurrentMatch =
+        searchMatchIndices.length > 0 &&
+        searchMatchIndices[currentMatchIndex] === index;
+
+      return (
+        <JsonNodeComponent
+          node={node}
+          onToggle={onToggleNode}
+          onSelect={onSelectNode}
+          isSelected={selectedNodePath === node.path}
+          onCopy={handleCopy}
+          searchQuery={searchQuery}
+          caseSensitive={caseSensitive}
+          copiedValue={copiedValue}
+          isCurrentMatch={isCurrentMatch}
+        />
+      );
+    },
+    [
+      searchMatchIndices,
+      currentMatchIndex,
+      onToggleNode,
+      onSelectNode,
+      selectedNodePath,
+      handleCopy,
+      searchQuery,
+      caseSensitive,
+      copiedValue,
+    ]
+  );
+
   if (!nodes.length) {
     return (
       <div className="flex flex-col items-center justify-center p-12 text-gray-500 dark:text-gray-400">
@@ -74,28 +120,17 @@ export const JsonTree: React.FC<JsonTreeProps> = ({
     );
   }
 
+  // Virtuoso only mounts visible rows (+overscan), so multi-MB / 100k-node
+  // documents stay responsive, while rows keep their natural (wrapping) height
+  // so full values are always shown.
   return (
-    <div className="json-tree-container">
-      {nodes.map((node, index) => {
-        const isCurrentMatch =
-          searchMatchIndices.length > 0 &&
-          searchMatchIndices[currentMatchIndex] === index;
-
-        return (
-          <JsonNodeComponent
-            key={`${node.path}-${index}`}
-            node={node}
-            onToggle={onToggleNode}
-            onSelect={onSelectNode}
-            isSelected={selectedNodePath === node.path}
-            onCopy={handleCopy}
-            searchQuery={searchQuery}
-            caseSensitive={caseSensitive}
-            copiedValue={copiedValue}
-            isCurrentMatch={isCurrentMatch}
-          />
-        );
-      })}
-    </div>
+    <Virtuoso
+      ref={virtuosoRef}
+      data={nodes}
+      itemContent={renderRow}
+      overscan={400}
+      className="json-tree-container scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
+      style={{height: "100%"}}
+    />
   );
 };

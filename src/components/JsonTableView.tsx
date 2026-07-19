@@ -14,89 +14,31 @@ interface JsonTableViewProps {
 interface TableRow {
   name: string;
   value: string;
+  // The raw value rendered as text, precomputed for copy + copied-state checks
+  // (so we don't re-walk the data on every render).
+  actual: string;
   type: string;
   path: string;
 }
 
+// Cap how many child rows the detail panel renders. It's an inspector, not the
+// (virtualized) tree — a selected 20k-element array must not render 20k rows.
+const MAX_TABLE_ROWS = 200;
+
+// Render a raw JSON value as the text we copy to the clipboard.
+const toActualString = (value: unknown): string => {
+  if (value === null) return "null";
+  if (typeof value === "string") return value;
+  if (typeof value === "object") return JSON.stringify(value, null, 2);
+  return String(value);
+};
+
 export const JsonTableView: React.FC<JsonTableViewProps> = ({
-  data,
   searchQuery = "",
   selectedNodePath,
   nodes = [],
 }) => {
   const [copiedValue, setCopiedValue] = useState<string>("");
-
-  const getActualValue = (rowData: TableRow): string => {
-    // Get the actual value from the data using the path
-    const getValueFromPath = (data: unknown, path: string): unknown => {
-      if (!path || path === "root") return data;
-
-      // Remove 'root.' prefix if present
-      const cleanPath = path.startsWith("root.") ? path.substring(5) : path;
-      if (!cleanPath) return data;
-
-      // Improved path parsing to handle array indices like [0]
-      const parts: string[] = [];
-      let currentPart = "";
-      let inBrackets = false;
-
-      for (let i = 0; i < cleanPath.length; i++) {
-        const char = cleanPath[i];
-
-        if (char === "[") {
-          if (currentPart) {
-            parts.push(currentPart);
-            currentPart = "";
-          }
-          inBrackets = true;
-        } else if (char === "]") {
-          if (inBrackets && currentPart) {
-            parts.push(currentPart);
-            currentPart = "";
-          }
-          inBrackets = false;
-        } else if (char === "." && !inBrackets) {
-          if (currentPart) {
-            parts.push(currentPart);
-            currentPart = "";
-          }
-        } else {
-          currentPart += char;
-        }
-      }
-
-      if (currentPart) {
-        parts.push(currentPart);
-      }
-
-      let current = data;
-
-      for (const part of parts) {
-        if (current === null || current === undefined) return null;
-
-        // Check if this part is a numeric index for arrays
-        const index = parseInt(part, 10);
-        if (!isNaN(index) && Array.isArray(current)) {
-          current = current[index];
-        } else if (typeof current === "object" && current !== null) {
-          current = (current as Record<string, unknown>)[part];
-        } else {
-          return null;
-        }
-      }
-
-      return current;
-    };
-
-    const actualValue = getValueFromPath(data, rowData.path);
-
-    if (actualValue === null) return "null";
-    if (typeof actualValue === "string") return actualValue;
-    if (typeof actualValue === "object") {
-      return JSON.stringify(actualValue, null, 2);
-    }
-    return String(actualValue);
-  };
 
   const copyToClipboard = (
     rowData: TableRow,
@@ -109,8 +51,8 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({
     } else if (type === "path") {
       textToCopy = rowData.path;
     } else {
-      // For value, get the actual JSON content
-      textToCopy = getActualValue(rowData);
+      // For value, use the precomputed raw JSON content
+      textToCopy = rowData.actual;
     }
 
     navigator.clipboard
@@ -166,76 +108,21 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({
     return String(value);
   };
 
-  // Get the selected node's data
-  const selectedNodeData = useMemo(() => {
-    if (!selectedNodePath || !nodes.length) return null;
+  // The selected node already carries its parsed value, so read it directly
+  // instead of re-walking the raw data by a (previously ambiguous) path string.
+  const selectedNode = useMemo(
+    () => nodes.find((node) => node.path === selectedNodePath) ?? null,
+    [nodes, selectedNodePath]
+  );
+  const selectedNodeData = selectedNode ? selectedNode.value : null;
 
-    const selectedNode = nodes.find((node) => node.path === selectedNodePath);
-    if (!selectedNode) return null;
-
-    // Get the actual value from the data using the path
-    const getValueFromPath = (data: unknown, path: string): unknown => {
-      if (!path || path === "root") return data;
-
-      // Remove 'root.' prefix if present
-      const cleanPath = path.startsWith("root.") ? path.substring(5) : path;
-      if (!cleanPath) return data;
-
-      // Improved path parsing to handle array indices like [0]
-      const parts: string[] = [];
-      let currentPart = "";
-      let inBrackets = false;
-
-      for (let i = 0; i < cleanPath.length; i++) {
-        const char = cleanPath[i];
-
-        if (char === "[") {
-          if (currentPart) {
-            parts.push(currentPart);
-            currentPart = "";
-          }
-          inBrackets = true;
-        } else if (char === "]") {
-          if (inBrackets && currentPart) {
-            parts.push(currentPart);
-            currentPart = "";
-          }
-          inBrackets = false;
-        } else if (char === "." && !inBrackets) {
-          if (currentPart) {
-            parts.push(currentPart);
-            currentPart = "";
-          }
-        } else {
-          currentPart += char;
-        }
-      }
-
-      if (currentPart) {
-        parts.push(currentPart);
-      }
-
-      let current = data;
-
-      for (const part of parts) {
-        if (current === null || current === undefined) return null;
-
-        // Check if this part is a numeric index for arrays
-        const index = parseInt(part, 10);
-        if (!isNaN(index) && Array.isArray(current)) {
-          current = current[index];
-        } else if (typeof current === "object" && current !== null) {
-          current = (current as Record<string, unknown>)[part];
-        } else {
-          return null;
-        }
-      }
-
-      return current;
-    };
-
-    return getValueFromPath(data, selectedNodePath);
-  }, [selectedNodePath, nodes, data]);
+  // Total immediate children of the selected node (before capping).
+  const totalChildCount = useMemo(() => {
+    if (!selectedNodeData || typeof selectedNodeData !== "object") return 0;
+    return Array.isArray(selectedNodeData)
+      ? selectedNodeData.length
+      : Object.keys(selectedNodeData).length;
+  }, [selectedNodeData]);
 
   const tableRows = useMemo(() => {
     const rows: TableRow[] = [];
@@ -244,45 +131,51 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({
       return rows;
 
     // If selected node is a primitive value, show just that value
-    if (typeof selectedNodeData !== "object" || selectedNodeData === null) {
+    if (typeof selectedNodeData !== "object") {
       rows.push({
-        name:
-          selectedNodePath
-            ?.split(/\.(?![^[]*])|[|]/)
-            .filter(Boolean)
-            .pop() || "value",
+        name: selectedNode?.key || "value",
         value: getDisplayValue(selectedNodeData),
+        actual: toActualString(selectedNodeData),
         type: getValueType(selectedNodeData),
         path: selectedNodePath || "",
       });
       return rows;
     }
 
-    // If it's an object or array, show its immediate properties
+    // Show immediate properties, capped: this panel is a detail inspector, not
+    // the tree. Rendering (and JSON.stringify-ing) every child of a huge array
+    // would freeze the tab — the tree is where you explore all of them.
     if (Array.isArray(selectedNodeData)) {
-      selectedNodeData.forEach((item, index) => {
+      const limit = Math.min(selectedNodeData.length, MAX_TABLE_ROWS);
+      for (let index = 0; index < limit; index++) {
+        const item = selectedNodeData[index];
         rows.push({
           name: `[${index}]`,
           value: getDisplayValue(item),
+          actual: toActualString(item),
           type: getValueType(item),
           path: selectedNodePath
             ? `${selectedNodePath}[${index}]`
             : `[${index}]`,
         });
-      });
-    } else if (typeof selectedNodeData === "object") {
-      Object.entries(selectedNodeData).forEach(([key, value]) => {
+      }
+    } else {
+      const entries = Object.entries(selectedNodeData);
+      const limit = Math.min(entries.length, MAX_TABLE_ROWS);
+      for (let i = 0; i < limit; i++) {
+        const [key, value] = entries[i];
         rows.push({
           name: key,
           value: getDisplayValue(value),
+          actual: toActualString(value),
           type: getValueType(value),
           path: selectedNodePath ? `${selectedNodePath}.${key}` : key,
         });
-      });
+      }
     }
 
     return rows;
-  }, [selectedNodeData, selectedNodePath]);
+  }, [selectedNodeData, selectedNodePath, selectedNode]);
 
   const filteredRows = useMemo(() => {
     if (!searchQuery.trim()) return tableRows;
@@ -417,7 +310,7 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({
                     className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
                     title="Copy value"
                   >
-                    {copiedValue === getActualValue(row) ? (
+                    {copiedValue === row.actual ? (
                       <Check size={10} className="text-green-500" />
                     ) : (
                       <Copy size={10} />
@@ -426,6 +319,12 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({
                 </div>
               </div>
             ))}
+            {totalChildCount > tableRows.length && (
+              <div className="p-3 text-center text-xs text-gray-500 dark:text-gray-400">
+                Showing first {tableRows.length} of {totalChildCount} — open
+                this node in the tree to explore the rest.
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex items-center justify-center h-32 text-gray-500 dark:text-gray-400">
@@ -464,7 +363,7 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({
                 Properties:
               </span>
               <span className="ml-1 text-gray-600 dark:text-gray-400">
-                {filteredRows.length}
+                {totalChildCount || filteredRows.length}
               </span>
             </div>
           </div>

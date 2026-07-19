@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from "react";
+import React, {useState} from "react";
 import {
   Plus,
   Minus,
@@ -29,7 +29,7 @@ interface JsonNodeProps {
   isCurrentMatch?: boolean;
 }
 
-export const JsonNode: React.FC<JsonNodeProps> = ({
+const JsonNodeComponent: React.FC<JsonNodeProps> = ({
   node,
   onToggle,
   onSelect,
@@ -40,24 +40,9 @@ export const JsonNode: React.FC<JsonNodeProps> = ({
   copiedValue,
   isCurrentMatch = false,
 }) => {
-  const nodeRef = useRef<HTMLDivElement>(null);
   const [showDetails, setShowDetails] = useState(false);
   const hasChildren = node.type === "object" || node.type === "array";
   const canExpand = hasChildren && node.childCount && node.childCount > 0;
-
-  // Auto-scroll to current match when it becomes active
-  useEffect(() => {
-    if (isCurrentMatch && nodeRef.current) {
-      // Small delay to ensure DOM is updated
-      setTimeout(() => {
-        nodeRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-          inline: "nearest",
-        });
-      }, 100);
-    }
-  }, [isCurrentMatch]);
 
   const handleToggle = () => {
     if (canExpand && onToggle) {
@@ -270,8 +255,7 @@ export const JsonNode: React.FC<JsonNodeProps> = ({
 
   return (
     <div
-      ref={nodeRef}
-      className={`json-node flex items-center py-1 px-2 group transition-all duration-150 ${
+      className={`json-node flex items-start py-1 px-2 group transition-all duration-150 ${
         isSelected
           ? "bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500 shadow-sm"
           : "border-l-2 border-transparent hover:border-gray-300 dark:hover:border-gray-600"
@@ -321,8 +305,8 @@ export const JsonNode: React.FC<JsonNodeProps> = ({
         </span>
       )}
 
-      {/* Value */}
-      <span className="flex-1">{renderValue()}</span>
+      {/* Value — wraps to show the full content */}
+      <span className="flex-1 min-w-0 break-words">{renderValue()}</span>
 
       {/* Copy Buttons */}
       <div className="opacity-0 group-hover:opacity-100 transition-all duration-150 ml-1 flex items-center gap-0.5">
@@ -416,3 +400,7 @@ export const JsonNode: React.FC<JsonNodeProps> = ({
     </div>
   );
 };
+
+// Memoized: the tree renders one of these per visible node, so without this a
+// single state change (a copy, a selection) re-renders every row.
+export const JsonNode = React.memo(JsonNodeComponent);

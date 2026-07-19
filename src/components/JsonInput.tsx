@@ -14,6 +14,7 @@ interface JsonInputProps {
     column?: number;
     position?: number;
   };
+  wasModified?: boolean;
 }
 
 export const JsonInput: React.FC<JsonInputProps> = ({
@@ -24,6 +25,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
   onError,
   onChange,
   errorDetails,
+  wasModified = false,
 }) => {
   const [jsonText, setJsonText] = useState(initialValue);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -45,53 +47,24 @@ export const JsonInput: React.FC<JsonInputProps> = ({
 
   const handleJumpToError = useCallback(async () => {
     if (!textareaRef.current || !errorDetails || !jsonText) {
-      console.log("Cannot position cursor - missing refs or data:", {
-        hasTextarea: !!textareaRef.current,
-        hasErrorDetails: !!errorDetails,
-        hasJsonText: !!jsonText,
-      });
       return;
     }
 
     setIsJumpingToError(true);
 
     try {
-      // Add a small delay to show the loading state
-      await new Promise((resolve) => setTimeout(resolve, 300));
-
       const textarea = textareaRef.current;
       let cursorPosition = 0;
-
-      console.log("🎯 Jumping to error:", errorDetails);
-      console.log("📝 Text length:", jsonText.length);
 
       // Calculate cursor position based on available error details
       if (errorDetails.position !== undefined) {
         cursorPosition = Math.min(errorDetails.position, jsonText.length);
-        console.log(
-          "📍 Using direct position:",
-          errorDetails.position,
-          "clamped to:",
-          cursorPosition
-        );
       } else if (
         errorDetails.line !== undefined &&
         errorDetails.column !== undefined
       ) {
         const lines = jsonText.split("\n");
         const targetLine = errorDetails.line - 1;
-
-        console.log(
-          "📊 Calculating from line/column:",
-          errorDetails.line,
-          errorDetails.column
-        );
-        console.log(
-          "📋 Total lines:",
-          lines.length,
-          "Target line index:",
-          targetLine
-        );
 
         if (targetLine >= 0 && targetLine < lines.length) {
           for (let i = 0; i < targetLine; i++) {
@@ -102,20 +75,8 @@ export const JsonInput: React.FC<JsonInputProps> = ({
             lines[targetLine].length
           );
           cursorPosition += Math.max(0, targetColumn);
-
-          console.log(
-            "🧮 Calculated position:",
-            cursorPosition,
-            "from line",
-            targetLine,
-            "column",
-            targetColumn
-          );
-          console.log("📄 Line content:", JSON.stringify(lines[targetLine]));
         }
       }
-
-      console.log("✅ Final cursor position:", cursorPosition);
 
       if (cursorPosition > jsonText.length) {
         cursorPosition = jsonText.length;
@@ -214,9 +175,6 @@ export const JsonInput: React.FC<JsonInputProps> = ({
         );
         textarea.scrollTop = scrollPosition;
       }
-
-      console.log("✅ Jumped to error position:", cursorPosition);
-      console.log("🎯 Selected text from:", selectionStart, "to", selectionEnd);
 
       trackEvent("error_cursor_positioned", {
         errorLine: errorDetails.line,
@@ -419,14 +377,28 @@ export const JsonInput: React.FC<JsonInputProps> = ({
 
         <div className="flex items-center justify-between mt-2">
           <div className="text-xs text-gray-500 dark:text-gray-400">
-            Ctrl+Enter (Cmd+Enter) to parse • Auto-fixes: ALL JSON errors
-            silently
+            Ctrl+Enter (Cmd+Enter) to parse • Attempts to auto-fix common errors
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400">
             {jsonText.length} characters
           </div>
         </div>
       </div>
+
+      {/* Auto-fix notice — the parsed result may differ from the raw input */}
+      {!error && wasModified && (
+        <div className="mt-3 flex items-start space-x-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
+          <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-500" />
+          <div className="text-sm text-amber-800 dark:text-amber-200">
+            <div className="font-medium">Input was auto-corrected</div>
+            <div className="mt-1 text-xs">
+              Your JSON didn&apos;t parse as-is, so it was cleaned up before
+              displaying. The result may differ from what you pasted — verify it
+              looks right.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Error Display */}
       {error && (

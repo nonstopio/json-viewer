@@ -16,6 +16,9 @@ export interface ParseResult {
   success: boolean;
   data?: JsonValue;
   error?: string;
+  // True when the input didn't parse as-is and was auto-corrected before
+  // succeeding. The result may differ from what the user pasted.
+  wasModified?: boolean;
   errorDetails?: {
     line?: number;
     column?: number;

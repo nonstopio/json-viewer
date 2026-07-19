@@ -7,7 +7,11 @@ import {
 class AnalyticsService {
   private sessionId: string;
   private userId: string;
-  private readonly STORAGE_KEY = "json_viewer_analytics";
+  // Events are kept in memory only. They were never sent anywhere, and
+  // persisting to localStorage meant re-serializing the whole buffer on every
+  // single event — a growing per-interaction cost for no benefit.
+  private events: AnalyticsEvent[] = [];
+  private readonly MAX_EVENTS = 1000;
   private readonly USER_ID_KEY = "json_viewer_user_id";
   private readonly SESSION_ID_KEY = "json_viewer_session_id";
 
@@ -61,39 +65,22 @@ class AnalyticsService {
     };
 
     this.storeEvent(analyticsEvent);
-
-    // In production, you would send this to your analytics service
-    console.log("Analytics Event:", analyticsEvent);
   }
 
   private storeEvent(event: AnalyticsEvent): void {
-    try {
-      const existingEvents = this.getStoredEvents();
-      const updatedEvents = [...existingEvents, event];
-
-      // Keep only the last 1000 events to prevent localStorage bloat
-      if (updatedEvents.length > 1000) {
-        updatedEvents.splice(0, updatedEvents.length - 1000);
-      }
-
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(updatedEvents));
-    } catch (error) {
-      console.warn("Failed to store analytics event:", error);
+    this.events.push(event);
+    // Cap the buffer; drop oldest. O(1) amortized instead of re-serializing.
+    if (this.events.length > this.MAX_EVENTS) {
+      this.events.shift();
     }
   }
 
   getStoredEvents(): AnalyticsEvent[] {
-    try {
-      const events = localStorage.getItem(this.STORAGE_KEY);
-      return events ? JSON.parse(events) : [];
-    } catch (error) {
-      console.warn("Failed to retrieve analytics events:", error);
-      return [];
-    }
+    return this.events;
   }
 
   clearEvents(): void {
-    localStorage.removeItem(this.STORAGE_KEY);
+    this.events = [];
   }
 
   getEventsByType(eventType: AnalyticsEventType): AnalyticsEvent[] {

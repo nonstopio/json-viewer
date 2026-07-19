@@ -108,6 +108,7 @@ export class JsonParser {
       return {
         success: true,
         data,
+        wasModified: needsCleanup,
       };
     } catch (error) {
       const errorMessage = this.getDetailedErrorFromBetterParser(
@@ -131,8 +132,6 @@ export class JsonParser {
     error: JsonParseError,
     input: string
   ): ParseResult {
-    console.log("Better parser error:", error);
-
     const errorDetails: {line?: number; column?: number; position?: number} =
       {};
     let friendlyError = "Invalid JSON format";
@@ -158,10 +157,6 @@ export class JsonParser {
         const lines = input.substring(0, errorDetails.position).split("\n");
         errorDetails.line = lines.length;
         errorDetails.column = lines[lines.length - 1].length + 1;
-
-        console.log(
-          `🧮 Calculated line ${errorDetails.line}, column ${errorDetails.column} from position ${errorDetails.position}`
-        );
       }
 
       // Use the error message from the better parser
@@ -172,17 +167,11 @@ export class JsonParser {
 
     // If still no position info, try manual detection as fallback
     if (!errorDetails.position && !errorDetails.line && !errorDetails.column) {
-      console.log(
-        "No position info from better parser, attempting manual detection"
-      );
-      const message = error?.message || error?.toString() || "Unknown error";
-      const manualError = this.findErrorLocationManually(input, message);
+      const manualError = this.findErrorLocationManually(input);
       if (manualError) {
         Object.assign(errorDetails, manualError);
       }
     }
-
-    console.log("Final error details:", errorDetails);
 
     if (errorDetails.line && errorDetails.column) {
       friendlyError += ` (Line ${errorDetails.line}, Column ${errorDetails.column})`;
@@ -196,11 +185,8 @@ export class JsonParser {
   }
 
   private findErrorLocationManually(
-    input: string,
-    errorMessage: string
+    input: string
   ): {line?: number; column?: number; position?: number} | null {
-    console.log("🔍 Attempting manual error detection for:", errorMessage);
-
     const lines = input.split("\n");
 
     // Strategy 0: Look for unterminated strings (missing closing quotes)
@@ -245,9 +231,6 @@ export class JsonParser {
             lineIndex + 1,
             line.length + 1
           );
-          console.log("🎯 Found unterminated string at line", lineIndex + 1);
-          console.log("📄 Line content:", JSON.stringify(line));
-          console.log("📍 String starts at column:", stringStartCol + 1);
 
           return {
             line: lineIndex + 1,
@@ -285,10 +268,6 @@ export class JsonParser {
             lineIndex + 1,
             currentLine.length + 1
           );
-          console.log("🎯 Found missing comma at end of line", lineIndex + 1);
-          console.log("📄 Current line:", JSON.stringify(currentLine));
-          console.log("📄 Next line:", JSON.stringify(nextLine));
-          console.log("📍 Position:", position);
 
           return {
             line: lineIndex + 1,
@@ -300,14 +279,12 @@ export class JsonParser {
     }
 
     // Strategy 2: Use a simple JSON validator to find the exact error position
-    console.log("🔄 Using JSON validator to find exact error...");
     const validationError = this.validateJsonAndFindError(input);
     if (validationError) {
       return validationError;
     }
 
     // Strategy 3: Character-by-character parsing to find exact error
-    console.log("🔄 Trying character-by-character parsing...");
     try {
       const stack: string[] = [];
       let inString = false;
@@ -341,25 +318,17 @@ export class JsonParser {
               const line = lines.length;
               const column = lines[lines.length - 1].length + 1;
 
-              console.log("🎯 Found bracket mismatch at character", i);
-              console.log("📍 Error character:", JSON.stringify(char));
-              console.log(
-                "🔤 Context:",
-                JSON.stringify(input.substring(Math.max(0, i - 15), i + 15))
-              );
-
               return {line, column, position: i};
             }
             stack.pop();
           }
         }
       }
-    } catch (e) {
-      console.log("❌ Error during character parsing:", e);
+    } catch {
+      // ignore; fall through to other strategies
     }
 
     // Strategy 3: Look for trailing commas
-    console.log("🔄 Looking for trailing comma patterns...");
     const trailingCommaRegex = /,\s*([}\]])/g;
     let match;
     while ((match = trailingCommaRegex.exec(input)) !== null) {
@@ -369,15 +338,6 @@ export class JsonParser {
       const line = lines.length;
       const column = lines[lines.length - 1].length + 1;
 
-      console.log("🎯 Found trailing comma at position", commaPosition);
-      console.log("📍 Before closing bracket:", JSON.stringify(match[1]));
-      console.log(
-        "🔤 Context:",
-        JSON.stringify(
-          input.substring(Math.max(0, commaPosition - 20), commaPosition + 20)
-        )
-      );
-
       return {
         line,
         column,
@@ -386,7 +346,6 @@ export class JsonParser {
     }
 
     // Strategy 4: Look for specific patterns like "processingTime": 0.234\n    "checksum"
-    console.log("🔄 Looking for specific missing comma patterns...");
     const processingTimeMatch = input.match(
       /"processingTime":\s*[\d.]+\s*\n\s*"checksum"/
     );
@@ -405,15 +364,6 @@ export class JsonParser {
         const line = lines.length;
         const column = lines[lines.length - 1].length + 1;
 
-        console.log(
-          "🎯 Found missing comma after processingTime at position",
-          numberEnd
-        );
-        console.log(
-          "📄 Context:",
-          JSON.stringify(input.substring(numberEnd - 10, numberEnd + 10))
-        );
-
         return {
           line,
           column,
@@ -422,7 +372,6 @@ export class JsonParser {
       }
     }
 
-    console.log("❌ Could not determine error location");
     return null;
   }
 
@@ -493,18 +442,6 @@ export class JsonParser {
           }
 
           if (!foundClosingQuote) {
-            console.log("🎯 Found unterminated string starting at position", i);
-            console.log("📍 Line:", line, "Column:", column);
-            console.log(
-              "🔤 Context:",
-              JSON.stringify(
-                input.substring(
-                  Math.max(0, i - 10),
-                  Math.min(input.length, i + 30)
-                )
-              )
-            );
-
             return {
               line,
               column,
@@ -524,17 +461,10 @@ export class JsonParser {
         } else if (char === "}" || char === "]") {
           const expected = char === "}" ? "{" : "[";
           if (stack.length === 0) {
-            console.log("🎯 Found unexpected closing bracket", char);
             return {line, column, position: i};
           }
           const last = stack[stack.length - 1];
           if (last.char !== expected) {
-            console.log(
-              "🎯 Found bracket mismatch. Expected",
-              expected === "{" ? "}" : "]",
-              "but found",
-              char
-            );
             return {line, column, position: i};
           }
           stack.pop();
@@ -544,35 +474,11 @@ export class JsonParser {
             // Look ahead for any non-whitespace characters
             for (let j = i + 1; j < input.length; j++) {
               if (!/\s/.test(input[j])) {
-                const invalidChar = input[j];
                 const beforeError = input.substring(0, j);
                 const errorLines = beforeError.split("\n");
                 const errorLine = errorLines.length;
                 const errorColumn =
                   errorLines[errorLines.length - 1].length + 1;
-
-                console.log(
-                  "🎯 Found invalid character '",
-                  invalidChar,
-                  "' after JSON structure ended"
-                );
-                console.log(
-                  "📍 Position:",
-                  j,
-                  "Line:",
-                  errorLine,
-                  "Column:",
-                  errorColumn
-                );
-                console.log(
-                  "🔤 Context:",
-                  JSON.stringify(
-                    input.substring(
-                      Math.max(0, j - 20),
-                      Math.min(input.length, j + 20)
-                    )
-                  )
-                );
 
                 return {
                   line: errorLine,
@@ -586,17 +492,6 @@ export class JsonParser {
           // Valid JSON syntax characters
         } else if (!/\s/.test(char) && stack.length > 0) {
           // Found an invalid character inside JSON structure
-          console.log("🎯 Found invalid character '", char, "' at position", i);
-          console.log("📍 Line:", line, "Column:", column);
-          console.log(
-            "🔤 Context:",
-            JSON.stringify(
-              input.substring(
-                Math.max(0, i - 10),
-                Math.min(input.length, i + 10)
-              )
-            )
-          );
           return {
             line,
             column,
@@ -609,14 +504,6 @@ export class JsonParser {
     // Check for unclosed brackets
     if (stack.length > 0) {
       const unclosed = stack[stack.length - 1];
-      console.log(
-        "🎯 Found unclosed bracket",
-        unclosed.char,
-        "at line",
-        unclosed.line,
-        "column",
-        unclosed.column
-      );
       return {
         line: unclosed.line,
         column: unclosed.column,
@@ -626,7 +513,6 @@ export class JsonParser {
 
     // Check if we're still in a string
     if (inString) {
-      console.log("🎯 JSON ends while still inside a string");
       return {
         line,
         column,
@@ -858,6 +744,19 @@ export class JsonParser {
     };
   }
 
+  // Build a unique, stable path segment. Normal identifier keys keep dot
+  // notation (root.user.name) and array items keep bracket notation
+  // (root.items[0]) so existing output is unchanged. Keys that aren't plain
+  // identifiers (dots, spaces, quotes, unicode) are JSON-encoded in brackets
+  // (root["a.b"]) so distinct nodes can never collide on the same path.
+  private appendPath(parentPath: string, key: string): string {
+    if (/^\[\d+\]$/.test(key)) return `${parentPath}${key}`;
+    if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key)) {
+      return parentPath ? `${parentPath}.${key}` : key;
+    }
+    return `${parentPath}[${JSON.stringify(key)}]`;
+  }
+
   private processValue(
     value: JsonValue,
     key: string,
@@ -865,7 +764,7 @@ export class JsonParser {
     depth: number,
     nodes: JsonNode[]
   ): void {
-    const currentPath = path ? `${path}.${key}` : key;
+    const currentPath = this.appendPath(path, key);
     const type = this.getValueType(value);
 
     this.stats.totalNodes++;
@@ -991,13 +890,12 @@ export class JsonParser {
     node.isExpanded = false;
     result[nodeIndex] = {...node};
 
-    // Remove child nodes
+    // Remove child nodes. Children are always the contiguous run of deeper
+    // nodes immediately after this one, so match on depth (collision-proof)
+    // instead of string prefixes.
     let removeCount = 0;
     for (let i = nodeIndex + 1; i < result.length; i++) {
-      if (
-        result[i].path.startsWith(targetPath + ".") ||
-        result[i].path.startsWith(targetPath + "[")
-      ) {
+      if (result[i].depth > node.depth) {
         removeCount++;
       } else {
         break;
@@ -1050,6 +948,9 @@ export class JsonParser {
 
     const searchQuery = caseSensitive ? query : query.toLowerCase();
     const matchingPaths = new Set<string>();
+    // Ancestor containers that must be expanded to reveal a match. Filled
+    // during the walk below, so it works regardless of how paths are encoded.
+    const pathsToExpand = new Set<string>();
 
     // Search through the complete data structure to find all matches
     this.findMatchingPaths(
@@ -1058,7 +959,8 @@ export class JsonParser {
       "",
       searchQuery,
       caseSensitive,
-      matchingPaths
+      matchingPaths,
+      pathsToExpand
     );
 
     // If no matches found, return original nodes
@@ -1070,23 +972,6 @@ export class JsonParser {
       });
       return {nodes, matchIndices: []};
     }
-
-    // Find all parent paths that need to be expanded
-    const pathsToExpand = new Set<string>();
-    matchingPaths.forEach((matchPath) => {
-      let currentPath = "";
-      const pathParts = matchPath.split(".");
-      pathParts.forEach((part, index) => {
-        if (index === 0) {
-          currentPath = part;
-        } else {
-          currentPath += "." + part;
-        }
-        if (currentPath !== matchPath) {
-          pathsToExpand.add(currentPath);
-        }
-      });
-    });
 
     // Rebuild the tree with necessary nodes expanded
     const expandedNodes: JsonNode[] = [];
@@ -1117,15 +1002,18 @@ export class JsonParser {
     return {nodes: expandedNodes, matchIndices};
   }
 
+  // Returns true if this node or any descendant matched. Containers with a
+  // matching descendant are added to pathsToExpand so they get expanded.
   private findMatchingPaths(
     value: JsonValue,
     key: string,
     path: string,
     searchQuery: string,
     caseSensitive: boolean,
-    matchingPaths: Set<string>
-  ): void {
-    const currentPath = path ? `${path}.${key}` : key;
+    matchingPaths: Set<string>,
+    pathsToExpand: Set<string>
+  ): boolean {
+    const currentPath = this.appendPath(path, key);
 
     // Check if current key or value matches
     const keyMatch = caseSensitive
@@ -1137,35 +1025,53 @@ export class JsonParser {
       ? searchableValue.includes(searchQuery)
       : searchableValue.toLowerCase().includes(searchQuery);
 
-    if (keyMatch || valueMatch) {
+    const selfMatch = keyMatch || valueMatch;
+    if (selfMatch) {
       matchingPaths.add(currentPath);
     }
 
     // Recursively check children
+    let descendantMatch = false;
     if (Array.isArray(value)) {
       value.forEach((item, index) => {
-        this.findMatchingPaths(
-          item,
-          `[${index}]`,
-          currentPath,
-          searchQuery,
-          caseSensitive,
-          matchingPaths
-        );
+        if (
+          this.findMatchingPaths(
+            item,
+            `[${index}]`,
+            currentPath,
+            searchQuery,
+            caseSensitive,
+            matchingPaths,
+            pathsToExpand
+          )
+        ) {
+          descendantMatch = true;
+        }
       });
     } else if (value !== null && typeof value === "object") {
       const objectValue = value as Record<string, JsonValue>;
       Object.keys(objectValue).forEach((objKey) => {
-        this.findMatchingPaths(
-          objectValue[objKey],
-          objKey,
-          currentPath,
-          searchQuery,
-          caseSensitive,
-          matchingPaths
-        );
+        if (
+          this.findMatchingPaths(
+            objectValue[objKey],
+            objKey,
+            currentPath,
+            searchQuery,
+            caseSensitive,
+            matchingPaths,
+            pathsToExpand
+          )
+        ) {
+          descendantMatch = true;
+        }
       });
     }
+
+    if (descendantMatch) {
+      pathsToExpand.add(currentPath);
+    }
+
+    return selfMatch || descendantMatch;
   }
 
   private processValueWithSearch(
@@ -1177,7 +1083,7 @@ export class JsonParser {
     pathsToExpand: Set<string>,
     matchingPaths: Set<string>
   ): void {
-    const currentPath = path ? `${path}.${key}` : key;
+    const currentPath = this.appendPath(path, key);
     const type = this.getValueType(value);
 
     const shouldExpand =
@@ -1275,7 +1181,7 @@ export class JsonParser {
     depth: number,
     nodes: JsonNode[]
   ): void {
-    const currentPath = path ? `${path}.${key}` : key;
+    const currentPath = this.appendPath(path, key);
     const type = this.getValueType(value);
 
     const node: JsonNode = {
@@ -1327,23 +1233,17 @@ export class JsonParser {
   }
 
   collapseAllNodes(nodes: JsonNode[]): JsonNode[] {
-    const result = [...nodes];
-    const collapsibleNodes = result.filter(
-      (node) =>
-        (node.type === "object" || node.type === "array") && node.isExpanded
-    );
-
-    for (const node of collapsibleNodes) {
-      const collapsedNodes = this.collapseNode(result, node.path);
-      result.splice(0, result.length, ...collapsedNodes);
-    }
+    // Collapsing everything hides all descendants, so the result is just the
+    // root node collapsed. No need to walk/splice the whole array.
+    const rootNode = nodes.find((node) => node.key === "root");
+    if (!rootNode) return nodes;
 
     trackEvent("collapse_all_nodes", {
-      totalNodes: result.length,
-      collapsedCount: collapsibleNodes.length,
+      totalNodes: 1,
+      collapsedCount: nodes.length - 1,
     });
 
-    return result;
+    return [{...rootNode, isExpanded: false}];
   }
 }
 
