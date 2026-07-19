@@ -28,35 +28,24 @@ To enable automatic deployment, you need to add these secrets in your GitHub rep
 
 ## How It Works
 
-### 🔄 **Simple CI/CD Pipeline**
+Two workflows, by trigger:
 
-1. **Deployment** (`deploy.yml`):
-   - **Only runs on `main` branch**
-   - Builds and deploys to Netlify automatically
+1. **Release and Deploy** (`release.yml`) — runs on every push to `main`. A single job that releases _then_ deploys, in order (see below).
+2. **Pull Request Checks** (`pr-checks.yml`) — runs on PRs to `main` and executes `npm run code-quality` (formatting, linting, build).
 
-2. **Pull Request Checks** (`pr-checks.yml`):
-   - Runs on all PRs to `main` branch
-   - Executes `npm run code-quality` (formatting, linting, build)
+## Releases & Deployment
 
-### 🚀 **Deployment Process**
+On every push to `main`, `release.yml` runs one job that does everything in sequence:
 
-- **Automatic Deployment**: Every push to `main` branch triggers build and deployment
-- **Build Caching**: npm dependencies are cached for faster builds
-- **Quality Assurance**: PRs are checked for code quality before merging
-
-## Releases & Changelog
-
-Versioning and the changelog are automated with [release-please](https://github.com/googleapis/release-please-action) (`release-please.yml`), driven by our Conventional Commit messages (enforced by commitlint).
-
-### 🏷️ **Release Flow**
-
-1. Merge feature/fix PRs into `main` as usual — each merge still deploys to Netlify immediately.
-2. release-please keeps a single open **release PR** (titled `chore(main): release X.Y.Z`) that accumulates the version bump and `CHANGELOG.md` entries from the commits since the last release.
-3. When you're ready to cut a release, **merge that release PR**. release-please then:
+1. **Release** — [semantic-release](https://github.com/semantic-release/semantic-release) reads the Conventional Commits since the last release (enforced by commitlint) and, when there are releasable commits:
    - bumps the version in `package.json`,
    - updates `CHANGELOG.md`,
+   - commits those back to `main` (`chore(release): X.Y.Z [skip ci]`),
    - creates the `vX.Y.Z` git tag and a **GitHub Release** with generated notes.
-4. Merging the release PR is itself a push to `main`, so Netlify redeploys the released version.
+2. **Build** — `npm run build`. Runs _after_ the version bump, so the version baked into the bundle (shown in the footer) matches the release just cut.
+3. **Deploy** — publishes `dist/` to Netlify (production).
+
+If a push has no releasable commits (e.g. only `chore:`/`docs:`), step 1 no-ops — no new version — and the build+deploy still run with the current version.
 
 ### 📈 **Version Bumps** (from commit type)
 
@@ -66,13 +55,10 @@ Versioning and the changelog are automated with [release-please](https://github.
 
 ### ⚙️ **Notes**
 
-- No extra secrets needed — the built-in `GITHUB_TOKEN` handles the tag, release, and PR (`contents: write`, `pull-requests: write` are granted in the workflow).
-- **One-time baseline (recommended):** tag the current release so the first changelog only covers new work:
-  ```bash
-  git tag v1.0.0 origin/main
-  git push origin v1.0.0
-  ```
-- **Squash-merging?** release-please reads commits on `main`, so the **squash commit title** must be a valid Conventional Commit — otherwise that change won't be categorized in the changelog.
+- **Secrets:** `NETLIFY_AUTH_TOKEN` and `NETLIFY_SITE_ID` (above) for the deploy; the built-in `GITHUB_TOKEN` handles the tag, release, and version commit (`contents`/`issues`/`pull-requests: write` are granted in the workflow).
+- **No release loop:** the version commit is tagged `[skip ci]` and made with `GITHUB_TOKEN`, so it does not re-trigger the workflow.
+- **First run:** with no prior git tag, semantic-release publishes the initial `v1.0.0`; subsequent `feat:`/`fix:` commits bump from there.
+- **Squash-merging?** semantic-release reads commits on `main`, so the **squash commit title** must be a valid Conventional Commit — otherwise that change won't count toward the version or changelog.
 
 ## Manual Deployment
 
