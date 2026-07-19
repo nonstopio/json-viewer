@@ -356,8 +356,11 @@ export const JsonInput: React.FC<JsonInputProps> = ({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Text Input Area - Now takes most of the space */}
-      <div className="flex-1 flex flex-col">
+      {/* Text Input Area - Now takes most of the space.
+          min-h-0 lets this flex item shrink to the available height instead of
+          growing to the editor's full content height (flex default is
+          min-height:auto), which is what keeps scrolling inside the editor. */}
+      <div className="flex-1 flex flex-col min-h-0">
         <div className="flex items-center justify-between mb-2">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Paste your JSON here

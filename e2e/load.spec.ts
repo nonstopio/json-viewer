@@ -142,3 +142,38 @@ test("SEO content is crawlable and opens as an About dialog without page scroll"
   await page.keyboard.press("Escape");
   await expect(overlay).toBeHidden();
 });
+
+test("the editor scrolls internally on long input, not the page", async ({
+  page,
+}, testInfo) => {
+  const arr = Array.from({length: 600}, (_, i) => ({
+    id: i,
+    name: `Person ${i}`,
+    email: `p${i}@example.com`,
+  }));
+  const json = JSON.stringify(arr, null, 2); // thousands of lines
+  await loadViaUpload(page, json, `editor-scroll-${testInfo.workerIndex}.json`);
+
+  // Back to the editor tab.
+  await page.getByRole("button", {name: "JSON", exact: true}).click();
+  const scroller = page.locator(".cm-scroller");
+  await expect(scroller).toBeVisible();
+
+  const m = await scroller.evaluate((el) => ({
+    client: el.clientHeight,
+    scroll: el.scrollHeight,
+    winH: window.innerHeight,
+  }));
+  // Content overflows the editor (so it scrolls inside) …
+  expect(m.scroll).toBeGreaterThan(m.client + 100);
+  // … but the editor box stays within the viewport (not grown to fit content).
+  expect(m.client).toBeLessThan(m.winH);
+
+  // And the page itself does not scroll.
+  const pageScrolls = await page.evaluate(
+    () =>
+      document.documentElement.scrollHeight >
+      document.documentElement.clientHeight + 1
+  );
+  expect(pageScrolls).toBe(false);
+});
