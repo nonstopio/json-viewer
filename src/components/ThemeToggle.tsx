@@ -54,7 +54,7 @@ export const ThemeToggle: React.FC = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 text-gray-700 dark:text-gray-300"
-        title="Change theme"
+        data-tooltip="Change theme"
       >
         {getThemeIcon(theme, true)}
         <span className="text-sm font-medium hidden sm:inline">

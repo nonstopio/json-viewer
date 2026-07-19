@@ -260,7 +260,7 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({
                 <div className="flex items-start space-x-1">
                   <span
                     className="font-medium text-gray-800 dark:text-gray-200 break-all"
-                    title={row.name}
+                    data-tooltip={row.name}
                   >
                     {highlightText(row.name)}
                   </span>
@@ -273,7 +273,7 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({
                   </span>
                   <span
                     className="text-gray-600 dark:text-gray-400 break-all flex-1 font-mono"
-                    title={row.value}
+                    data-tooltip={row.value}
                   >
                     {highlightText(row.value)}
                   </span>
@@ -283,7 +283,7 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({
                   <button
                     onClick={() => copyToClipboard(row, "name")}
                     className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
-                    title="Copy name"
+                    data-tooltip="Copy name"
                   >
                     {copiedValue === row.name ? (
                       <Check size={10} className="text-green-500" />
@@ -295,7 +295,7 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({
                   <button
                     onClick={() => copyToClipboard(row, "value")}
                     className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
-                    title="Copy value"
+                    data-tooltip="Copy value"
                   >
                     {copiedValue === row.actual ? (
                       <Check size={10} className="text-green-500" />
@@ -366,7 +366,7 @@ export const JsonTableView: React.FC<JsonTableViewProps> = ({
             <button
               onClick={() => copyPathToClipboard(selectedNodePath)}
               className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors ml-2"
-              title="Copy path"
+              data-tooltip="Copy path"
             >
               {copiedValue === selectedNodePath ? (
                 <Check size={12} className="text-green-500" />

@@ -28,6 +28,7 @@ import {JsonTree} from "./components/JsonTree";
 import {ThemeToggle} from "./components/ThemeToggle";
 import {JsonTableView} from "./components/JsonTableView";
 import {ResizablePanel} from "./components/ResizablePanel";
+import {Tooltip} from "./components/Tooltip";
 import {jsonParser} from "./utils/jsonParser";
 import {JsonNode, JsonValue} from "./types/json";
 
@@ -426,6 +427,7 @@ function App() {
 
   return (
     <>
+      <Tooltip />
       {/* Fullscreen styles */}
       <style>{`
         #json-tree-fullscreen:fullscreen {
@@ -477,7 +479,6 @@ function App() {
               <button
                 onClick={handlePaste}
                 className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-                title="Paste from clipboard (or use Ctrl+V/Cmd+V in the JSON input area)"
               >
                 <Upload size={14} />
                 <span>Paste</span>
@@ -487,7 +488,6 @@ function App() {
                 onClick={handleCopy}
                 disabled={!inputText.trim()}
                 className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Copy formatted JSON"
               >
                 <Copy size={14} />
                 <span>Copy</span>
@@ -497,7 +497,6 @@ function App() {
                 onClick={handleFormat}
                 disabled={!inputText.trim()}
                 className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Format JSON"
               >
                 <Square size={14} />
                 <span>Format</span>
@@ -507,7 +506,6 @@ function App() {
                 onClick={handleRemoveWhitespace}
                 disabled={!inputText.trim()}
                 className="px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Remove whitespace"
               >
                 Remove white space
               </button>
@@ -515,7 +513,6 @@ function App() {
               <button
                 onClick={handleClear}
                 className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-                title="Clear all"
               >
                 <Trash2 size={14} />
                 <span>Clear</span>
@@ -524,7 +521,6 @@ function App() {
               <button
                 onClick={handleLoadData}
                 className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-                title="Load complex test JSON data"
               >
                 <FileText size={14} />
                 <span>Load Test JSON</span>
@@ -540,14 +536,14 @@ function App() {
               <button
                 onClick={handleExpandAll}
                 className="p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-                title="Expand all nodes - Shows all nested objects and arrays"
+                data-tooltip="Expand all nodes - Shows all nested objects and arrays"
               >
                 <UnfoldVertical size={16} />
               </button>
               <button
                 onClick={handleCollapseAll}
                 className="p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-                title="Collapse all nodes - Hides all nested objects and arrays"
+                data-tooltip="Collapse all nodes - Hides all nested objects and arrays"
               >
                 <FoldVertical size={16} />
               </button>
@@ -580,7 +576,7 @@ function App() {
                   <button
                     onClick={() => handleSearch("", caseSensitive)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                    title="Clear search"
+                    data-tooltip="Clear search"
                   >
                     <X size={16} />
                   </button>
@@ -593,7 +589,7 @@ function App() {
                     ? "bg-blue-600 text-white"
                     : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500"
                 }`}
-                title="Toggle case sensitivity - Match exact case when enabled"
+                data-tooltip="Toggle case sensitivity - Match exact case when enabled"
               >
                 Aa
               </button>
@@ -605,14 +601,14 @@ function App() {
                   <button
                     onClick={handleNavigateToPrevMatch}
                     className="p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-                    title="Previous match (Shift+Enter or Shift+F3)"
+                    data-tooltip="Previous match (Shift+Enter or Shift+F3)"
                   >
                     <ChevronUp size={16} />
                   </button>
                   <button
                     onClick={handleNavigateToNextMatch}
                     className="p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-                    title="Next match (Enter or F3)"
+                    data-tooltip="Next match (Enter or F3)"
                   >
                     <ChevronDown size={16} />
                   </button>
@@ -669,7 +665,6 @@ function App() {
                         <button
                           onClick={handleCopy}
                           className="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                          title="Copy JSON to clipboard"
                         >
                           <Copy
                             size={16}
@@ -682,7 +677,6 @@ function App() {
                         <button
                           onClick={enterFullscreen}
                           className="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                          title="View in fullscreen"
                         >
                           <Maximize
                             size={16}
@@ -768,7 +762,7 @@ function App() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                    title="GitHub"
+                    data-tooltip="GitHub"
                     aria-label="NonStop io on GitHub"
                   >
                     <Github size={16} />
@@ -778,7 +772,7 @@ function App() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                    title="LinkedIn"
+                    data-tooltip="LinkedIn"
                     aria-label="NonStop io on LinkedIn"
                   >
                     <Linkedin size={16} />
@@ -788,7 +782,7 @@ function App() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                    title="Twitter"
+                    data-tooltip="Twitter"
                     aria-label="NonStop io on Twitter"
                   >
                     <Twitter size={16} />
@@ -798,7 +792,7 @@ function App() {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                    title="Website"
+                    data-tooltip="Website"
                     aria-label="NonStop io Website"
                   >
                     <Globe size={16} />
@@ -808,10 +802,7 @@ function App() {
 
               {/* Version and Report Issues - Right */}
               <div className="flex items-center space-x-4">
-                <span
-                  className="text-xs text-gray-400 dark:text-gray-500"
-                  title="App version"
-                >
+                <span className="text-xs text-gray-400 dark:text-gray-500">
                   v{__APP_VERSION__}
                 </span>
                 {/* Opens the About dialog (the crawlable content in index.html)
@@ -820,7 +811,6 @@ function App() {
                   type="button"
                   data-about-open
                   className="flex items-center space-x-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                  title="About this tool"
                 >
                   <Info size={16} />
                   <span className="text-xs">About</span>
@@ -830,7 +820,6 @@ function App() {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center space-x-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                  title="Report Issues"
                 >
                   <Bug size={16} />
                   <span className="text-xs">Report Issues</span>
@@ -867,7 +856,7 @@ function App() {
                 <button
                   onClick={exitFullscreen}
                   className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
-                  title="Exit fullscreen (ESC)"
+                  data-tooltip="Exit fullscreen (ESC)"
                 >
                   <X size={20} className="text-gray-500 dark:text-gray-400" />
                 </button>

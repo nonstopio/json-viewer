@@ -47,4 +47,36 @@
   .expand-collapse-btn {
     @apply inline-flex items-center justify-center w-5 h-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-150 cursor-pointer select-none;
   }
+
+  .tooltip-chip {
+    @apply fixed z-[9999] pointer-events-none max-w-xs px-2.5 py-1.5 rounded-lg text-xs font-medium leading-snug shadow-lg;
+    @apply bg-gray-900 text-gray-50 dark:bg-gray-100 dark:text-gray-900;
+    white-space: normal;
+    word-break: break-word;
+    animation: tooltip-in 120ms ease-out;
+  }
+
+  .tooltip-arrow {
+    @apply absolute w-2 h-2 rotate-45 bg-gray-900 dark:bg-gray-100;
+    transform: translateX(-50%) rotate(45deg);
+  }
+
+  .tooltip-chip[data-placement="top"] .tooltip-arrow {
+    bottom: -3px;
+  }
+
+  .tooltip-chip[data-placement="bottom"] .tooltip-arrow {
+    top: -3px;
+  }
+}
+
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--tooltip-shift, 2px));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

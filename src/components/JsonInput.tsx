@@ -334,7 +334,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
             <button
               onClick={handleClear}
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              title="Clear input"
+              data-tooltip="Clear input"
             >
               <X size={16} />
             </button>
@@ -424,7 +424,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
                     onClick={handleJumpToError}
                     disabled={isJumpingToError}
                     className="ml-2 px-2 py-1 text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="Click to jump to error location"
+                    data-tooltip="Click to jump to error location"
                   >
                     {isJumpingToError ? (
                       <>

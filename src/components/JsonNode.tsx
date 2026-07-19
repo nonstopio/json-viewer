@@ -206,7 +206,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
         return (
           <span
             className={`${getTypeColor(type)} flex items-center gap-1`}
-            title={`Array with ${node.childCount} items`}
+            data-tooltip={`Array with ${node.childCount} items`}
           >
             {getTypeIcon(type)}
           </span>
@@ -215,7 +215,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
         return (
           <span
             className={`${getTypeColor(type)} flex items-center gap-1`}
-            title={`Object with ${node.childCount} properties`}
+            data-tooltip={`Object with ${node.childCount} properties`}
           >
             {getTypeIcon(type)}
           </span>
@@ -260,7 +260,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
                 : "bg-blue-500 hover:bg-blue-600 shadow-sm"
             }`}
             aria-label={node.isExpanded ? "Collapse" : "Expand"}
-            title={
+            data-tooltip={
               node.isExpanded ? `Collapse ${node.key}` : `Expand ${node.key}`
             }
           >
@@ -275,7 +275,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
       {!hasChildren && (
         <span
           className={`mr-1 ${getTypeColor(node.type)}`}
-          title={`Type: ${node.type}`}
+          data-tooltip={`Type: ${node.type}`}
         >
           {getTypeIcon(node.type)}
         </span>
@@ -298,7 +298,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
         <button
           onClick={handleCopyValue}
           className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all duration-150"
-          title="Copy value"
+          data-tooltip="Copy value"
         >
           {isValueCopied ? (
             <Check size={12} className="text-green-500" />
@@ -311,7 +311,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
         <button
           onClick={handleCopyPath}
           className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all duration-150"
-          title="Copy path"
+          data-tooltip="Copy path"
         >
           {isPathCopied ? (
             <Check size={12} className="text-green-500" />
@@ -328,7 +328,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
               setShowDetails(!showDetails);
             }}
             className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all duration-150"
-            title="Property details"
+            data-tooltip="Property details"
           >
             <Info size={12} />
           </button>
@@ -354,7 +354,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
                     <div className="flex items-center gap-1">
                       <span
                         className="text-xs text-gray-900 dark:text-gray-100 font-mono max-w-32 truncate"
-                        title={detail.value}
+                        data-tooltip={detail.value}
                       >
                         {detail.value}
                       </span>
@@ -363,7 +363,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
                           copyPropertyDetail(detail.label, detail.value)
                         }
                         className="opacity-0 group-hover/detail:opacity-100 p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all duration-150"
-                        title={`Copy ${detail.label.toLowerCase()}`}
+                        data-tooltip={`Copy ${detail.label.toLowerCase()}`}
                       >
                         <Copy size={10} />
                       </button>
