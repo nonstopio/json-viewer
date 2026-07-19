@@ -19,7 +19,11 @@ export class JsonParser {
     objectSizes: [],
   };
 
-  parseJson(input: string): ParseResult {
+  // `track` defaults to true for user-initiated parses (Parse JSON, paste).
+  // Formatting helpers (Copy/Format/Remove-whitespace) pass track: false so
+  // they don't emit json_parsed analytics or run countNodes on every click.
+  parseJson(input: string, options: {track?: boolean} = {}): ParseResult {
+    const {track = true} = options;
     if (!input.trim()) {
       return {
         success: false,
@@ -43,11 +47,13 @@ export class JsonParser {
         try {
           data = parseJson(cleanedInput) as JsonValue;
 
-          trackEvent("json_parse_error", {
-            errorType: "json_auto_fixed",
-            fileSize: input.length,
-            errorMessage: `JSON was automatically fixed. Issues: quotes, URLs, control chars`,
-          });
+          if (track) {
+            trackEvent("json_parse_error", {
+              errorType: "json_auto_fixed",
+              fileSize: input.length,
+              errorMessage: `JSON was automatically fixed. Issues: quotes, URLs, control chars`,
+            });
+          }
         } catch (secondError) {
           // Try even more aggressive fixes
           cleanedInput = this.aggressiveCleanup(cleanedInput);
@@ -55,11 +61,13 @@ export class JsonParser {
           try {
             data = parseJson(cleanedInput) as JsonValue;
 
-            trackEvent("json_parse_error", {
-              errorType: "json_aggressively_fixed",
-              fileSize: input.length,
-              errorMessage: `JSON required aggressive fixes but succeeded`,
-            });
+            if (track) {
+              trackEvent("json_parse_error", {
+                errorType: "json_aggressively_fixed",
+                fileSize: input.length,
+                errorMessage: `JSON required aggressive fixes but succeeded`,
+              });
+            }
           } catch (thirdError) {
             // Last resort: try to extract JSON from the string if it's wrapped
             const extracted = this.extractJsonFromString(input);
@@ -67,11 +75,13 @@ export class JsonParser {
               try {
                 data = parseJson(extracted) as JsonValue;
 
-                trackEvent("json_parse_error", {
-                  errorType: "json_extracted_and_fixed",
-                  fileSize: input.length,
-                  errorMessage: `JSON was extracted from string wrapper and fixed`,
-                });
+                if (track) {
+                  trackEvent("json_parse_error", {
+                    errorType: "json_extracted_and_fixed",
+                    fileSize: input.length,
+                    errorMessage: `JSON was extracted from string wrapper and fixed`,
+                  });
+                }
               } catch {
                 // If all else fails, throw the original error with better details
                 throw firstError;
@@ -84,14 +94,16 @@ export class JsonParser {
         }
       }
 
-      const parseTime = performance.now() - startTime;
+      if (track) {
+        const parseTime = performance.now() - startTime;
 
-      trackEvent("json_parsed", {
-        fileSize: input.length,
-        nodeCount: this.countNodes(data),
-        parseTime,
-        wasFixed: needsCleanup,
-      });
+        trackEvent("json_parsed", {
+          fileSize: input.length,
+          nodeCount: this.countNodes(data),
+          parseTime,
+          wasFixed: needsCleanup,
+        });
+      }
 
       return {
         success: true,
@@ -103,11 +115,13 @@ export class JsonParser {
         input
       );
 
-      trackEvent("json_parse_error", {
-        errorType: "final_parse_failure",
-        fileSize: input.length,
-        errorMessage: errorMessage.error,
-      });
+      if (track) {
+        trackEvent("json_parse_error", {
+          errorType: "final_parse_failure",
+          fileSize: input.length,
+          errorMessage: errorMessage.error,
+        });
+      }
 
       return errorMessage;
     }

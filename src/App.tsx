@@ -193,7 +193,7 @@ function App() {
 
   const handleCopy = useCallback(() => {
     if (!inputText.trim()) return;
-    const result = jsonParser.parseJson(inputText);
+    const result = jsonParser.parseJson(inputText, {track: false});
     // Copy formatted JSON when valid, otherwise copy the raw text as-is.
     const text =
       result.success && result.data !== undefined
@@ -205,7 +205,7 @@ function App() {
 
   const handleFormat = useCallback(() => {
     if (!inputText.trim()) return;
-    const result = jsonParser.parseJson(inputText);
+    const result = jsonParser.parseJson(inputText, {track: false});
     if (result.success && result.data !== undefined) {
       setInputText(JSON.stringify(result.data, null, 2));
       trackEvent('feature_used', { featureName: 'format' });
@@ -214,7 +214,7 @@ function App() {
 
   const handleRemoveWhitespace = useCallback(() => {
     if (!inputText.trim()) return;
-    const result = jsonParser.parseJson(inputText);
+    const result = jsonParser.parseJson(inputText, {track: false});
     if (result.success && result.data !== undefined) {
       setInputText(JSON.stringify(result.data));
       trackEvent('feature_used', { featureName: 'remove_whitespace' });
