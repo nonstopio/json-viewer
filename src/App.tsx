@@ -2,9 +2,10 @@ import {useState, useCallback, useEffect, useRef, lazy, Suspense} from "react";
 import {
   FileCode,
   BarChart3,
-  Upload,
+  ClipboardPaste,
   Copy,
-  Square,
+  AlignLeft,
+  Minimize2,
   Trash2,
   FileText,
   FoldVertical,
@@ -480,7 +481,7 @@ function App() {
                 onClick={handlePaste}
                 className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
               >
-                <Upload size={14} />
+                <ClipboardPaste size={14} />
                 <span>Paste</span>
               </button>
 
@@ -498,16 +499,17 @@ function App() {
                 disabled={!inputText.trim()}
                 className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Square size={14} />
+                <AlignLeft size={14} />
                 <span>Format</span>
               </button>
 
               <button
                 onClick={handleRemoveWhitespace}
                 disabled={!inputText.trim()}
-                className="px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Remove white space
+                <Minimize2 size={14} />
+                <span>Remove white space</span>
               </button>
 
               <button
