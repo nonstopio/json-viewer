@@ -830,9 +830,16 @@ export class JsonParser {
       });
     }
 
-    result.splice(nodeIndex + 1, 0, ...childNodes);
-
-    return result;
+    // Insert children WITHOUT spreading into splice's arguments: a spread call
+    // like splice(i, 0, ...childNodes) passes each child as a function argument
+    // and blows the JS arg-count limit (~130k) on large containers, throwing
+    // "Maximum call stack size exceeded" — which silently aborted re-expansion
+    // of big nodes. Array-literal spread iterates instead, so it has no limit.
+    return [
+      ...result.slice(0, nodeIndex + 1),
+      ...childNodes,
+      ...result.slice(nodeIndex + 1),
+    ];
   }
 
   collapseNode(nodes: JsonNode[], targetPath: string): JsonNode[] {
