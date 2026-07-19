@@ -204,19 +204,13 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
         return <span className={`font-mono ${getTypeColor(type)}`}>null</span>;
       case "array":
         return (
-          <span
-            className={`${getTypeColor(type)} flex items-center gap-1`}
-            data-tooltip={`Array with ${node.childCount} items`}
-          >
+          <span className={`${getTypeColor(type)} flex items-center gap-1`}>
             {getTypeIcon(type)}
           </span>
         );
       case "object":
         return (
-          <span
-            className={`${getTypeColor(type)} flex items-center gap-1`}
-            data-tooltip={`Object with ${node.childCount} properties`}
-          >
+          <span className={`${getTypeColor(type)} flex items-center gap-1`}>
             {getTypeIcon(type)}
           </span>
         );
@@ -260,9 +254,6 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
                 : "bg-blue-500 hover:bg-blue-600 shadow-sm"
             }`}
             aria-label={node.isExpanded ? "Collapse" : "Expand"}
-            data-tooltip={
-              node.isExpanded ? `Collapse ${node.key}` : `Expand ${node.key}`
-            }
           >
             {node.isExpanded ? <Minus size={8} /> : <Plus size={8} />}
           </button>
