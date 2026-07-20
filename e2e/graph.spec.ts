@@ -147,3 +147,52 @@ test("rotate layout re-lays-out without losing nodes", async ({
   await page.locator('button[aria-label="Rotate layout"]').click();
   await expect(page.locator(".react-flow__node")).toHaveCount(count);
 });
+
+// Reads the current viewport transform (translate + scale).
+function viewportTransform(page: Page): Promise<string> {
+  return page
+    .locator(".react-flow__viewport")
+    .evaluate((el) => (el as HTMLElement).style.transform);
+}
+function scaleOf(t: string): number {
+  const m = t.match(/scale\(([\d.]+)\)/);
+  return m ? parseFloat(m[1]) : 1;
+}
+
+test("edges render with a visible stroke (not near-black on dark)", async ({
+  page,
+}, testInfo) => {
+  await loadGraph(page, buildGraphJson(), `edges-${testInfo.workerIndex}.json`);
+
+  const paths = page.locator(".react-flow__edge-path");
+  await expect.poll(() => paths.count()).toBeGreaterThan(5);
+
+  // Every edge must use our explicit slate stroke, not React Flow's dark
+  // default (rgb(62,62,62)) that was invisible on the dark canvas.
+  const stroke = await paths
+    .first()
+    .evaluate((el) => getComputedStyle(el).stroke);
+  expect(["rgb(148, 163, 184)", "rgb(100, 116, 139)"]).toContain(stroke);
+});
+
+test("scroll pans the canvas, and center-first zooms to a readable level", async ({
+  page,
+}, testInfo) => {
+  await loadGraph(page, buildGraphJson(), `pan-${testInfo.workerIndex}.json`);
+
+  // The wide graph fits zoomed out.
+  const fit = await viewportTransform(page);
+  expect(scaleOf(fit)).toBeLessThan(1);
+
+  // Wheel scroll must PAN (translate moves) without changing zoom.
+  await page.locator(".react-flow__pane").hover();
+  await page.mouse.wheel(40, 200);
+  await expect.poll(() => viewportTransform(page)).not.toBe(fit);
+  expect(scaleOf(await viewportTransform(page))).toBeCloseTo(scaleOf(fit), 2);
+
+  // Center-first must zoom in to a readable scale (>= 1), not keep the fit zoom.
+  await page.locator('button[aria-label="Center first item (⇧1)"]').click();
+  await expect
+    .poll(async () => scaleOf(await viewportTransform(page)))
+    .toBeGreaterThanOrEqual(1);
+});

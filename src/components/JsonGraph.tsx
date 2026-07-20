@@ -240,14 +240,15 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
     [fitView]
   );
 
-  // Pan to a node keeping the current zoom (used by "center first item").
+  // Center a node at a readable zoom (used by "center first item"). Never
+  // below 1, so the root is legible even when the graph was fit far out.
   const panToNode = useCallback(
     (node?: GraphNode) => {
       if (!node) return;
       const w = node.width ?? 160;
       const h = node.height ?? 40;
       setCenter(node.position.x + w / 2, node.position.y + h / 2, {
-        zoom: getZoom(),
+        zoom: Math.max(getZoom(), 1),
         duration: 400,
       });
     },
@@ -397,6 +398,17 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
           proOptions={{hideAttribution: true}}
           nodesDraggable={false}
           nodesConnectable={false}
+          // The default dark-mode edge color is near-black on our canvas —
+          // give edges an explicit, visible stroke in both themes.
+          defaultEdgeOptions={{
+            style: {stroke: isDark ? "#94a3b8" : "#64748b", strokeWidth: 1.5},
+          }}
+          // Scroll pans (what users expect from "moving" the canvas); pinch or
+          // Ctrl+scroll zooms, alongside the toolbar buttons.
+          panOnScroll
+          zoomOnScroll={false}
+          selectionOnDrag={false}
+          panOnDrag
         >
           <Background />
           {showMinimap && (
