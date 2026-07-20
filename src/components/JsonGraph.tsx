@@ -197,7 +197,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [matchIndex, setMatchIndex] = useState(0);
-  const {setCenter, fitView, zoomIn, zoomOut} = useReactFlow();
+  const {setCenter, fitView, zoomIn, zoomOut, getZoom} = useReactFlow();
   const isDark = useIsDark();
 
   const {nodes, edges} = useMemo(
@@ -225,17 +225,33 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
     navigator.clipboard.writeText(path);
   }, []);
 
-  const centerOnNode = useCallback(
+  // Zoom-to-fit a single node so it's clearly visible and centered (used for
+  // search matches and external selection).
+  const focusNode = useCallback(
+    (node?: GraphNode) => {
+      if (!node) return;
+      fitView({
+        nodes: [{id: node.id}],
+        duration: 500,
+        maxZoom: 1.4,
+        minZoom: 0.5,
+      });
+    },
+    [fitView]
+  );
+
+  // Pan to a node keeping the current zoom (used by "center first item").
+  const panToNode = useCallback(
     (node?: GraphNode) => {
       if (!node) return;
       const w = node.width ?? 160;
       const h = node.height ?? 40;
       setCenter(node.position.x + w / 2, node.position.y + h / 2, {
-        zoom: 1,
+        zoom: getZoom(),
         duration: 400,
       });
     },
-    [setCenter]
+    [setCenter, getZoom]
   );
 
   // Search over currently visible nodes (title + field key/value).
@@ -256,8 +272,8 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   }, [query]);
 
   useEffect(() => {
-    if (matches.length) centerOnNode(matches[matchIndex]);
-  }, [matches, matchIndex, centerOnNode]);
+    if (matches.length) focusNode(matches[matchIndex]);
+  }, [matches, matchIndex, focusNode]);
 
   const stepMatch = useCallback(
     (dir: 1 | -1) => {
@@ -268,8 +284,8 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   );
 
   const centerFirst = useCallback(
-    () => centerOnNode(nodes.find((n) => n.data.path === "root")),
-    [nodes, centerOnNode]
+    () => panToNode(nodes.find((n) => n.data.path === "root")),
+    [nodes, panToNode]
   );
   const fit = useCallback(() => fitView({duration: 400}), [fitView]);
   const rotate = useCallback(
@@ -332,7 +348,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
       nodes
         .filter((n) => selectedNodePath.startsWith(n.data.path))
         .sort((a, b) => b.data.path.length - a.data.path.length)[0];
-    centerOnNode(match);
+    focusNode(match);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedNodePath]);
 
@@ -353,10 +369,11 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   }, [exportImage, centerFirst, fit]);
 
   const highlightPaths = useMemo(() => {
-    const s = new Set<string>();
-    if (selectedNodePath) s.add(selectedNodePath);
-    if (matches[matchIndex]) s.add(matches[matchIndex].data.path);
-    return s;
+    // While searching, the match is the only highlight so it's unambiguous;
+    // otherwise highlight the externally-selected node.
+    const cur = matches[matchIndex];
+    if (cur) return new Set([cur.data.path]);
+    return selectedNodePath ? new Set([selectedNodePath]) : new Set<string>();
   }, [selectedNodePath, matches, matchIndex]);
 
   const actions = useMemo<GraphActions>(
