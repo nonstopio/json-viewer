@@ -56,9 +56,27 @@ function estimateSize(data: GraphNodeData): {width: number; height: number} {
   return {width, height};
 }
 
+export type LayoutDirection = "LR" | "TB";
+
+// Every object/array path in the document — used by "collapse all".
+export function allContainerPaths(data: JsonValue): string[] {
+  const paths: string[] = [];
+  function walk(value: JsonValue, path: string): void {
+    if (!isContainer(value)) return;
+    paths.push(path);
+    const entries: [string, JsonValue][] = Array.isArray(value)
+      ? value.map((v, i) => [`[${i}]`, v])
+      : Object.entries(value);
+    for (const [k, child] of entries) walk(child, appendPath(path, k));
+  }
+  walk(data, "root");
+  return paths;
+}
+
 export function jsonToGraph(
   data: JsonValue,
-  collapsed: Set<string>
+  collapsed: Set<string>,
+  direction: LayoutDirection = "LR"
 ): {nodes: GraphNode[]; edges: Edge[]} {
   const nodes: GraphNode[] = [];
   const edges: Edge[] = [];
@@ -122,9 +140,9 @@ export function jsonToGraph(
 
   walk(data, "root", "root", null);
 
-  // Left-to-right layout, JSON Crack style.
+  // Layout (LR = horizontal, JSON Crack style; TB = vertical).
   const g = new dagre.graphlib.Graph();
-  g.setGraph({rankdir: "LR", nodesep: 24, ranksep: 60});
+  g.setGraph({rankdir: direction, nodesep: 24, ranksep: 60});
   g.setDefaultEdgeLabel(() => ({}));
 
   for (const n of nodes) {

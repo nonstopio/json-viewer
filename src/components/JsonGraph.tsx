@@ -11,46 +11,74 @@ import {
   ReactFlow,
   ReactFlowProvider,
   Background,
-  Controls,
   MiniMap,
   Handle,
   Position,
   useReactFlow,
+  getNodesBounds,
+  getViewportForBounds,
   type NodeProps,
   type NodeTypes,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import {ChevronDown, ChevronRight, Copy} from "lucide-react";
+import {toPng} from "html-to-image";
+import {
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  Copy,
+  Focus,
+  Maximize2,
+  Minus,
+  Plus,
+  Image as ImageIcon,
+  Search,
+  Repeat,
+  FoldVertical,
+  UnfoldVertical,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import {JsonValue} from "../types/json";
-import {jsonToGraph, type GraphNode} from "../utils/jsonToGraph";
+import {
+  jsonToGraph,
+  allContainerPaths,
+  type GraphNode,
+  type LayoutDirection,
+} from "../utils/jsonToGraph";
 
 interface GraphActions {
   onToggle: (path: string) => void;
   onCopyPath: (path: string) => void;
-  selectedPath: string;
+  highlightPaths: Set<string>;
+  direction: LayoutDirection;
 }
 const ActionsContext = createContext<GraphActions>({
   onToggle: () => {},
   onCopyPath: () => {},
-  selectedPath: "",
+  highlightPaths: new Set(),
+  direction: "LR",
 });
 
 // Tailwind drives light/dark via the html.dark class, so nodes restyle for free.
 function JsonFlowNode({data}: NodeProps<GraphNode>) {
-  const {onToggle, onCopyPath, selectedPath} = useContext(ActionsContext);
-  const isSelected = selectedPath === data.path;
+  const {onToggle, onCopyPath, highlightPaths, direction} =
+    useContext(ActionsContext);
+  const isHighlight = highlightPaths.has(data.path);
   const badge =
     data.kind === "array" ? "[ ]" : data.kind === "object" ? "{ }" : "•";
+  const targetPos = direction === "LR" ? Position.Left : Position.Top;
+  const sourcePos = direction === "LR" ? Position.Right : Position.Bottom;
 
   return (
     <div
       className={`rounded-md border shadow-sm text-xs bg-white dark:bg-gray-800 ${
-        isSelected
+        isHighlight
           ? "border-blue-500 ring-2 ring-blue-400/50"
           : "border-gray-300 dark:border-gray-600"
       }`}
     >
-      <Handle type="target" position={Position.Left} className="!bg-gray-400" />
+      <Handle type="target" position={targetPos} className="!bg-gray-400" />
       <div className="flex items-center justify-between gap-2 px-2 py-1.5 border-b border-gray-200 dark:border-gray-700">
         <span className="font-semibold text-gray-800 dark:text-gray-100 truncate">
           <span className="mr-1 text-blue-500 dark:text-blue-400">{badge}</span>
@@ -61,7 +89,7 @@ function JsonFlowNode({data}: NodeProps<GraphNode>) {
             e.stopPropagation();
             onCopyPath(data.path);
           }}
-          className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 shrink-0"
+          className="shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
           data-tooltip="Copy JSON path"
         >
           <Copy size={12} />
@@ -101,11 +129,7 @@ function JsonFlowNode({data}: NodeProps<GraphNode>) {
           <span>{data.childCount}</span>
         </button>
       )}
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="!bg-gray-400"
-      />
+      <Handle type="source" position={sourcePos} className="!bg-gray-400" />
     </div>
   );
 }
@@ -131,6 +155,34 @@ function useIsDark(): boolean {
   return dark;
 }
 
+// Shared style for every toolbar button.
+function ToolBtn({
+  label,
+  onClick,
+  active,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  active?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      data-tooltip={label}
+      aria-label={label}
+      className={`flex h-8 w-8 items-center justify-center rounded transition-colors ${
+        active
+          ? "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300"
+          : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 interface JsonGraphProps {
   data: JsonValue;
   selectedNodePath: string;
@@ -139,26 +191,26 @@ interface JsonGraphProps {
 
 function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const {setCenter, fitView} = useReactFlow();
+  const [direction, setDirection] = useState<LayoutDirection>("LR");
+  const [showMinimap, setShowMinimap] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [matchIndex, setMatchIndex] = useState(0);
+  const {setCenter, fitView, zoomIn, zoomOut} = useReactFlow();
   const isDark = useIsDark();
 
   const {nodes, edges} = useMemo(
-    () => jsonToGraph(data, collapsed),
-    [data, collapsed]
+    () => jsonToGraph(data, collapsed, direction),
+    [data, collapsed, direction]
   );
 
-  // New document → reset collapse state.
+  // New document → reset view state.
   useEffect(() => {
     setCollapsed(new Set());
+    setQuery("");
+    setSearchOpen(false);
   }, [data]);
-
-  // Fit the whole shape once nodes are laid out. The `fitView` prop fires
-  // before custom nodes are measured, so its bounding box is wrong; re-fit on
-  // the next frame when DOM sizes are known (PRD flow: open graph → see shape).
-  useEffect(() => {
-    const id = requestAnimationFrame(() => fitView({duration: 0}));
-    return () => cancelAnimationFrame(id);
-  }, [data, fitView]);
 
   const onToggle = useCallback((path: string) => {
     setCollapsed((prev) => {
@@ -173,8 +225,101 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
     navigator.clipboard.writeText(path);
   }, []);
 
-  // Center the canvas on the selected/search-matched node. Skip the initial
-  // "root" selection so the mount-time fitView shows the whole shape (PRD §4).
+  const centerOnNode = useCallback(
+    (node?: GraphNode) => {
+      if (!node) return;
+      const w = node.width ?? 160;
+      const h = node.height ?? 40;
+      setCenter(node.position.x + w / 2, node.position.y + h / 2, {
+        zoom: 1,
+        duration: 400,
+      });
+    },
+    [setCenter]
+  );
+
+  // Search over currently visible nodes (title + field key/value).
+  // ponytail: matches inside collapsed subtrees aren't found; expand-all first.
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [] as GraphNode[];
+    return nodes.filter((n) => {
+      if (n.data.title.toLowerCase().includes(q)) return true;
+      return n.data.fields.some(
+        (f) => f.k.toLowerCase().includes(q) || f.v.toLowerCase().includes(q)
+      );
+    });
+  }, [nodes, query]);
+
+  useEffect(() => {
+    setMatchIndex(0);
+  }, [query]);
+
+  useEffect(() => {
+    if (matches.length) centerOnNode(matches[matchIndex]);
+  }, [matches, matchIndex, centerOnNode]);
+
+  const stepMatch = useCallback(
+    (dir: 1 | -1) => {
+      if (!matches.length) return;
+      setMatchIndex((i) => (i + dir + matches.length) % matches.length);
+    },
+    [matches.length]
+  );
+
+  const centerFirst = useCallback(
+    () => centerOnNode(nodes.find((n) => n.data.path === "root")),
+    [nodes, centerOnNode]
+  );
+  const fit = useCallback(() => fitView({duration: 400}), [fitView]);
+  const rotate = useCallback(
+    () => setDirection((d) => (d === "LR" ? "TB" : "LR")),
+    []
+  );
+  const allCollapsed = collapsed.size > 0;
+  const toggleCollapseAll = useCallback(() => {
+    setCollapsed((prev) =>
+      prev.size > 0 ? new Set() : new Set(allContainerPaths(data))
+    );
+  }, [data]);
+
+  const exportImage = useCallback(() => {
+    if (!nodes.length) return;
+    const bounds = getNodesBounds(nodes);
+    const pad = 40;
+    const width = Math.min(bounds.width + pad * 2, 4096);
+    const height = Math.min(bounds.height + pad * 2, 4096);
+    const vp = getViewportForBounds(bounds, width, height, 0.2, 2, pad);
+    const viewport = document.querySelector<HTMLElement>(
+      ".react-flow__viewport"
+    );
+    if (!viewport) return;
+    toPng(viewport, {
+      backgroundColor: isDark ? "#111827" : "#ffffff",
+      width,
+      height,
+      style: {
+        width: `${width}px`,
+        height: `${height}px`,
+        transform: `translate(${vp.x}px, ${vp.y}px) scale(${vp.zoom})`,
+      },
+    }).then((dataUrl) => {
+      const a = document.createElement("a");
+      a.download = "json-graph.png";
+      a.href = dataUrl;
+      a.click();
+    });
+  }, [nodes, isDark]);
+
+  // Re-fit whenever the laid-out graph changes (data / direction / collapse).
+  // The `fitView` prop fires before custom nodes are measured, so re-fit on the
+  // next frame when DOM sizes are known.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => fitView({duration: 0}));
+    return () => cancelAnimationFrame(id);
+  }, [data, direction, fitView]);
+
+  // Center on an externally selected node (e.g. clicked in another view).
   const skipInitialCenter = useRef(true);
   useEffect(() => {
     if (skipInitialCenter.current) {
@@ -182,51 +327,192 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
       return;
     }
     if (!selectedNodePath) return;
-    // Scalars are inline fields, not nodes — fall back to the nearest ancestor
-    // container node so search matches on leaf values still center somewhere.
     const match =
       nodes.find((n) => n.data.path === selectedNodePath) ??
       nodes
         .filter((n) => selectedNodePath.startsWith(n.data.path))
         .sort((a, b) => b.data.path.length - a.data.path.length)[0];
-    if (match) {
-      const w = match.width ?? 160;
-      const h = match.height ?? 40;
-      setCenter(match.position.x + w / 2, match.position.y + h / 2, {
-        zoom: 1,
-        duration: 400,
-      });
-    }
-  }, [selectedNodePath, nodes, setCenter]);
+    centerOnNode(match);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedNodePath]);
+
+  // Keyboard shortcuts (Shift+1 center, Shift+2 fit, Cmd/Ctrl+S export).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        exportImage();
+      } else if (e.shiftKey && e.key === "!") {
+        centerFirst();
+      } else if (e.shiftKey && e.key === "@") {
+        fit();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [exportImage, centerFirst, fit]);
+
+  const highlightPaths = useMemo(() => {
+    const s = new Set<string>();
+    if (selectedNodePath) s.add(selectedNodePath);
+    if (matches[matchIndex]) s.add(matches[matchIndex].data.path);
+    return s;
+  }, [selectedNodePath, matches, matchIndex]);
 
   const actions = useMemo<GraphActions>(
-    () => ({onToggle, onCopyPath, selectedPath: selectedNodePath}),
-    [onToggle, onCopyPath, selectedNodePath]
+    () => ({onToggle, onCopyPath, highlightPaths, direction}),
+    [onToggle, onCopyPath, highlightPaths, direction]
   );
 
   return (
     <ActionsContext.Provider value={actions}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        colorMode={isDark ? "dark" : "light"}
-        onNodeClick={(_, node) =>
-          onSelectNode((node.data as GraphNode["data"]).path)
-        }
-        fitView
-        minZoom={0.1}
-        proOptions={{hideAttribution: true}}
-        nodesDraggable={false}
-        nodesConnectable={false}
-      >
-        <Background />
-        <Controls
-          onFitView={() => fitView({duration: 400})}
-          showInteractive={false}
-        />
-        <MiniMap pannable zoomable className="!bg-gray-100 dark:!bg-gray-700" />
-      </ReactFlow>
+      <div className="relative h-full w-full">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          colorMode={isDark ? "dark" : "light"}
+          onNodeClick={(_, node) =>
+            onSelectNode((node.data as GraphNode["data"]).path)
+          }
+          fitView
+          minZoom={0.1}
+          proOptions={{hideAttribution: true}}
+          nodesDraggable={false}
+          nodesConnectable={false}
+        >
+          <Background />
+          {showMinimap && (
+            <MiniMap
+              pannable
+              zoomable
+              className="!bg-gray-100 dark:!bg-gray-700"
+            />
+          )}
+        </ReactFlow>
+
+        {/* Floating search box (JSON Crack style) */}
+        {searchOpen && (
+          <div className="absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+            <Search size={14} className="text-gray-400" />
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  stepMatch(e.shiftKey ? -1 : 1);
+                  e.preventDefault();
+                } else if (e.key === "Escape") {
+                  setSearchOpen(false);
+                }
+              }}
+              placeholder="Search nodes…"
+              className="w-40 bg-transparent text-sm text-gray-900 outline-none dark:text-gray-100"
+            />
+            <span className="min-w-[36px] text-center text-xs text-gray-500 dark:text-gray-400">
+              {query
+                ? `${matches.length ? matchIndex + 1 : 0}/${matches.length}`
+                : ""}
+            </span>
+            <button
+              onClick={() => stepMatch(-1)}
+              className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              data-tooltip="Previous (Shift+Enter)"
+            >
+              <ChevronUp size={14} />
+            </button>
+            <button
+              onClick={() => stepMatch(1)}
+              className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              data-tooltip="Next (Enter)"
+            >
+              <ChevronDown size={14} />
+            </button>
+            <button
+              onClick={() => setSearchOpen(false)}
+              className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              data-tooltip="Close"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
+        {/* Settings popover */}
+        {showSettings && (
+          <div className="absolute bottom-16 right-4 z-10 w-44 rounded-lg border border-gray-200 bg-white p-3 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-800">
+            <label className="flex items-center justify-between gap-2 text-gray-700 dark:text-gray-300">
+              <span>Show minimap</span>
+              <input
+                type="checkbox"
+                checked={showMinimap}
+                onChange={(e) => setShowMinimap(e.target.checked)}
+              />
+            </label>
+            <label className="mt-2 flex items-center justify-between gap-2 text-gray-700 dark:text-gray-300">
+              <span>Layout</span>
+              <select
+                value={direction}
+                onChange={(e) =>
+                  setDirection(e.target.value as LayoutDirection)
+                }
+                className="rounded border border-gray-300 bg-white px-1 py-0.5 dark:border-gray-600 dark:bg-gray-700"
+              >
+                <option value="LR">Horizontal</option>
+                <option value="TB">Vertical</option>
+              </select>
+            </label>
+          </div>
+        )}
+
+        {/* Bottom toolbar */}
+        <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+          <ToolBtn label="Center first item (⇧1)" onClick={centerFirst}>
+            <Focus size={16} />
+          </ToolBtn>
+          <ToolBtn label="Fit to center (⇧2)" onClick={fit}>
+            <Maximize2 size={16} />
+          </ToolBtn>
+          <ToolBtn label="Zoom out" onClick={() => zoomOut()}>
+            <Minus size={16} />
+          </ToolBtn>
+          <ToolBtn label="Zoom in" onClick={() => zoomIn()}>
+            <Plus size={16} />
+          </ToolBtn>
+          <div className="mx-1 h-5 w-px bg-gray-200 dark:bg-gray-600" />
+          <ToolBtn label="Export as PNG (⌘S)" onClick={exportImage}>
+            <ImageIcon size={16} />
+          </ToolBtn>
+          <ToolBtn
+            label="Search"
+            active={searchOpen}
+            onClick={() => setSearchOpen((v) => !v)}
+          >
+            <Search size={16} />
+          </ToolBtn>
+          <ToolBtn label="Rotate layout" onClick={rotate}>
+            <Repeat size={16} />
+          </ToolBtn>
+          <ToolBtn
+            label={allCollapsed ? "Expand all" : "Collapse all"}
+            onClick={toggleCollapseAll}
+          >
+            {allCollapsed ? (
+              <UnfoldVertical size={16} />
+            ) : (
+              <FoldVertical size={16} />
+            )}
+          </ToolBtn>
+          <ToolBtn
+            label="Settings"
+            active={showSettings}
+            onClick={() => setShowSettings((v) => !v)}
+          >
+            <SlidersHorizontal size={16} />
+          </ToolBtn>
+        </div>
+      </div>
     </ActionsContext.Provider>
   );
 }

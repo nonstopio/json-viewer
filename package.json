@@ -20,6 +20,7 @@
     "@uiw/react-codemirror": "^4.25.11",
     "@xyflow/react": "^12.11.2",
     "dagre": "^0.8.5",
+    "html-to-image": "^1.11.13",
     "json-parse-even-better-errors": "^4.0.0",
     "lucide-react": "^0.263.1",
     "react": "^18.2.0",

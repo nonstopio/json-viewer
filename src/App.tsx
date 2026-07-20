@@ -551,28 +551,24 @@ function App() {
           </div>
         )}
 
-        {/* Search Bar - Show for viewer and graph tabs - Fixed */}
-        {(activeTab === "viewer" || activeTab === "graph") && jsonData && (
+        {/* Search Bar - Only show for viewer tab - Fixed */}
+        {activeTab === "viewer" && jsonData && (
           <div className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex-shrink-0">
             <div className="flex items-center space-x-2">
-              {activeTab === "viewer" && (
-                <>
-                  <button
-                    onClick={handleExpandAll}
-                    className="p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-                    data-tooltip="Expand all nodes - Shows all nested objects and arrays"
-                  >
-                    <UnfoldVertical size={16} />
-                  </button>
-                  <button
-                    onClick={handleCollapseAll}
-                    className="p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-                    data-tooltip="Collapse all nodes - Hides all nested objects and arrays"
-                  >
-                    <FoldVertical size={16} />
-                  </button>
-                </>
-              )}
+              <button
+                onClick={handleExpandAll}
+                className="p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                data-tooltip="Expand all nodes - Shows all nested objects and arrays"
+              >
+                <UnfoldVertical size={16} />
+              </button>
+              <button
+                onClick={handleCollapseAll}
+                className="p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                data-tooltip="Collapse all nodes - Hides all nested objects and arrays"
+              >
+                <FoldVertical size={16} />
+              </button>
               <div className="relative flex-1">
                 <input
                   type="text"
