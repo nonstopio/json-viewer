@@ -148,6 +148,27 @@ test("rotate layout re-lays-out without losing nodes", async ({
   await expect(page.locator(".react-flow__node")).toHaveCount(count);
 });
 
+test("search counts each matching field as a separate hit and highlights the text", async ({
+  page,
+}, testInfo) => {
+  // "ajay" occurs in two fields of the SAME node (firstName + email).
+  const json = JSON.stringify({
+    user: {firstName: "Ajay", lastName: "Kumar", email: "ajay.kumar@x.com"},
+  });
+  await loadGraph(page, json, `occur-${testInfo.workerIndex}.json`);
+
+  await page.locator('button[aria-label="Search"]').click();
+  await page.locator('input[placeholder^="Search nodes"]').fill("ajay");
+
+  // Two occurrences → 2 matches, not 1 (the per-node-collapse bug).
+  await expect(page.getByText(/^1\/2$/)).toBeVisible();
+
+  // Both occurrences are wrapped in <mark> for visible text highlighting.
+  const marks = page.locator(".react-flow__node mark");
+  await expect.poll(() => marks.count()).toBeGreaterThanOrEqual(2);
+  await expect(marks.first()).toHaveText(/ajay/i);
+});
+
 // Reads the current viewport transform (translate + scale).
 function viewportTransform(page: Page): Promise<string> {
   return page

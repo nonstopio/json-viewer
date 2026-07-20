@@ -47,24 +47,74 @@ import {
   type LayoutDirection,
 } from "../utils/jsonToGraph";
 
+// A search hit is one field (or the title) of one node that matches the query.
+type Hit = {id: string; path: string; field: number | "title"};
+
 interface GraphActions {
   onToggle: (path: string) => void;
   onCopyPath: (path: string) => void;
-  highlightPaths: Set<string>;
   direction: LayoutDirection;
+  query: string;
+  activeHit: Hit | null; // the currently-focused search hit
+  selectedPath: string; // externally-selected node (when not searching)
 }
 const ActionsContext = createContext<GraphActions>({
   onToggle: () => {},
   onCopyPath: () => {},
-  highlightPaths: new Set(),
   direction: "LR",
+  query: "",
+  activeHit: null,
+  selectedPath: "",
 });
 
+// Wrap every case-insensitive occurrence of `query` in `text` with a <mark>.
+// The active hit is emphasized; other occurrences get a lighter highlight.
+function Highlighted({
+  text,
+  query,
+  active,
+}: {
+  text: string;
+  query: string;
+  active: boolean;
+}) {
+  const q = query.trim();
+  if (!q) return <>{text}</>;
+  const lower = text.toLowerCase();
+  const ql = q.toLowerCase();
+  if (!lower.includes(ql)) return <>{text}</>;
+
+  const out: React.ReactNode[] = [];
+  let i = 0;
+  let idx = lower.indexOf(ql);
+  let k = 0;
+  while (idx !== -1) {
+    if (idx > i) out.push(text.slice(i, idx));
+    out.push(
+      <mark
+        key={k++}
+        className={`rounded px-0.5 ${
+          active
+            ? "bg-amber-400 text-black"
+            : "bg-amber-200/70 text-black dark:bg-amber-500/40 dark:text-amber-50"
+        }`}
+      >
+        {text.slice(idx, idx + ql.length)}
+      </mark>
+    );
+    i = idx + ql.length;
+    idx = lower.indexOf(ql, i);
+  }
+  if (i < text.length) out.push(text.slice(i));
+  return <>{out}</>;
+}
+
 // Tailwind drives light/dark via the html.dark class, so nodes restyle for free.
-function JsonFlowNode({data}: NodeProps<GraphNode>) {
-  const {onToggle, onCopyPath, highlightPaths, direction} =
+function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
+  const {onToggle, onCopyPath, direction, query, activeHit, selectedPath} =
     useContext(ActionsContext);
-  const isHighlight = highlightPaths.has(data.path);
+  const isActiveNode = activeHit?.id === id;
+  const isHighlight = isActiveNode || (!query && selectedPath === data.path);
   const badge =
     data.kind === "array" ? "[ ]" : data.kind === "object" ? "{ }" : "•";
   const targetPos = direction === "LR" ? Position.Left : Position.Top;
@@ -82,7 +132,11 @@ function JsonFlowNode({data}: NodeProps<GraphNode>) {
       <div className="flex items-center justify-between gap-2 px-2 py-1.5 border-b border-gray-200 dark:border-gray-700">
         <span className="font-semibold text-gray-800 dark:text-gray-100 truncate">
           <span className="mr-1 text-blue-500 dark:text-blue-400">{badge}</span>
-          {data.title}
+          <Highlighted
+            text={data.title}
+            query={query}
+            active={isActiveNode && activeHit?.field === "title"}
+          />
         </span>
         <button
           onClick={(e) => {
@@ -98,18 +152,31 @@ function JsonFlowNode({data}: NodeProps<GraphNode>) {
 
       {data.fields.length > 0 && (
         <div className="px-2 py-1 space-y-0.5">
-          {data.fields.map((f, i) => (
-            <div key={i} className="truncate text-gray-700 dark:text-gray-300">
-              {f.k && (
-                <span className="text-purple-600 dark:text-purple-400">
-                  {f.k}:{" "}
+          {data.fields.map((f, i) => {
+            const activeField = isActiveNode && activeHit?.field === i;
+            return (
+              <div
+                key={i}
+                className={`truncate text-gray-700 dark:text-gray-300 ${
+                  activeField ? "rounded bg-blue-500/10" : ""
+                }`}
+              >
+                {f.k && (
+                  <span className="text-purple-600 dark:text-purple-400">
+                    <Highlighted
+                      text={f.k}
+                      query={query}
+                      active={activeField}
+                    />
+                    {": "}
+                  </span>
+                )}
+                <span className="text-emerald-700 dark:text-emerald-400">
+                  <Highlighted text={f.v} query={query} active={activeField} />
                 </span>
-              )}
-              <span className="text-emerald-700 dark:text-emerald-400">
-                {f.v}
-              </span>
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -255,17 +322,22 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
     [setCenter, getZoom]
   );
 
-  // Search over currently visible nodes (title + field key/value).
+  // Search over visible nodes, one hit per matching field (or title) — so two
+  // fields matching in the same node count as two matches, not one.
   // ponytail: matches inside collapsed subtrees aren't found; expand-all first.
-  const matches = useMemo(() => {
+  const matches = useMemo<Hit[]>(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return [] as GraphNode[];
-    return nodes.filter((n) => {
-      if (n.data.title.toLowerCase().includes(q)) return true;
-      return n.data.fields.some(
-        (f) => f.k.toLowerCase().includes(q) || f.v.toLowerCase().includes(q)
-      );
-    });
+    if (!q) return [];
+    const hits: Hit[] = [];
+    for (const n of nodes) {
+      if (n.data.title.toLowerCase().includes(q))
+        hits.push({id: n.id, path: n.data.path, field: "title"});
+      n.data.fields.forEach((f, i) => {
+        if (f.k.toLowerCase().includes(q) || f.v.toLowerCase().includes(q))
+          hits.push({id: n.id, path: n.data.path, field: i});
+      });
+    }
+    return hits;
   }, [nodes, query]);
 
   useEffect(() => {
@@ -273,8 +345,9 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   }, [query]);
 
   useEffect(() => {
-    if (matches.length) focusNode(matches[matchIndex]);
-  }, [matches, matchIndex, focusNode]);
+    const hit = matches[matchIndex];
+    if (hit) focusNode(nodes.find((n) => n.id === hit.id));
+  }, [matches, matchIndex, nodes, focusNode]);
 
   const stepMatch = useCallback(
     (dir: 1 | -1) => {
@@ -369,17 +442,17 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [exportImage, centerFirst, fit]);
 
-  const highlightPaths = useMemo(() => {
-    // While searching, the match is the only highlight so it's unambiguous;
-    // otherwise highlight the externally-selected node.
-    const cur = matches[matchIndex];
-    if (cur) return new Set([cur.data.path]);
-    return selectedNodePath ? new Set([selectedNodePath]) : new Set<string>();
-  }, [selectedNodePath, matches, matchIndex]);
-
+  const activeHit = matches[matchIndex] ?? null;
   const actions = useMemo<GraphActions>(
-    () => ({onToggle, onCopyPath, highlightPaths, direction}),
-    [onToggle, onCopyPath, highlightPaths, direction]
+    () => ({
+      onToggle,
+      onCopyPath,
+      direction,
+      query: query.trim(),
+      activeHit,
+      selectedPath: selectedNodePath,
+    }),
+    [onToggle, onCopyPath, direction, query, activeHit, selectedNodePath]
   );
 
   return (
