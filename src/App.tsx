@@ -25,6 +25,11 @@ import {
 const JsonInput = lazy(() =>
   import("./components/JsonInput").then((m) => ({default: m.JsonInput}))
 );
+// Lazy-loaded so the React Flow / dagre bundle stays off the initial load and
+// the Tree experience isn't slowed down (PRD §6).
+const JsonGraph = lazy(() =>
+  import("./components/JsonGraph").then((m) => ({default: m.JsonGraph}))
+);
 import {JsonTree} from "./components/JsonTree";
 import {ThemeToggle} from "./components/ThemeToggle";
 import {JsonTableView} from "./components/JsonTableView";
@@ -47,7 +52,9 @@ function App() {
   const [caseSensitive, setCaseSensitive] = useState(false);
   const [searchMatchIndices, setSearchMatchIndices] = useState<number[]>([]);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<"viewer" | "text">("text");
+  const [activeTab, setActiveTab] = useState<"viewer" | "text" | "graph">(
+    "text"
+  );
   const [inputText, setInputText] = useState<string>("");
   const [lastParsedInput, setLastParsedInput] = useState<string>("");
   const [selectedNodePath, setSelectedNodePath] = useState<string>("");
@@ -255,54 +262,57 @@ function App() {
     }
   }, [inputText]);
 
-  const handleViewerTabClick = useCallback(async () => {
-    // Check if there's unparsed text or text that has changed since last parse
-    const currentInputText = inputText.trim();
+  const handleParsedTabClick = useCallback(
+    async (targetTab: "viewer" | "graph") => {
+      // Check if there's unparsed text or text that has changed since last parse
+      const currentInputText = inputText.trim();
 
-    if (currentInputText && currentInputText !== lastParsedInput) {
-      // Auto-parse the text when switching to viewer tab if:
-      // 1. There's input text AND it's different from what was last successfully parsed
-      setIsLoading(true);
-      setError("");
-      setErrorDetails(undefined);
-
-      try {
-        const result = jsonParser.parseJson(currentInputText);
-
-        if (result.success && result.data !== undefined) {
-          setJsonData(result.data);
-          setWasModified(!!result.wasModified);
-          const newNodes = jsonParser.convertToNodes(result.data);
-          setNodes(newNodes);
-          setFilteredNodes(newNodes);
-          setOriginalNodes(newNodes);
-          setLastParsedInput(currentInputText);
-          setSelectedNodePath("root");
-          setActiveTab("viewer");
-        } else {
-          // If parsing fails, show error and redirect back to JSON tab
-          setError(result.error || "Failed to parse JSON");
-          setErrorDetails(result.errorDetails);
-          setJsonData(null);
-          setWasModified(false);
-          setNodes([]);
-          setFilteredNodes([]);
-          setOriginalNodes([]);
-          setActiveTab("text"); // Redirect back to JSON tab on error
-        }
-      } catch {
-        // If unexpected error occurs, show error and redirect back to JSON tab
-        setError("Unexpected error occurred while parsing JSON");
+      if (currentInputText && currentInputText !== lastParsedInput) {
+        // Auto-parse the text when switching to viewer tab if:
+        // 1. There's input text AND it's different from what was last successfully parsed
+        setIsLoading(true);
+        setError("");
         setErrorDetails(undefined);
-        setActiveTab("text"); // Redirect back to JSON tab on error
-      } finally {
-        setIsLoading(false);
+
+        try {
+          const result = jsonParser.parseJson(currentInputText);
+
+          if (result.success && result.data !== undefined) {
+            setJsonData(result.data);
+            setWasModified(!!result.wasModified);
+            const newNodes = jsonParser.convertToNodes(result.data);
+            setNodes(newNodes);
+            setFilteredNodes(newNodes);
+            setOriginalNodes(newNodes);
+            setLastParsedInput(currentInputText);
+            setSelectedNodePath("root");
+            setActiveTab(targetTab);
+          } else {
+            // If parsing fails, show error and redirect back to JSON tab
+            setError(result.error || "Failed to parse JSON");
+            setErrorDetails(result.errorDetails);
+            setJsonData(null);
+            setWasModified(false);
+            setNodes([]);
+            setFilteredNodes([]);
+            setOriginalNodes([]);
+            setActiveTab("text"); // Redirect back to JSON tab on error
+          }
+        } catch {
+          // If unexpected error occurs, show error and redirect back to JSON tab
+          setError("Unexpected error occurred while parsing JSON");
+          setErrorDetails(undefined);
+          setActiveTab("text"); // Redirect back to JSON tab on error
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        // Input unchanged since last parse (or empty) — just switch tabs.
+        setActiveTab(targetTab);
       }
-    } else {
-      // Just switch to viewer tab if input is the same as last parsed or no input text
-      setActiveTab("viewer");
-    }
-  }, [inputText, lastParsedInput]);
+    },
+    [inputText, lastParsedInput]
+  );
 
   const handleClear = useCallback(() => {
     setJsonData(null);
@@ -457,7 +467,7 @@ function App() {
                 JSON
               </button>
               <button
-                onClick={handleViewerTabClick}
+                onClick={() => handleParsedTabClick("viewer")}
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === "viewer"
                     ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-gray-50 dark:bg-gray-700"
@@ -465,6 +475,16 @@ function App() {
                 }`}
               >
                 Viewer
+              </button>
+              <button
+                onClick={() => handleParsedTabClick("graph")}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === "graph"
+                    ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-gray-50 dark:bg-gray-700"
+                    : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+                }`}
+              >
+                Graph
               </button>
             </div>
             <div className="ml-auto pr-4">
@@ -531,24 +551,28 @@ function App() {
           </div>
         )}
 
-        {/* Search Bar - Only show for viewer tab - Fixed */}
-        {activeTab === "viewer" && jsonData && (
+        {/* Search Bar - Show for viewer and graph tabs - Fixed */}
+        {(activeTab === "viewer" || activeTab === "graph") && jsonData && (
           <div className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex-shrink-0">
             <div className="flex items-center space-x-2">
-              <button
-                onClick={handleExpandAll}
-                className="p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-                data-tooltip="Expand all nodes - Shows all nested objects and arrays"
-              >
-                <UnfoldVertical size={16} />
-              </button>
-              <button
-                onClick={handleCollapseAll}
-                className="p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-                data-tooltip="Collapse all nodes - Hides all nested objects and arrays"
-              >
-                <FoldVertical size={16} />
-              </button>
+              {activeTab === "viewer" && (
+                <>
+                  <button
+                    onClick={handleExpandAll}
+                    className="p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                    data-tooltip="Expand all nodes - Shows all nested objects and arrays"
+                  >
+                    <UnfoldVertical size={16} />
+                  </button>
+                  <button
+                    onClick={handleCollapseAll}
+                    className="p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                    data-tooltip="Collapse all nodes - Hides all nested objects and arrays"
+                  >
+                    <FoldVertical size={16} />
+                  </button>
+                </>
+              )}
               <div className="relative flex-1">
                 <input
                   type="text"
@@ -738,6 +762,37 @@ function App() {
                 )}
               </div>
             </ResizablePanel>
+          )}
+
+          {/* Graph Tab Content */}
+          {activeTab === "graph" && (
+            <div className="w-full h-full bg-white dark:bg-gray-900 min-w-0 overflow-hidden">
+              {jsonData ? (
+                <Suspense
+                  fallback={
+                    <div className="flex h-full items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+                      Loading graph…
+                    </div>
+                  }
+                >
+                  <JsonGraph
+                    data={jsonData}
+                    selectedNodePath={selectedNodePath}
+                    onSelectNode={handleSelectNode}
+                  />
+                </Suspense>
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <div className="text-center text-gray-500 dark:text-gray-400">
+                    <FileCode className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                    <p className="text-lg mb-2">No JSON data loaded</p>
+                    <p className="text-sm">
+                      Use the JSON tab or toolbar buttons to load JSON
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
