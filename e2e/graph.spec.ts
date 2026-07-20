@@ -148,6 +148,49 @@ test("rotate layout re-lays-out without losing nodes", async ({
   await expect(page.locator(".react-flow__node")).toHaveCount(count);
 });
 
+test("a multi-MB document renders a bounded, interactive graph (no freeze)", async ({
+  page,
+}, testInfo) => {
+  // A few-MB array — tens of thousands of objects. Uncapped this froze the tab.
+  const items: unknown[] = [];
+  let size = 2;
+  let i = 0;
+  while (size < 3_000_000) {
+    const obj = {id: i, name: `Person ${i}`, email: `p${i}@example.com`};
+    items.push(obj);
+    size += JSON.stringify(obj).length + 1;
+    i++;
+  }
+  const json = JSON.stringify(items);
+
+  const started = Date.now();
+  await loadGraph(page, json, `big-${testInfo.workerIndex}.json`);
+  const renderMs = Date.now() - started;
+
+  // The graph is capped, not exploded into tens of thousands of DOM nodes.
+  expect(await page.locator(".react-flow__node").count()).toBeLessThanOrEqual(
+    800
+  );
+  // And it rendered quickly rather than hanging.
+  expect(renderMs).toBeLessThan(15_000);
+
+  // The user is warned that the view is truncated.
+  await expect(page.getByText(/showing .*of .*nodes/i)).toBeVisible();
+
+  // Still interactive: zooming in responds.
+  const before = await page
+    .locator(".react-flow__viewport")
+    .evaluate((el) => (el as HTMLElement).style.transform);
+  await page.locator('button[aria-label="Zoom in"]').click();
+  await expect
+    .poll(() =>
+      page
+        .locator(".react-flow__viewport")
+        .evaluate((el) => (el as HTMLElement).style.transform)
+    )
+    .not.toBe(before);
+});
+
 test("search counts each matching field as a separate hit and highlights the text", async ({
   page,
 }, testInfo) => {

@@ -73,14 +73,34 @@ export function allContainerPaths(data: JsonValue): string[] {
   return paths;
 }
 
+// Cheap count of object/array nodes without allocating the path list.
+export function countContainers(data: JsonValue): number {
+  let n = 0;
+  function walk(value: JsonValue): void {
+    if (!isContainer(value)) return;
+    n++;
+    const children = Array.isArray(value) ? value : Object.values(value);
+    for (const c of children) walk(c);
+  }
+  walk(data);
+  return n;
+}
+
+// React Flow + dagre stay smooth into the low thousands of nodes but freeze on
+// tens of thousands. Cap what we build so a multi-MB document degrades to a
+// bounded, interactive graph instead of hanging the tab (PRD §9).
+export const MAX_GRAPH_NODES = 800;
+
 export function jsonToGraph(
   data: JsonValue,
   collapsed: Set<string>,
-  direction: LayoutDirection = "LR"
-): {nodes: GraphNode[]; edges: Edge[]} {
+  direction: LayoutDirection = "LR",
+  maxNodes: number = MAX_GRAPH_NODES
+): {nodes: GraphNode[]; edges: Edge[]; truncated: boolean} {
   const nodes: GraphNode[] = [];
   const edges: Edge[] = [];
   let counter = 0;
+  let truncated = false;
 
   function walk(
     value: JsonValue,
@@ -88,6 +108,11 @@ export function jsonToGraph(
     path: string,
     parentId: string | null
   ): void {
+    // DFS budget guard: once we hit the cap, stop creating nodes entirely.
+    if (nodes.length >= maxNodes) {
+      truncated = true;
+      return;
+    }
     const id = `n${counter++}`;
 
     if (isContainer(value)) {
@@ -161,5 +186,5 @@ export function jsonToGraph(
     n.height = height;
   }
 
-  return {nodes, edges};
+  return {nodes, edges, truncated};
 }

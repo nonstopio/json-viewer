@@ -37,12 +37,14 @@ import {
   FoldVertical,
   UnfoldVertical,
   SlidersHorizontal,
+  AlertTriangle,
   X,
 } from "lucide-react";
 import {JsonValue} from "../types/json";
 import {
   jsonToGraph,
   allContainerPaths,
+  countContainers,
   type GraphNode,
   type LayoutDirection,
 } from "../utils/jsonToGraph";
@@ -267,9 +269,14 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   const {setCenter, fitView, zoomIn, zoomOut, getZoom} = useReactFlow();
   const isDark = useIsDark();
 
-  const {nodes, edges} = useMemo(
+  const {nodes, edges, truncated} = useMemo(
     () => jsonToGraph(data, collapsed, direction),
     [data, collapsed, direction]
+  );
+  // Total node count is only needed for the "showing N of M" warning.
+  const totalNodes = useMemo(
+    () => (truncated ? countContainers(data) : nodes.length),
+    [truncated, data, nodes.length]
   );
 
   // New document → reset view state.
@@ -458,6 +465,16 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   return (
     <ActionsContext.Provider value={actions}>
       <div className="relative h-full w-full">
+        {truncated && (
+          <div className="absolute left-1/2 top-3 z-10 flex -translate-x-1/2 items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs text-amber-800 shadow dark:border-amber-500/40 dark:bg-amber-900/40 dark:text-amber-200">
+            <AlertTriangle size={14} className="shrink-0" />
+            <span>
+              Large document — showing {nodes.length.toLocaleString()} of{" "}
+              {totalNodes.toLocaleString()} nodes. Collapse branches to explore,
+              or use the Tree view for full detail.
+            </span>
+          </div>
+        )}
         <ReactFlow
           nodes={nodes}
           edges={edges}
