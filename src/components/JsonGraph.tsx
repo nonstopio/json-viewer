@@ -16,7 +16,6 @@ import {
   Position,
   useReactFlow,
   getNodesBounds,
-  getViewportForBounds,
   type NodeProps,
   type NodeTypes,
 } from "@xyflow/react";
@@ -385,27 +384,46 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
 
   const exportImage = useCallback(() => {
     if (!nodes.length) return;
-    const bounds = getNodesBounds(nodes);
-    const pad = 40;
-    const width = Math.min(bounds.width + pad * 2, 4096);
-    const height = Math.min(bounds.height + pad * 2, 4096);
-    const vp = getViewportForBounds(bounds, width, height, 0.2, 2, pad);
     const viewport = document.querySelector<HTMLElement>(
       ".react-flow__viewport"
     );
     if (!viewport) return;
+
+    // Frame the graph tightly at native scale (1) so nothing is shrunk, then
+    // supersample via pixelRatio for crisp text — capped so huge graphs don't
+    // blow past canvas limits.
+    const bounds = getNodesBounds(nodes);
+    const margin = 40;
+    const width = Math.ceil(bounds.width + margin * 2);
+    const height = Math.ceil(bounds.height + margin * 2);
+    const MAX_SIDE = 8000;
+    const pixelRatio = Math.min(2, MAX_SIDE / Math.max(width, height));
+
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const d = new Date();
+    const filename = `json-by-nonstopio-${pad(d.getDate())}-${pad(
+      d.getMonth() + 1
+    )}-${d.getFullYear()}-${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(
+      d.getSeconds()
+    )}.png`;
+
     toPng(viewport, {
       backgroundColor: isDark ? "#111827" : "#ffffff",
       width,
       height,
+      pixelRatio,
+      // Don't try to inline the cross-origin Google Fonts stylesheet — it's
+      // unreadable (SecurityError) and unneeded; fall back to system fonts.
+      skipFonts: true,
       style: {
         width: `${width}px`,
         height: `${height}px`,
-        transform: `translate(${vp.x}px, ${vp.y}px) scale(${vp.zoom})`,
+        transform: `translate(${margin - bounds.x}px, ${margin - bounds.y}px) scale(1)`,
+        transformOrigin: "top left",
       },
     }).then((dataUrl) => {
       const a = document.createElement("a");
-      a.download = "json-graph.png";
+      a.download = filename;
       a.href = dataUrl;
       a.click();
     });
