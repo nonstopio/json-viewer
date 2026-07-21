@@ -1,3 +1,19 @@
+# [1.3.0](https://github.com/nonstopio/json-viewer/compare/v1.2.0...v1.3.0) (2026-07-21)
+
+
+### Bug Fixes
+
+* cap graph nodes so large documents don't freeze the tab ([9714a8f](https://github.com/nonstopio/json-viewer/commit/9714a8f109e716b644f33e1ca76e3d414b74a718))
+* count each search occurrence and highlight matched text ([588c72d](https://github.com/nonstopio/json-viewer/commit/588c72d17b3cb0923f4bfd56c409211e59e01eb7))
+* make graph edges visible and fix pan/zoom UX ([b958bce](https://github.com/nonstopio/json-viewer/commit/b958bcebd6b6d377db391b676d60c4a96854f5bc))
+* zoom-to-fit matched node on graph search ([48f2c05](https://github.com/nonstopio/json-viewer/commit/48f2c0530a1434ae3883c589f5ef9bea12877ed6))
+
+
+### Features
+
+* add interactive graph view ([2dd547d](https://github.com/nonstopio/json-viewer/commit/2dd547db78711686535321725751a1a2c7819b53))
+* add JSON Crack-style graph toolbar ([5a7b760](https://github.com/nonstopio/json-viewer/commit/5a7b760e0590e6c1d1a4ed266fe4874202857867))
+
 # [1.2.0](https://github.com/nonstopio/json-viewer/compare/v1.1.0...v1.2.0) (2026-07-19)
 
 
