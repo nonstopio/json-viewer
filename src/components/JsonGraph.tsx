@@ -266,6 +266,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [matchIndex, setMatchIndex] = useState(0);
+  const [noticeDismissed, setNoticeDismissed] = useState(false);
   const {setCenter, fitView, zoomIn, zoomOut, getZoom} = useReactFlow();
   const isDark = useIsDark();
 
@@ -279,9 +280,11 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
     [truncated, data, nodes.length]
   );
 
-  // New document → reset view state.
+  // New document → reset view state (including the dismissed notice, so a
+  // freshly loaded large document warns again).
   useEffect(() => {
     setCollapsed(new Set());
+    setNoticeDismissed(false);
     setQuery("");
     setSearchOpen(false);
   }, [data]);
@@ -465,14 +468,39 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   return (
     <ActionsContext.Provider value={actions}>
       <div className="relative h-full w-full">
-        {truncated && (
-          <div className="absolute left-1/2 top-3 z-10 flex -translate-x-1/2 items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs text-amber-800 shadow dark:border-amber-500/40 dark:bg-amber-900/40 dark:text-amber-200">
-            <AlertTriangle size={14} className="shrink-0" />
-            <span>
-              Large document — showing {nodes.length.toLocaleString()} of{" "}
-              {totalNodes.toLocaleString()} nodes. Collapse branches to explore,
-              or use the Tree view for full detail.
-            </span>
+        {truncated && !noticeDismissed && (
+          <div className="absolute right-3 top-3 z-20 w-80 max-w-[calc(100%-1.5rem)] rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 shadow-lg dark:border-amber-500/40 dark:bg-amber-900/50 dark:text-amber-100">
+            <div className="flex items-start gap-2">
+              <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+              <div className="flex-1">
+                <p className="font-semibold">
+                  Large documents aren’t supported yet
+                </p>
+                <p className="mt-1 leading-relaxed">
+                  The Visualizer is showing the first{" "}
+                  {nodes.length.toLocaleString()} of{" "}
+                  {totalNodes.toLocaleString()} nodes to stay responsive. Need
+                  larger documents rendered in full?{" "}
+                  <a
+                    href="https://github.com/nonstopio/json-viewer/issues/new?title=Support%20large%20documents%20in%20the%20Visualizer&labels=enhancement"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium underline underline-offset-2 hover:no-underline"
+                  >
+                    Report the issue
+                  </a>{" "}
+                  and we’ll build it based on demand.
+                </p>
+              </div>
+              <button
+                onClick={() => setNoticeDismissed(true)}
+                aria-label="Dismiss"
+                data-tooltip="Dismiss"
+                className="shrink-0 rounded p-0.5 text-amber-700 hover:bg-amber-200/60 dark:text-amber-200 dark:hover:bg-amber-800/60"
+              >
+                <X size={14} />
+              </button>
+            </div>
           </div>
         )}
         <ReactFlow

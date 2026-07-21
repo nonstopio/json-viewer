@@ -26,16 +26,17 @@ A modern, intuitive JSON viewer that transforms complex JSON data into a visuall
 ## ✨ **Features**
 
 ### 🔧 **Core Functionality**
-| Feature                       | Description                                              |
-|-------------------------------|----------------------------------------------------------|
-| 🧠 **Smart JSON Parsing**     | Real-time syntax validation with clear error messages    |
-| 🌳 **Interactive Tree View**  | Collapsible/expandable nodes with smooth animations      |
-| 📥 **Multiple Input Methods** | Paste, upload, or drag & drop JSON files                 |
-| 🔍 **Advanced Search**        | Global search with real-time highlighting and navigation |
-| 🎨 **Theme Support**          | Dark/light/system theme with automatic detection         |
-| 📋 **Copy Functionality**     | Copy values and JSON paths with one click                |
-| 🖥️ **Fullscreen Mode**       | Native browser fullscreen for immersive JSON viewing     |
 
+| Feature                       | Description                                                                                                |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| 🧠 **Smart JSON Parsing**     | Real-time syntax validation with clear error messages                                                      |
+| 🌳 **Interactive Tree View**  | Collapsible/expandable nodes with smooth animations                                                        |
+| 🕸️ **Graph Visualizer**       | See JSON as an interactive node graph — pan, zoom, fit, rotate layout, collapse, search, and export as PNG |
+| 📥 **Multiple Input Methods** | Paste, upload, or drag & drop JSON files                                                                   |
+| 🔍 **Advanced Search**        | Global search with real-time highlighting and navigation                                                   |
+| 🎨 **Theme Support**          | Dark/light/system theme with automatic detection                                                           |
+| 📋 **Copy Functionality**     | Copy values and JSON paths with one click                                                                  |
+| 🖥️ **Fullscreen Mode**        | Native browser fullscreen for immersive JSON viewing                                                       |
 
 ## 📸 **Screenshots**
 
@@ -54,7 +55,8 @@ A modern, intuitive JSON viewer that transforms complex JSON data into a visuall
 ## 🚀 **Getting Started**
 
 ### 📋 **Prerequisites**
-- 📦 Node.js 16+ 
+
+- 📦 Node.js 16+
 - 🔧 npm or yarn
 
 ### ⚡ **Quick Start**
@@ -82,41 +84,44 @@ npm run preview
 ```
 
 ### 🌐 **Live at**
+
 Visit our hosted version at **[json.nonstopio.com](https://json.nonstopio.com)** to try it out instantly!
 
 ## 📖 **How to Use**
 
 <div align="center">
 
-| Step | Action | Description |
-|------|--------|-------------|
-| 1️⃣ | **Input JSON** | Paste JSON directly, upload a .json file, or drag & drop |
-| 2️⃣ | **Explore** | Click to expand/collapse nodes, use search to find specific keys/values |
-| 3️⃣ | **Fullscreen** | Click the maximize button for immersive viewing experience |
-| 4️⃣ | **Copy** | Hover over nodes to copy values or JSON paths |
-| 5️⃣ | **Customize** | Toggle between light/dark themes or use system preference |
+| Step | Action         | Description                                                             |
+| ---- | -------------- | ----------------------------------------------------------------------- |
+| 1️⃣   | **Input JSON** | Paste JSON directly, upload a .json file, or drag & drop                |
+| 2️⃣   | **Explore**    | Click to expand/collapse nodes, use search to find specific keys/values |
+| 3️⃣   | **Visualize**  | Open the Visualizer tab to see JSON as an interactive node graph        |
+| 4️⃣   | **Fullscreen** | Click the maximize button for immersive viewing experience              |
+| 5️⃣   | **Copy**       | Hover over nodes to copy values or JSON paths                           |
+| 6️⃣   | **Customize**  | Toggle between light/dark themes or use system preference               |
 
 </div>
 
 ### ⌨️ **Keyboard Shortcuts**
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+Enter` / `Cmd+Enter` | Parse JSON |
-| `Ctrl+F` / `Cmd+F` | Open search |
-| `Enter` | Next search result |
-| `Shift+Enter` | Previous search result |
-| `Escape` | Clear search / Exit fullscreen |
+
+| Shortcut                   | Action                         |
+| -------------------------- | ------------------------------ |
+| `Ctrl+Enter` / `Cmd+Enter` | Parse JSON                     |
+| `Ctrl+F` / `Cmd+F`         | Open search                    |
+| `Enter`                    | Next search result             |
+| `Shift+Enter`              | Previous search result         |
+| `Escape`                   | Clear search / Exit fullscreen |
 
 ## 🛠️ **Technology Stack**
 
 <div align="center">
 
-| Category | Technology |
-|----------|------------|
-| 🎨 **Frontend** | React 18 + TypeScript |
-| 💄 **Styling** | Tailwind CSS with custom components |
-| 🎭 **Icons** | Lucide React |
-| ⚡ **Build Tool** | Vite |
+| Category          | Technology                                                 |
+| ----------------- | ---------------------------------------------------------- |
+| 🎨 **Frontend**   | React 18 + TypeScript                                      |
+| 💄 **Styling**    | Tailwind CSS with custom components                        |
+| 🎭 **Icons**      | Lucide React                                               |
+| ⚡ **Build Tool** | Vite                                                       |
 | 🚀 **Deployment** | Hosted at [json.nonstopio.com](https://json.nonstopio.com) |
 
 </div>
@@ -126,7 +131,7 @@ Visit our hosted version at **[json.nonstopio.com](https://json.nonstopio.com)**
 ```
 📦 src/
 ├── 🧩 components/          # React components
-├── 🪝 hooks/              # Custom React hooks  
+├── 🪝 hooks/              # Custom React hooks
 ├── 📝 types/              # TypeScript type definitions
 ├── 🔧 utils/              # Utility functions and services
 └── 🎯 App.tsx             # Main application component
@@ -136,13 +141,13 @@ Visit our hosted version at **[json.nonstopio.com](https://json.nonstopio.com)**
 
 We welcome contributions! Here's how to get started:
 
-| Step | Command | Description |
-|------|---------|-------------|
-| 1️⃣ | `Fork` | Fork the repository on GitHub |
-| 2️⃣ | `git checkout -b feature/amazing-feature` | Create a feature branch |
-| 3️⃣ | `git commit -m 'Add amazing feature'` | Commit your changes |
-| 4️⃣ | `git push origin feature/amazing-feature` | Push to the branch |
-| 5️⃣ | `Open PR` | Open a Pull Request |
+| Step | Command                                   | Description                   |
+| ---- | ----------------------------------------- | ----------------------------- |
+| 1️⃣   | `Fork`                                    | Fork the repository on GitHub |
+| 2️⃣   | `git checkout -b feature/amazing-feature` | Create a feature branch       |
+| 3️⃣   | `git commit -m 'Add amazing feature'`     | Commit your changes           |
+| 4️⃣   | `git push origin feature/amazing-feature` | Push to the branch            |
+| 5️⃣   | `Open PR`                                 | Open a Pull Request           |
 
 ---
 

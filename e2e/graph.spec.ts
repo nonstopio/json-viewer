@@ -27,7 +27,7 @@ async function loadGraph(page: Page, json: string, name: string) {
   writeFileSync(file, json);
   await page.goto("/");
   await page.locator('input[type="file"]').setInputFiles(file); // → Viewer tab
-  await page.getByRole("button", {name: "Graph", exact: true}).click();
+  await page.getByRole("button", {name: "Visualizer", exact: true}).click();
   // Wait for React Flow to mount nodes.
   await expect(page.locator(".react-flow__node").first()).toBeVisible();
 }

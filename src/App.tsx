@@ -484,7 +484,7 @@ function App() {
                     : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
                 }`}
               >
-                Graph
+                Visualizer
               </button>
             </div>
             <div className="ml-auto pr-4">
