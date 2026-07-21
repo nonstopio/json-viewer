@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/nonstopio/json-viewer/compare/v1.4.0...v1.4.1) (2026-07-21)
+
+
+### Bug Fixes
+
+* export the graph as a crisp, tightly-framed PNG ([f81aadf](https://github.com/nonstopio/json-viewer/commit/f81aadf3ef8b395964a5ed57217e4df9cd8b8095))
+
 # [1.4.0](https://github.com/nonstopio/json-viewer/compare/v1.3.0...v1.4.0) (2026-07-21)
 
 
