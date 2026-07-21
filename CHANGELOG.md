@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/nonstopio/json-viewer/compare/v1.3.0...v1.4.0) (2026-07-21)
+
+
+### Features
+
+* rename Graph tab to Visualizer and refine large-doc notice ([1b124df](https://github.com/nonstopio/json-viewer/commit/1b124df70e02545e5510961078ec533e0f538599))
+
 # [1.3.0](https://github.com/nonstopio/json-viewer/compare/v1.2.0...v1.3.0) (2026-07-21)
 
 
