@@ -32,3 +32,8 @@
   for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+# Per-domain branding lives in netlify/edge-functions/brand.ts. Netlify
+# auto-discovers that directory and the function declares its own `path`, so
+# there is deliberately no [[edge_functions]] block here — declaring it twice
+# would also run it on every static asset.

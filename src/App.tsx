@@ -37,6 +37,7 @@ import {JsonTableView} from "./components/JsonTableView";
 import {ResizablePanel} from "./components/ResizablePanel";
 import {Tooltip} from "./components/Tooltip";
 import {jsonParser} from "./utils/jsonParser";
+import {brand, brandAsset} from "./brand";
 import {
   buildShareLink,
   CLIPBOARD_PAYLOAD,
@@ -48,6 +49,14 @@ import {JsonNode, JsonValue} from "./types/json";
 
 // Injected at build time from package.json (see vite.config.ts).
 declare const __APP_VERSION__: string;
+
+// Named in src/brand.ts so a brand can declare links without importing lucide.
+const SOCIAL_ICONS = {
+  github: Github,
+  linkedin: Linkedin,
+  twitter: Twitter,
+  globe: Globe,
+} as const;
 
 function App() {
   const [jsonData, setJsonData] = useState<JsonValue | null>(null);
@@ -448,16 +457,15 @@ function App() {
     const sampleData = {
       company: {
         version: "1.0.0",
-        name: "NonStop io Technologies Pvt. Ltd.",
-        description:
-          "Our applied AI solutions are designed to seamlessly integrate with your processes, making your business smarter, faster, and more efficient.",
-        website: "https://nonstopio.com/",
+        name: brand.sample.name,
+        description: brand.sample.description,
+        website: brand.sample.website,
       },
       user: {
         id: 104,
         firstName: "Ajay",
         lastName: "Kumar",
-        email: "ajay.kumar@nonstopio.com",
+        email: brand.sample.email,
         github: "https://github.com/projectaj14",
         bio: "Software expert with 9+ years in the field.",
         account: {
@@ -954,56 +962,32 @@ function App() {
               <div className="flex items-center space-x-6">
                 <div className="flex items-center space-x-3">
                   <img
-                    src="/favicon.png"
-                    alt="NonStop io Logo"
-                    className="w-6 h-6"
+                    src={brandAsset("favicon.png")}
+                    alt={`${brand.siteName} logo`}
+                    className="w-6 h-6 rounded"
                   />
                   <span className="text-sm text-gray-600 dark:text-gray-400">
-                    NonStop io Technologies Pvt. Ltd.
+                    {brand.ownerName}
                   </span>
                 </div>
 
                 <div className="flex items-center space-x-3">
-                  <a
-                    href="https://github.com/nonstopio"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                    data-tooltip="GitHub"
-                    aria-label="NonStop io on GitHub"
-                  >
-                    <Github size={16} />
-                  </a>
-                  <a
-                    href="https://www.linkedin.com/company/nonstop-io"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                    data-tooltip="LinkedIn"
-                    aria-label="NonStop io on LinkedIn"
-                  >
-                    <Linkedin size={16} />
-                  </a>
-                  <a
-                    href="https://twitter.com/nonstopio"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                    data-tooltip="Twitter"
-                    aria-label="NonStop io on Twitter"
-                  >
-                    <Twitter size={16} />
-                  </a>
-                  <a
-                    href="https://nonstopio.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
-                    data-tooltip="Website"
-                    aria-label="NonStop io Website"
-                  >
-                    <Globe size={16} />
-                  </a>
+                  {brand.social.map(({label, href, icon}) => {
+                    const Icon = SOCIAL_ICONS[icon];
+                    return (
+                      <a
+                        key={href}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                        data-tooltip={label}
+                        aria-label={`${brand.ownerName} on ${label}`}
+                      >
+                        <Icon size={16} />
+                      </a>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1023,7 +1007,7 @@ function App() {
                   <span className="text-xs">About</span>
                 </button>
                 <a
-                  href="https://github.com/nonstopio/json-viewer/issues"
+                  href={brand.issuesUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center space-x-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"

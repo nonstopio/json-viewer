@@ -40,6 +40,7 @@ import {
   X,
 } from "lucide-react";
 import {JsonValue} from "../types/json";
+import {brand} from "../brand";
 import {
   jsonToGraph,
   allContainerPaths,
@@ -401,7 +402,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
 
     const pad = (n: number) => String(n).padStart(2, "0");
     const d = new Date();
-    const filename = `json-by-nonstopio-${pad(d.getDate())}-${pad(
+    const filename = `${brand.exportPrefix}-${pad(d.getDate())}-${pad(
       d.getMonth() + 1
     )}-${d.getFullYear()}-${pad(d.getHours())}-${pad(d.getMinutes())}-${pad(
       d.getSeconds()
@@ -500,7 +501,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
                   {totalNodes.toLocaleString()} nodes to stay responsive. Need
                   larger documents rendered in full?{" "}
                   <a
-                    href="https://github.com/nonstopio/json-viewer/issues/new?title=Support%20large%20documents%20in%20the%20Visualizer&labels=enhancement"
+                    href={`${brand.issuesUrl}/new?title=Support%20large%20documents%20in%20the%20Visualizer&labels=enhancement`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="font-medium underline underline-offset-2 hover:no-underline"

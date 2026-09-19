@@ -2,31 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-    <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- brand:start -->
+    <!-- Everything between these markers is brand-specific and is swapped per
+         Host by netlify/edge-functions/brand.ts. The default below is the
+         primary domain, json.nonstopio.com. Keep src/brand.ts in step. -->
     <title>JSON Viewer Online – Formatter, Validator & Graph Visualizer</title>
     <meta
       name="description"
       content="Paste your JSON and view it as a clean, collapsible tree or an interactive node graph. Free online JSON formatter, validator, explorer & visualizer. No signup. Works in browser."
     />
-
-    <!-- SEO Meta Tags -->
-    <meta
-      name="keywords"
-      content="JSON viewer, JSON formatter, JSON parser, JSON validator, JSON explorer, JSON tree, JSON graph, JSON visualizer, JSON node graph, JSON diagram, visualize JSON structure, JSON crack alternative, JSON analyzer, online JSON tool, JSON beautify, JSON minify, JSON search, developer tools, API testing, data visualization, free JSON tool, pretty print JSON, JSON lint, JSON editor online, JSON to tree view, validate JSON online, format JSON code, JSON syntax checker, JSON file viewer, JSON data explorer, REST API JSON viewer"
-    />
     <meta name="author" content="NonStop io Technologies Pvt. Ltd." />
-    <meta name="robots" content="index, follow" />
-    <meta name="language" content="English" />
-    <meta name="revisit-after" content="7 days" />
-    <meta name="distribution" content="global" />
-    <meta name="rating" content="general" />
+    <link rel="canonical" href="https://json.nonstopio.com" />
 
-    <!-- Open Graph Meta Tags -->
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="manifest" href="/manifest.json" />
+
     <meta
       property="og:title"
       content="Free JSON Viewer Online | Formatter, Validator & Graph Visualizer"
@@ -46,8 +41,6 @@
     <meta property="og:site_name" content="NonStop io JSON Viewer" />
     <meta property="og:locale" content="en_US" />
 
-    <!-- Twitter Card Meta Tags -->
-    <meta name="twitter:card" content="summary_large_image" />
     <meta
       name="twitter:title"
       content="Free JSON Viewer Online | Formatter, Validator & Graph Visualizer"
@@ -63,27 +56,6 @@
     <meta name="twitter:creator" content="@NonStopio" />
     <meta name="twitter:site" content="@NonStopio" />
 
-    <!-- Additional SEO Tags -->
-    <meta name="theme-color" content="#3B82F6" />
-    <meta name="msapplication-TileColor" content="#3B82F6" />
-    <meta name="application-name" content="JSON Viewer" />
-    <meta name="apple-mobile-web-app-title" content="JSON Viewer" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="mobile-web-app-capable" content="yes" />
-
-    <!-- Canonical URL -->
-    <link rel="canonical" href="https://json.nonstopio.com" />
-
-    <!-- Preconnect for performance -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-
-    <!-- Structured Data (JSON-LD) -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -133,6 +105,42 @@
         ]
       }
     </script>
+    <!-- brand:end -->
+
+
+    <!-- SEO Meta Tags -->
+    <meta
+      name="keywords"
+      content="JSON viewer, JSON formatter, JSON parser, JSON validator, JSON explorer, JSON tree, JSON graph, JSON visualizer, JSON node graph, JSON diagram, visualize JSON structure, JSON crack alternative, JSON analyzer, online JSON tool, JSON beautify, JSON minify, JSON search, developer tools, API testing, data visualization, free JSON tool, pretty print JSON, JSON lint, JSON editor online, JSON to tree view, validate JSON online, format JSON code, JSON syntax checker, JSON file viewer, JSON data explorer, REST API JSON viewer"
+    />
+    <meta name="robots" content="index, follow" />
+    <meta name="language" content="English" />
+    <meta name="revisit-after" content="7 days" />
+    <meta name="distribution" content="global" />
+    <meta name="rating" content="general" />
+
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Additional SEO Tags -->
+    <meta name="theme-color" content="#3B82F6" />
+    <meta name="msapplication-TileColor" content="#3B82F6" />
+    <meta name="application-name" content="JSON Viewer" />
+    <meta name="apple-mobile-web-app-title" content="JSON Viewer" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
 
     <!-- FAQ Schema for Rich Snippets -->
     <script type="application/ld+json">
@@ -411,7 +419,7 @@
           <h3>Can I link to the viewer with JSON already loaded?</h3>
           <p>
             Yes. A link like
-            <code>https://json.nonstopio.com/#data=&lt;compacted-json&gt;</code>
+            <code>/#data=&lt;compacted-json&gt;</code>
             opens the tool with that document loaded, so any app, script, or
             dashboard can add a "View JSON" button. Documents too large for a
             URL are handed over via the clipboard using

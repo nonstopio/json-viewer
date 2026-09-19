@@ -2,6 +2,9 @@
  * Open JSON in https://json.nonstopio.com from any web app.
  *
  *   <script src="https://json.nonstopio.com/open.js"></script>
+ *
+ * Links default to the origin this script was loaded from, so the same snippet
+ * works from any domain the viewer is deployed to; pass {base} to override.
  *   openInJsonViewer(payload)                  // opens a new tab
  *   openInJsonViewer(payload, {view: "graph"}) // ...on a given tab
  *   openInJsonViewer.link(payload)             // -> {url, needsClipboard}
@@ -13,7 +16,18 @@
 (function (global) {
   "use strict";
 
-  var BASE = "https://json.nonstopio.com/";
+  // Default to wherever this script was served from, so the same file works on
+  // every domain the viewer is deployed to. `document.currentScript` is only
+  // readable while the script is executing, which is exactly now.
+  var BASE = (function () {
+    try {
+      var src = document.currentScript && document.currentScript.src;
+      if (src) return new URL(".", src).href;
+    } catch (e) {
+      /* fall through */
+    }
+    return "https://json.nonstopio.com/";
+  })();
   // Past this the URL starts tripping CDN and proxy request-line limits, so
   // the document travels by clipboard instead.
   var MAX_PAYLOAD_LENGTH = 4000;
