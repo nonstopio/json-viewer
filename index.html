@@ -107,7 +107,8 @@
           "Dark/light theme support",
           "Resizable panels",
           "File upload support",
-          "Export and copy functionality"
+          "Export and copy functionality",
+          "Deep links that open JSON from any app or URL"
         ],
         "author": {
           "@type": "Organization",
@@ -364,6 +365,10 @@
             Switch to the Visualizer tab to see the same JSON as an interactive
             node graph — pan, zoom, search, collapse, and export it as an image.
           </li>
+          <li>
+            Click Copy link to get a URL that reopens the same JSON — handy for
+            sharing a payload with a teammate or linking it from your own app.
+          </li>
         </ol>
 
         <h2>Features</h2>
@@ -401,6 +406,23 @@
             interactive node graph — objects and arrays become connected nodes
             you can pan, zoom, search, collapse, and export as an image. Very
             large documents are rendered partially to stay responsive.
+          </p>
+
+          <h3>Can I link to the viewer with JSON already loaded?</h3>
+          <p>
+            Yes. A link like
+            <code>https://json.nonstopio.com/#data=&lt;compacted-json&gt;</code>
+            opens the tool with that document loaded, so any app, script, or
+            dashboard can add a "View JSON" button. Documents too large for a
+            URL are handed over via the clipboard using
+            <code>?data=clipboard</code>. The JSON is encoded and decoded in
+            your browser and is never sent to a server. See the
+            <a
+              href="https://github.com/nonstopio/json-viewer/blob/main/docs/DEEP_LINKS.md"
+              target="_blank"
+              rel="noopener"
+              >deep link guide</a
+            >.
           </p>
 
           <h3>Does it save my JSON data?</h3>

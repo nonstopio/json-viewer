@@ -20,6 +20,7 @@ import {
   Bug,
   Maximize,
   Info,
+  Link2,
 } from "lucide-react";
 // Lazy-loaded so the CodeMirror editor bundle stays off the initial load.
 const JsonInput = lazy(() =>
@@ -36,6 +37,13 @@ import {JsonTableView} from "./components/JsonTableView";
 import {ResizablePanel} from "./components/ResizablePanel";
 import {Tooltip} from "./components/Tooltip";
 import {jsonParser} from "./utils/jsonParser";
+import {
+  buildShareLink,
+  CLIPBOARD_PAYLOAD,
+  decodePayload,
+  DeepLinkView,
+  readDeepLink,
+} from "./utils/deepLink";
 import {JsonNode, JsonValue} from "./types/json";
 
 // Injected at build time from package.json (see vite.config.ts).
@@ -63,7 +71,14 @@ function App() {
   const [errorDetails, setErrorDetails] = useState<
     {line?: number; column?: number; position?: number} | undefined
   >();
+  // Set when a `?data=clipboard` link arrives but the browser won't read the
+  // clipboard without a click; holds the tab that link asked for.
+  const [clipboardPrompt, setClipboardPrompt] = useState<DeepLinkView | null>(
+    null
+  );
+  const [shareLabel, setShareLabel] = useState("Copy link");
   const searchDebounce = useRef<ReturnType<typeof setTimeout>>();
+  const shareLabelReset = useRef<ReturnType<typeof setTimeout>>();
 
   // Handle fullscreen changes
   useEffect(() => {
@@ -99,7 +114,7 @@ function App() {
   }, []);
 
   const handleJsonSubmit = useCallback(
-    async (jsonText: string, shouldSwitchTab = false) => {
+    async (jsonText: string, shouldSwitchTab = false): Promise<boolean> => {
       setIsLoading(true);
       setError("");
       setErrorDetails(undefined);
@@ -123,6 +138,7 @@ function App() {
           if (shouldSwitchTab) {
             setActiveTab("viewer");
           }
+          return true;
         } else {
           setError(result.error || "Failed to parse JSON");
           setErrorDetails(result.errorDetails);
@@ -131,10 +147,12 @@ function App() {
           setNodes([]);
           setFilteredNodes([]);
           setOriginalNodes([]);
+          return false;
         }
       } catch {
         setError("Unexpected error occurred while parsing JSON");
         setErrorDetails(undefined);
+        return false;
       } finally {
         setIsLoading(false);
       }
@@ -210,30 +228,126 @@ function App() {
     [originalNodes, nodes]
   );
 
-  const handlePaste = useCallback(async () => {
-    try {
-      // Check if clipboard API is available
-      if (!navigator.clipboard || !navigator.clipboard.readText) {
+  // Shared by the Paste button and by `?data=clipboard` links. `view` is the
+  // tab to land on once the document parses; omitted, we stay put.
+  const loadFromClipboard = useCallback(
+    async (view?: DeepLinkView) => {
+      try {
+        // Check if clipboard API is available
+        if (!navigator.clipboard || !navigator.clipboard.readText) {
+          setError(
+            "Clipboard API not available. Please use Ctrl+V or Cmd+V to paste."
+          );
+          return;
+        }
+
+        const text = await navigator.clipboard.readText();
+        if (!text.trim()) {
+          setError("Clipboard is empty or contains no text.");
+          return;
+        }
+
+        const parsed = await handleJsonSubmit(text, false);
+        if (parsed && view) {
+          setActiveTab(view);
+        }
+      } catch (err) {
+        console.warn("Failed to read clipboard:", err);
         setError(
-          "Clipboard API not available. Please use Ctrl+V or Cmd+V to paste."
+          "Failed to read from clipboard. Make sure you have given permission to access clipboard, or try using Ctrl+V or Cmd+V to paste directly into the text area."
         );
+      }
+    },
+    [handleJsonSubmit]
+  );
+
+  const handlePaste = useCallback(() => {
+    void loadFromClipboard();
+  }, [loadFromClipboard]);
+
+  const handleClipboardPrompt = useCallback(() => {
+    const view = clipboardPrompt ?? "viewer";
+    setClipboardPrompt(null);
+    void loadFromClipboard(view);
+  }, [clipboardPrompt, loadFromClipboard]);
+
+  // Deep link: open with a document already loaded (see utils/deepLink.ts).
+  useEffect(() => {
+    const openDeepLink = () => {
+      const link = readDeepLink(window.location.search, window.location.hash);
+      if (!link) return;
+
+      // Strip the payload from the address bar immediately: it shouldn't
+      // survive a refresh, ride along in a screenshot, or get re-shared by
+      // copying the URL after the document has been edited.
+      window.history.replaceState(null, "", window.location.pathname);
+
+      const open = async (text: string) => {
+        const parsed = await handleJsonSubmit(text, false);
+        if (parsed) setActiveTab(link.view ?? "viewer");
+      };
+
+      if (link.payload === CLIPBOARD_PAYLOAD) {
+        // Only Chromium reads the clipboard without a gesture, and only once
+        // permission is granted. Try it — then fall back to a button, because
+        // everywhere else this rejects and doing nothing would look broken.
+        navigator.clipboard
+          ?.readText()
+          .then((text) =>
+            text.trim() ? open(text) : setClipboardPrompt(link.view ?? "viewer")
+          )
+          .catch(() => setClipboardPrompt(link.view ?? "viewer"));
         return;
       }
 
-      const text = await navigator.clipboard.readText();
-      if (!text.trim()) {
-        setError("Clipboard is empty or contains no text.");
-        return;
-      }
+      decodePayload(link.payload)
+        .then(open)
+        .catch((err: Error) => setError(err.message));
+    };
 
-      handleJsonSubmit(text, false); // Don't switch tabs for paste
-    } catch (err) {
-      console.warn("Failed to read clipboard:", err);
-      setError(
-        "Failed to read from clipboard. Make sure you have given permission to access clipboard, or try using Ctrl+V or Cmd+V to paste directly into the text area."
-      );
-    }
+    openDeepLink();
+    // A `#data=` link pasted into an already-open tab is a same-document
+    // navigation — nothing remounts, so without this the link would silently
+    // do nothing.
+    window.addEventListener("hashchange", openDeepLink);
+    return () => window.removeEventListener("hashchange", openDeepLink);
   }, [handleJsonSubmit]);
+
+  const handleShareLink = useCallback(async () => {
+    if (!inputText.trim()) return;
+    const result = jsonParser.parseJson(inputText);
+    // Share the compacted, valid document rather than whatever is half-typed
+    // in the editor — the link is meant to reopen cleanly somewhere else.
+    const text =
+      result.success && result.data !== undefined
+        ? JSON.stringify(result.data)
+        : inputText;
+
+    let label: string;
+    try {
+      const url = await buildShareLink(text);
+      if (url) {
+        await navigator.clipboard.writeText(url);
+        label = "Link copied!";
+      } else {
+        // A document too big for a URL travels by clipboard instead, which only
+        // the sending system can arrange — docs/DEEP_LINKS.md covers that path.
+        label = "Too large to link";
+      }
+    } catch (err) {
+      // Denied clipboard permission, or an insecure context with no clipboard
+      // API at all. Say so — silently doing nothing reads as a broken button.
+      console.warn("Failed to copy share link:", err);
+      label = "Couldn't copy link";
+    }
+
+    setShareLabel(label);
+    clearTimeout(shareLabelReset.current);
+    shareLabelReset.current = setTimeout(
+      () => setShareLabel("Copy link"),
+      2500
+    );
+  }, [inputText]);
 
   const handleCopy = useCallback(() => {
     if (!inputText.trim()) return;
@@ -514,6 +628,18 @@ function App() {
                 <span>Copy</span>
               </button>
 
+              {/* Fixed width so the toolbar doesn't jump when the label
+                  changes to its confirmation or failure text. */}
+              <button
+                onClick={handleShareLink}
+                disabled={!inputText.trim()}
+                data-tooltip="Copy a link that reopens this JSON here"
+                className="flex min-w-[9.5rem] items-center justify-center space-x-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Link2 size={14} />
+                <span>{shareLabel}</span>
+              </button>
+
               <button
                 onClick={handleFormat}
                 disabled={!inputText.trim()}
@@ -548,6 +674,34 @@ function App() {
                 <span>Load Test JSON</span>
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Clipboard deep link - the browser wouldn't read it without a click */}
+        {clipboardPrompt && (
+          <div className="bg-blue-50 dark:bg-blue-900/30 border-b border-blue-200 dark:border-blue-800 px-4 py-3 flex items-center gap-3 flex-shrink-0">
+            <ClipboardPaste
+              size={16}
+              className="flex-shrink-0 text-blue-600 dark:text-blue-400"
+            />
+            <span className="text-sm text-blue-900 dark:text-blue-200">
+              This link carries its JSON on your clipboard — your browser needs
+              a click before it can read it.
+            </span>
+            <button
+              onClick={handleClipboardPrompt}
+              className="flex items-center space-x-1 px-3 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+            >
+              <ClipboardPaste size={14} />
+              <span>Load from clipboard</span>
+            </button>
+            <button
+              onClick={() => setClipboardPrompt(null)}
+              aria-label="Dismiss"
+              className="ml-auto p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800 rounded transition-colors"
+            >
+              <X size={16} />
+            </button>
           </div>
         )}
 
