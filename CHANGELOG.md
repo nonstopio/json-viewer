@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/nonstopio/json-viewer/compare/v1.6.0...v1.7.0) (2026-09-19)
+
+
+### Features
+
+* add a navigator panel and tighten viewer/visualizer navigation ([79a3e2e](https://github.com/nonstopio/json-viewer/commit/79a3e2ece267a9d82970d4bfa698070ab928fb39))
+
 # [1.6.0](https://github.com/nonstopio/json-viewer/compare/v1.5.0...v1.6.0) (2026-09-19)
 
 
