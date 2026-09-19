@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/nonstopio/json-viewer/compare/v1.5.0...v1.6.0) (2026-09-19)
+
+
+### Features
+
+* switch branding by domain so ajson.netlify.app carries no NonStop marks ([bee1f01](https://github.com/nonstopio/json-viewer/commit/bee1f01a76620241ae92e1312921b7e6b103f4fa))
+
 # [1.5.0](https://github.com/nonstopio/json-viewer/compare/v1.4.1...v1.5.0) (2026-09-19)
 
 
