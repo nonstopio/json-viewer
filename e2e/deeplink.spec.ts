@@ -131,6 +131,41 @@ test("Copy link round-trips the document back into the viewer", async ({
   await expect(treeRow(page, "user")).toBeVisible();
 });
 
+test("the share button rides the tab bar, so every view can share", async ({
+  page,
+  context,
+}) => {
+  // Guards the move out of the JSON-tab toolbar: sharing used to be reachable
+  // only from the editor, so a link could not be copied while reading a tree.
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/");
+
+  const share = page.getByRole("button", {name: "Copy link"});
+  // Nothing loaded yet — present but inert, never a link to an empty document.
+  await expect(share).toBeDisabled();
+  // And gone from the toolbar it used to live in.
+  await expect(page.getByRole("button", {name: "Format"})).toBeVisible();
+
+  await page.getByRole("button", {name: "Load Test JSON"}).click();
+  await expect(share).toBeEnabled();
+
+  for (const tab of ["Viewer", "Visualizer", "JSON"]) {
+    await page.getByRole("button", {name: tab, exact: true}).click();
+    await expect(share).toBeVisible();
+    await expect(share).toBeEnabled();
+  }
+
+  // Sharing from a non-editor tab produces the same working link.
+  await page.getByRole("button", {name: "Visualizer", exact: true}).click();
+  await share.click();
+  await expect(page.getByRole("button", {name: "Link copied!"})).toBeVisible();
+  const url = await page.evaluate(() => navigator.clipboard.readText());
+  expect(url).toContain("#data=");
+
+  await page.goto(url);
+  await expect(treeRow(page, "company")).toBeVisible();
+});
+
 // The producer half of the contract (public/open.js, served at /open.js). These
 // drive the real script in a real page, so the two encodings cannot drift.
 test("open.js opens a tab with the document loaded", async ({

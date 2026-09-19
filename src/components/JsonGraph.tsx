@@ -27,7 +27,9 @@ import {
   ChevronUp,
   Copy,
   Focus,
+  Maximize,
   Maximize2,
+  Minimize,
   Minus,
   Plus,
   Image as ImageIcon,
@@ -267,7 +269,10 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   const [query, setQuery] = useState("");
   const [matchIndex, setMatchIndex] = useState(0);
   const [noticeDismissed, setNoticeDismissed] = useState(false);
-  const {setCenter, fitView, zoomIn, zoomOut, getZoom} = useReactFlow();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const {setCenter, fitView, zoomIn, zoomOut, getZoom, flowToScreenPosition} =
+    useReactFlow();
   const isDark = useIsDark();
 
   const {nodes, edges, truncated} = useMemo(
@@ -289,7 +294,13 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
     setSearchOpen(false);
   }, [data]);
 
+  // Camera handoff: a toggle records which node the user acted on so the
+  // effect below can re-frame it once the new layout lands. "*" means
+  // collapse/expand-all — no single node of interest, so fit the whole graph.
+  const pendingFocus = useRef<string | null>(null);
+
   const onToggle = useCallback((path: string) => {
+    pendingFocus.current = path;
     setCollapsed((prev) => {
       const next = new Set(prev);
       if (next.has(path)) next.delete(path);
@@ -378,6 +389,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   );
   const allCollapsed = collapsed.size > 0;
   const toggleCollapseAll = useCallback(() => {
+    pendingFocus.current = "*";
     setCollapsed((prev) =>
       prev.size > 0 ? new Set() : new Set(allContainerPaths(data))
     );
@@ -436,7 +448,69 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   useEffect(() => {
     const id = requestAnimationFrame(() => fitView({duration: 0}));
     return () => cancelAnimationFrame(id);
-  }, [data, direction, fitView]);
+  }, [data, direction, isFullscreen, fitView]);
+
+  // Keep the node the user just toggled in view. Only runs when a toggle armed
+  // `pendingFocus`, so it never competes with the data/direction re-fit above,
+  // the search focus, or external selection — and search wins while it's open.
+  useEffect(() => {
+    if (!pendingFocus.current) return;
+    const id = requestAnimationFrame(() => {
+      const target = pendingFocus.current;
+      pendingFocus.current = null;
+      if (!target || query.trim()) return;
+      if (target === "*") {
+        fitView({duration: 400});
+        return;
+      }
+      const node = nodes.find((n) => n.data.path === target);
+      if (!node || !wrapperRef.current) return;
+      const w = node.width ?? 160;
+      const h = node.height ?? 40;
+      const tl = flowToScreenPosition(node.position);
+      const br = flowToScreenPosition({
+        x: node.position.x + w,
+        y: node.position.y + h,
+      });
+      // Leave the camera alone when the node already sits comfortably inside
+      // the pane; only an off-screen or clipped node is worth a pan.
+      const r = wrapperRef.current.getBoundingClientRect();
+      const M = 24;
+      if (
+        tl.x >= r.left + M &&
+        tl.y >= r.top + M &&
+        br.x <= r.right - M &&
+        br.y <= r.bottom - M
+      )
+        return;
+      // Pan at the user's current zoom rather than re-fitting, so a single
+      // toggle never yanks them out of the region they were reading.
+      setCenter(node.position.x + w / 2, node.position.y + h / 2, {
+        zoom: getZoom(),
+        duration: 350,
+      });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [nodes, query, fitView, setCenter, getZoom, flowToScreenPosition]);
+
+  // Fullscreen the graph wrapper itself, so toolbar, minimap and search come
+  // along. Listening to the event (not just our own clicks) keeps Esc honest.
+  useEffect(() => {
+    const onChange = () =>
+      setIsFullscreen(document.fullscreenElement === wrapperRef.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      wrapperRef.current
+        ?.requestFullscreen()
+        .catch((err) => console.warn("Fullscreen request failed:", err));
+    }
+  }, []);
 
   // Center on an externally selected node (e.g. clicked in another view).
   const skipInitialCenter = useRef(true);
@@ -455,9 +529,20 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedNodePath]);
 
-  // Keyboard shortcuts (Shift+1 center, Shift+2 fit, Cmd/Ctrl+S export).
+  // Keyboard shortcuts (Shift+1 center, Shift+2 fit, Cmd/Ctrl+S export,
+  // F fullscreen).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // The graph's own search input lives in this subtree — never hijack keys
+      // while the user is typing anywhere on the page.
+      const t = e.target as HTMLElement | null;
+      if (
+        t &&
+        (t.tagName === "INPUT" ||
+          t.tagName === "TEXTAREA" ||
+          t.isContentEditable)
+      )
+        return;
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
         exportImage();
@@ -465,11 +550,18 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
         centerFirst();
       } else if (e.shiftKey && e.key === "@") {
         fit();
+      } else if (
+        e.key.toLowerCase() === "f" &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey
+      ) {
+        toggleFullscreen();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [exportImage, centerFirst, fit]);
+  }, [exportImage, centerFirst, fit, toggleFullscreen]);
 
   const activeHit = matches[matchIndex] ?? null;
   const actions = useMemo<GraphActions>(
@@ -486,7 +578,13 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
 
   return (
     <ActionsContext.Provider value={actions}>
-      <div className="relative h-full w-full">
+      <div ref={wrapperRef} className="relative h-full w-full json-graph-root">
+        {/* Fullscreen elements default to a black backdrop — restore the page
+            background for both themes. */}
+        <style>{`
+          .json-graph-root:fullscreen { background-color: #ffffff; }
+          .dark .json-graph-root:fullscreen { background-color: #111827; }
+        `}</style>
         {truncated && !noticeDismissed && (
           <div className="absolute right-3 top-3 z-20 w-80 max-w-[calc(100%-1.5rem)] rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 shadow-lg dark:border-amber-500/40 dark:bg-amber-900/50 dark:text-amber-100">
             <div className="flex items-start gap-2">
@@ -645,6 +743,13 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
           </ToolBtn>
           <ToolBtn label="Zoom in" onClick={() => zoomIn()}>
             <Plus size={16} />
+          </ToolBtn>
+          <ToolBtn
+            label={isFullscreen ? "Exit fullscreen (Esc)" : "Fullscreen (F)"}
+            active={isFullscreen}
+            onClick={toggleFullscreen}
+          >
+            {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
           </ToolBtn>
           <div className="mx-1 h-5 w-px bg-gray-200 dark:bg-gray-600" />
           <ToolBtn label="Export as PNG (⌘S)" onClick={exportImage}>

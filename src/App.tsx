@@ -1,7 +1,6 @@
 import {useState, useCallback, useEffect, useRef, lazy, Suspense} from "react";
 import {
   FileCode,
-  BarChart3,
   ClipboardPaste,
   Copy,
   AlignLeft,
@@ -33,10 +32,10 @@ const JsonGraph = lazy(() =>
 );
 import {JsonTree} from "./components/JsonTree";
 import {ThemeToggle} from "./components/ThemeToggle";
-import {JsonTableView} from "./components/JsonTableView";
+import {JsonNavigator} from "./components/JsonNavigator";
 import {ResizablePanel} from "./components/ResizablePanel";
 import {Tooltip} from "./components/Tooltip";
-import {jsonParser} from "./utils/jsonParser";
+import {ancestorPaths, jsonParser} from "./utils/jsonParser";
 import {brand, brandAsset} from "./brand";
 import {
   buildShareLink,
@@ -195,6 +194,57 @@ function App() {
   const handleSelectNode = useCallback((path: string) => {
     setSelectedNodePath(path);
   }, []);
+
+  // The flat node list only holds nodes whose ancestors are expanded, so a node
+  // reached from the Navigator has to be unfolded before the tree can show it —
+  // along with the node itself, so its contents match what the Navigator lists.
+  const revealNode = useCallback((list: JsonNode[], path: string) => {
+    let result = list;
+    for (const ancestor of [...ancestorPaths(path), path]) {
+      const node = result.find((candidate) => candidate.path === ancestor);
+      if (node && !node.isExpanded && node.childCount) {
+        result = jsonParser.expandNode(result, ancestor);
+      }
+    }
+    return result;
+  }, []);
+
+  const applyNodes = useCallback((list: JsonNode[]) => {
+    setNodes(list);
+    setOriginalNodes(list);
+    setFilteredNodes(list);
+  }, []);
+
+  const handleFocusNode = useCallback(
+    (path: string) => {
+      // While searching the list is a search result; don't rebuild it.
+      if (!searchQuery) applyNodes(revealNode(nodes, path));
+      setSelectedNodePath(path);
+    },
+    [applyNodes, revealNode, nodes, searchQuery]
+  );
+
+  const handleIsolateNode = useCallback(
+    (path: string) => {
+      if (searchQuery) return;
+      let next = revealNode(nodes, path);
+      const target = next.find((node) => node.path === path);
+      if (!target) return;
+
+      // Collapsing a sibling only removes nodes deeper than itself, so the
+      // snapshot of sibling paths stays valid while we fold them one by one.
+      const siblings = next.filter(
+        (node) =>
+          node.depth === target.depth && node.path !== path && node.isExpanded
+      );
+      for (const sibling of siblings) {
+        next = jsonParser.collapseNode(next, sibling.path);
+      }
+      applyNodes(next);
+      setSelectedNodePath(path);
+    },
+    [applyNodes, revealNode, nodes, searchQuery]
+  );
 
   const handleSearch = useCallback(
     (query: string, isCaseSensitive: boolean) => {
@@ -558,6 +608,38 @@ function App() {
     }
   }, [searchMatchIndices, currentMatchIndex, filteredNodes]);
 
+  // Shared by the panel header and the fullscreen header so expand/collapse
+  // stay reachable in both.
+  const treeFoldButtons = (
+    <>
+      <button
+        onClick={handleExpandAll}
+        aria-label="Expand all nodes"
+        data-tooltip="Expand all nodes - Shows all nested objects and arrays"
+        className="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+      >
+        <UnfoldVertical
+          size={16}
+          className="text-gray-500 dark:text-gray-400"
+        />
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          Expand all
+        </span>
+      </button>
+      <button
+        onClick={handleCollapseAll}
+        aria-label="Collapse all nodes"
+        data-tooltip="Collapse all nodes - Hides all nested objects and arrays"
+        className="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+      >
+        <FoldVertical size={16} className="text-gray-500 dark:text-gray-400" />
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          Collapse all
+        </span>
+      </button>
+    </>
+  );
+
   return (
     <>
       <Tooltip />
@@ -609,8 +691,21 @@ function App() {
                 Visualizer
               </button>
             </div>
-            <div className="ml-auto pr-4">
+            {/* Beside the theme selector rather than in the JSON toolbar, so
+                sharing is reachable from the Viewer and Visualizer too. Fixed
+                width keeps the bar from jumping when the label changes to its
+                confirmation or failure text. */}
+            <div className="ml-auto flex items-center gap-2 pr-4">
               <ThemeToggle />
+              <button
+                onClick={handleShareLink}
+                disabled={!inputText.trim()}
+                data-tooltip="Copy a link that reopens this JSON here"
+                className="flex min-w-[9.5rem] items-center justify-center space-x-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Link2 className="w-4 h-4" />
+                <span className="text-sm font-medium">{shareLabel}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -634,18 +729,6 @@ function App() {
               >
                 <Copy size={14} />
                 <span>Copy</span>
-              </button>
-
-              {/* Fixed width so the toolbar doesn't jump when the label
-                  changes to its confirmation or failure text. */}
-              <button
-                onClick={handleShareLink}
-                disabled={!inputText.trim()}
-                data-tooltip="Copy a link that reopens this JSON here"
-                className="flex min-w-[9.5rem] items-center justify-center space-x-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Link2 size={14} />
-                <span>{shareLabel}</span>
               </button>
 
               <button
@@ -716,22 +799,8 @@ function App() {
         {/* Search Bar - Only show for viewer tab - Fixed */}
         {activeTab === "viewer" && jsonData && (
           <div className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex-shrink-0">
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleExpandAll}
-                className="p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-                data-tooltip="Expand all nodes - Shows all nested objects and arrays"
-              >
-                <UnfoldVertical size={16} />
-              </button>
-              <button
-                onClick={handleCollapseAll}
-                className="p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
-                data-tooltip="Collapse all nodes - Hides all nested objects and arrays"
-              >
-                <FoldVertical size={16} />
-              </button>
-              <div className="relative flex-1">
+            <div className="flex items-center justify-start space-x-2">
+              <div className="relative w-full max-w-md">
                 <input
                   type="text"
                   value={searchQuery}
@@ -842,9 +911,12 @@ function App() {
                   <div className="h-full flex flex-col">
                     {/* Tree Header */}
                     <div className="flex items-center justify-between p-2 border-b border-gray-200 dark:border-gray-700">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        JSON Tree
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-1">
+                          JSON Tree
+                        </span>
+                        {treeFoldButtons}
+                      </div>
                       <div className="flex items-center gap-1">
                         <button
                           onClick={handleCopy}
@@ -899,25 +971,14 @@ function App() {
                 )}
               </div>
 
-              {/* Right Panel - Property Details */}
+              {/* Right Panel - Structural navigation */}
               <div className="h-full bg-gray-50 dark:bg-gray-800 min-w-0 overflow-hidden">
-                {jsonData ? (
-                  <JsonTableView
-                    data={jsonData}
-                    searchQuery={searchQuery}
-                    selectedNodePath={selectedNodePath}
-                    nodes={nodes}
-                  />
-                ) : (
-                  <div className="h-full flex items-center justify-center p-4">
-                    <div className="text-center text-gray-500 dark:text-gray-400">
-                      <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                      <p className="text-sm">
-                        Property details will appear here
-                      </p>
-                    </div>
-                  </div>
-                )}
+                <JsonNavigator
+                  data={jsonData}
+                  selectedNodePath={selectedNodePath}
+                  onFocusNode={handleFocusNode}
+                  onIsolateNode={handleIsolateNode}
+                />
               </div>
             </ResizablePanel>
           )}
@@ -1041,9 +1102,12 @@ function App() {
             <div className="h-full flex flex-col">
               {/* Fullscreen Header */}
               <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  JSON Tree - Fullscreen View
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    JSON Tree - Fullscreen View
+                  </h2>
+                  {treeFoldButtons}
+                </div>
                 <button
                   onClick={exitFullscreen}
                   className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"

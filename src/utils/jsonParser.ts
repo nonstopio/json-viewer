@@ -9,6 +9,40 @@ interface JsonParseError extends Error {
   offset?: number;
 }
 
+const IDENT = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
+// The one definition of how a node path is spelled. Anything that builds or
+// reads a path (the tree, the Navigator) goes through these, so the two can
+// never drift apart.
+export function appendPath(parentPath: string, key: string): string {
+  if (/^\[\d+\]$/.test(key)) return `${parentPath}${key}`;
+  if (IDENT.test(key)) return parentPath ? `${parentPath}.${key}` : key;
+  return `${parentPath}[${JSON.stringify(key)}]`;
+}
+
+/** Splits `root.user.account[0]["odd key"]` into its cumulative segments. */
+export function pathSegments(path: string): {key: string; path: string}[] {
+  const head = /^[A-Za-z_$][A-Za-z0-9_$]*/.exec(path);
+  if (!head) return [];
+  const segments = [{key: head[0], path: head[0]}];
+  const token =
+    /\.([A-Za-z_$][A-Za-z0-9_$]*)|\[(\d+)\]|\[("(?:[^"\\]|\\.)*")\]/y;
+  token.lastIndex = head[0].length;
+  for (let m = token.exec(path); m; m = token.exec(path)) {
+    segments.push({
+      key: m[1] ?? m[2] ?? (JSON.parse(m[3]) as string),
+      path: path.slice(0, token.lastIndex),
+    });
+  }
+  return segments;
+}
+
+/** Every ancestor path of `path`, outermost first. */
+export const ancestorPaths = (path: string): string[] =>
+  pathSegments(path)
+    .slice(0, -1)
+    .map((segment) => segment.path);
+
 export class JsonParser {
   private stats: JsonStats = {
     totalNodes: 0,
@@ -712,14 +746,6 @@ export class JsonParser {
   // (root.items[0]) so existing output is unchanged. Keys that aren't plain
   // identifiers (dots, spaces, quotes, unicode) are JSON-encoded in brackets
   // (root["a.b"]) so distinct nodes can never collide on the same path.
-  private appendPath(parentPath: string, key: string): string {
-    if (/^\[\d+\]$/.test(key)) return `${parentPath}${key}`;
-    if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key)) {
-      return parentPath ? `${parentPath}.${key}` : key;
-    }
-    return `${parentPath}[${JSON.stringify(key)}]`;
-  }
-
   private processValue(
     value: JsonValue,
     key: string,
@@ -727,7 +753,7 @@ export class JsonParser {
     depth: number,
     nodes: JsonNode[]
   ): void {
-    const currentPath = this.appendPath(path, key);
+    const currentPath = appendPath(path, key);
     const type = this.getValueType(value);
 
     this.stats.totalNodes++;
@@ -942,7 +968,7 @@ export class JsonParser {
     matchingPaths: Set<string>,
     pathsToExpand: Set<string>
   ): boolean {
-    const currentPath = this.appendPath(path, key);
+    const currentPath = appendPath(path, key);
 
     // Check if current key or value matches
     const keyMatch = caseSensitive
@@ -1012,7 +1038,7 @@ export class JsonParser {
     pathsToExpand: Set<string>,
     matchingPaths: Set<string>
   ): void {
-    const currentPath = this.appendPath(path, key);
+    const currentPath = appendPath(path, key);
     const type = this.getValueType(value);
 
     const shouldExpand =
@@ -1103,7 +1129,7 @@ export class JsonParser {
     depth: number,
     nodes: JsonNode[]
   ): void {
-    const currentPath = this.appendPath(path, key);
+    const currentPath = appendPath(path, key);
     const type = this.getValueType(value);
 
     const node: JsonNode = {
