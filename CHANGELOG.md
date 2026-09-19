@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/nonstopio/json-viewer/compare/v1.4.1...v1.5.0) (2026-09-19)
+
+
+### Features
+
+* open the viewer from a link with JSON already loaded ([f25d262](https://github.com/nonstopio/json-viewer/commit/f25d262a2c8dcc482dca113125322fbb4fa71bd2))
+
 ## [1.4.1](https://github.com/nonstopio/json-viewer/compare/v1.4.0...v1.4.1) (2026-07-21)
 
 
