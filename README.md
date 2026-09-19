@@ -37,6 +37,7 @@ A modern, intuitive JSON viewer that transforms complex JSON data into a visuall
 | 🎨 **Theme Support**          | Dark/light/system theme with automatic detection                                                           |
 | 📋 **Copy Functionality**     | Copy values and JSON paths with one click                                                                  |
 | 🖥️ **Fullscreen Mode**        | Native browser fullscreen for immersive JSON viewing                                                       |
+| 🔗 **Deep Links**             | Open the tool with JSON already loaded — link it from any app, CLI, or dashboard                           |
 
 ## 📸 **Screenshots**
 
@@ -99,8 +100,29 @@ Visit our hosted version at **[json.nonstopio.com](https://json.nonstopio.com)**
 | 4️⃣   | **Fullscreen** | Click the maximize button for immersive viewing experience              |
 | 5️⃣   | **Copy**       | Hover over nodes to copy values or JSON paths                           |
 | 6️⃣   | **Customize**  | Toggle between light/dark themes or use system preference               |
+| 7️⃣   | **Share**      | Hit **Copy link** to get a URL that reopens this exact JSON              |
 
 </div>
+
+### 🔗 **Deep Links**
+
+Open the viewer with a document already loaded — from a dashboard button, a CLI,
+a log viewer, or a bot. Nothing is uploaded; the JSON is encoded and decoded
+entirely in the browser.
+
+```html
+<script src="https://json.nonstopio.com/open.js"></script>
+<button onclick="openInJsonViewer(response)">View JSON</button>
+```
+
+```
+https://json.nonstopio.com/#data=<compacted-json>   inline, up to ~30KB of JSON
+https://json.nonstopio.com/?data=clipboard          larger documents, by clipboard
+https://json.nonstopio.com/#data=<...>&view=graph   land on a specific tab
+```
+
+Full contract, producer snippets for browser/Node/shell, and the privacy notes:
+**[docs/DEEP_LINKS.md](docs/DEEP_LINKS.md)**.
 
 ### ⌨️ **Keyboard Shortcuts**
 
