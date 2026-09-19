@@ -616,26 +616,19 @@ function App() {
         onClick={handleExpandAll}
         aria-label="Expand all nodes"
         data-tooltip="Expand all nodes - Shows all nested objects and arrays"
-        className="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+        className="flex items-center gap-1 rounded-sm px-2 py-1 text-faint transition-colors hover:bg-mass hover:text-ink"
       >
-        <UnfoldVertical
-          size={16}
-          className="text-gray-500 dark:text-gray-400"
-        />
-        <span className="text-xs text-gray-500 dark:text-gray-400">
-          Expand all
-        </span>
+        <UnfoldVertical size={16} className="text-current" />
+        <span className="text-xs">Expand all</span>
       </button>
       <button
         onClick={handleCollapseAll}
         aria-label="Collapse all nodes"
         data-tooltip="Collapse all nodes - Hides all nested objects and arrays"
-        className="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+        className="flex items-center gap-1 rounded-sm px-2 py-1 text-faint transition-colors hover:bg-mass hover:text-ink"
       >
-        <FoldVertical size={16} className="text-gray-500 dark:text-gray-400" />
-        <span className="text-xs text-gray-500 dark:text-gray-400">
-          Collapse all
-        </span>
+        <FoldVertical size={16} className="text-current" />
+        <span className="text-xs">Collapse all</span>
       </button>
     </>
   );
@@ -646,46 +639,43 @@ function App() {
       {/* Fullscreen styles */}
       <style>{`
         #json-tree-fullscreen:fullscreen {
-          background: white;
+          background: var(--bg);
           padding: 0;
           margin: 0;
         }
-        html.dark #json-tree-fullscreen:fullscreen {
-          background: rgb(17 24 39);
-        }
       `}</style>
 
-      <div className="h-screen bg-gray-50 dark:bg-gray-900 flex flex-col overflow-hidden">
+      <div className="flex h-screen flex-col overflow-hidden bg-bg">
         {/* Top Tab Bar - Fixed */}
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div className="flex-shrink-0 border-b border-line-2 bg-panel">
           <div className="flex items-center">
             <div className="flex">
               <button
                 onClick={() => setActiveTab("text")}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
                   activeTab === "text"
-                    ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-gray-50 dark:bg-gray-700"
-                    : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+                    ? "border-spot text-ink"
+                    : "border-transparent text-faint hover:text-ink"
                 }`}
               >
                 JSON
               </button>
               <button
                 onClick={() => handleParsedTabClick("viewer")}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
                   activeTab === "viewer"
-                    ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-gray-50 dark:bg-gray-700"
-                    : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+                    ? "border-spot text-ink"
+                    : "border-transparent text-faint hover:text-ink"
                 }`}
               >
                 Viewer
               </button>
               <button
                 onClick={() => handleParsedTabClick("graph")}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                className={`border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
                   activeTab === "graph"
-                    ? "border-blue-500 text-blue-600 dark:text-blue-400 bg-gray-50 dark:bg-gray-700"
-                    : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-300"
+                    ? "border-spot text-ink"
+                    : "border-transparent text-faint hover:text-ink"
                 }`}
               >
                 Visualizer
@@ -701,7 +691,7 @@ function App() {
                 onClick={handleShareLink}
                 disabled={!inputText.trim()}
                 data-tooltip="Copy a link that reopens this JSON here"
-                className="flex min-w-[9.5rem] items-center justify-center space-x-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex min-w-[9.5rem] items-center justify-center space-x-2 rounded-md border border-line-2 px-3 py-2 text-ink transition-colors hover:bg-mass disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Link2 className="w-4 h-4" />
                 <span className="text-sm font-medium">{shareLabel}</span>
@@ -712,11 +702,11 @@ function App() {
 
         {/* Toolbar - Only show for text tab - Fixed */}
         {activeTab === "text" && (
-          <div className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex-shrink-0">
+          <div className="flex-shrink-0 border-b border-line-2 bg-panel px-4 py-2">
             <div className="flex items-center space-x-3">
               <button
                 onClick={handlePaste}
-                className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                className="flex items-center space-x-1 rounded-sm border border-line-2 px-3 py-1.5 text-sm text-ink transition-colors hover:bg-mass"
               >
                 <ClipboardPaste size={14} />
                 <span>Paste</span>
@@ -725,7 +715,7 @@ function App() {
               <button
                 onClick={handleCopy}
                 disabled={!inputText.trim()}
-                className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center space-x-1 rounded-sm border border-line-2 px-3 py-1.5 text-sm text-ink transition-colors hover:bg-mass disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Copy size={14} />
                 <span>Copy</span>
@@ -734,7 +724,7 @@ function App() {
               <button
                 onClick={handleFormat}
                 disabled={!inputText.trim()}
-                className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center space-x-1 rounded-sm border border-line-2 px-3 py-1.5 text-sm text-ink transition-colors hover:bg-mass disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <AlignLeft size={14} />
                 <span>Format</span>
@@ -743,7 +733,7 @@ function App() {
               <button
                 onClick={handleRemoveWhitespace}
                 disabled={!inputText.trim()}
-                className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center space-x-1 rounded-sm border border-line-2 px-3 py-1.5 text-sm text-ink transition-colors hover:bg-mass disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Minimize2 size={14} />
                 <span>Remove white space</span>
@@ -751,7 +741,7 @@ function App() {
 
               <button
                 onClick={handleClear}
-                className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                className="flex items-center space-x-1 rounded-sm border border-line-2 px-3 py-1.5 text-sm text-ink transition-colors hover:bg-mass"
               >
                 <Trash2 size={14} />
                 <span>Clear</span>
@@ -759,7 +749,7 @@ function App() {
 
               <button
                 onClick={handleLoadData}
-                className="flex items-center space-x-1 px-3 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                className="flex items-center space-x-1 rounded-sm border border-line-2 px-3 py-1.5 text-sm text-ink transition-colors hover:bg-mass"
               >
                 <FileText size={14} />
                 <span>Load Test JSON</span>
@@ -770,18 +760,15 @@ function App() {
 
         {/* Clipboard deep link - the browser wouldn't read it without a click */}
         {clipboardPrompt && (
-          <div className="bg-blue-50 dark:bg-blue-900/30 border-b border-blue-200 dark:border-blue-800 px-4 py-3 flex items-center gap-3 flex-shrink-0">
-            <ClipboardPaste
-              size={16}
-              className="flex-shrink-0 text-blue-600 dark:text-blue-400"
-            />
-            <span className="text-sm text-blue-900 dark:text-blue-200">
+          <div className="flex flex-shrink-0 items-center gap-3 border-b border-line-2 bg-spot-soft px-4 py-3">
+            <ClipboardPaste size={16} className="flex-shrink-0 text-spot" />
+            <span className="text-sm text-ink">
               This link carries its JSON on your clipboard — your browser needs
               a click before it can read it.
             </span>
             <button
               onClick={handleClipboardPrompt}
-              className="flex items-center space-x-1 px-3 py-1.5 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+              className="flex items-center space-x-1 rounded-sm bg-spot px-3 py-1.5 text-sm font-semibold text-spot-ink transition-colors hover:brightness-110"
             >
               <ClipboardPaste size={14} />
               <span>Load from clipboard</span>
@@ -789,7 +776,7 @@ function App() {
             <button
               onClick={() => setClipboardPrompt(null)}
               aria-label="Dismiss"
-              className="ml-auto p-1 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800 rounded transition-colors"
+              className="ml-auto rounded-sm p-1 text-spot transition-colors hover:bg-mass"
             >
               <X size={16} />
             </button>
@@ -798,7 +785,7 @@ function App() {
 
         {/* Search Bar - Only show for viewer tab - Fixed */}
         {activeTab === "viewer" && jsonData && (
-          <div className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex-shrink-0">
+          <div className="flex-shrink-0 border-b border-line-2 bg-panel px-4 py-3">
             <div className="flex items-center justify-start space-x-2">
               <div className="relative w-full max-w-md">
                 <input
@@ -823,12 +810,12 @@ function App() {
                     }
                   }}
                   placeholder="Search JSON... (Enter: next, Shift+Enter: prev)"
-                  className="w-full px-3 pr-10 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-sm border border-line-2 bg-mass px-3 py-2 pr-10 text-sm text-ink placeholder:text-faint-2 focus:border-spot focus:outline-none"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => handleSearch("", caseSensitive)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-faint transition-colors hover:text-ink"
                     data-tooltip="Clear search"
                   >
                     <X size={16} />
@@ -839,8 +826,8 @@ function App() {
                 onClick={() => handleSearch(searchQuery, !caseSensitive)}
                 className={`px-3 py-2 text-sm rounded transition-colors ${
                   caseSensitive
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-500"
+                    ? "bg-spot text-spot-ink"
+                    : "border border-line-2 text-dim hover:bg-mass hover:text-ink"
                 }`}
                 data-tooltip="Toggle case sensitivity - Match exact case when enabled"
               >
@@ -848,19 +835,19 @@ function App() {
               </button>
               {searchQuery && searchMatchIndices.length > 0 && (
                 <>
-                  <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                  <div className="whitespace-nowrap font-mono text-sm text-dim">
                     {currentMatchIndex + 1} of {searchMatchIndices.length}
                   </div>
                   <button
                     onClick={handleNavigateToPrevMatch}
-                    className="p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                    className="rounded-sm border border-line-2 p-2 text-dim transition-colors hover:bg-mass hover:text-ink"
                     data-tooltip="Previous match (Shift+Enter or Shift+F3)"
                   >
                     <ChevronUp size={16} />
                   </button>
                   <button
                     onClick={handleNavigateToNextMatch}
-                    className="p-2 bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
+                    className="rounded-sm border border-line-2 p-2 text-dim transition-colors hover:bg-mass hover:text-ink"
                     data-tooltip="Next match (Enter or F3)"
                   >
                     <ChevronDown size={16} />
@@ -878,7 +865,7 @@ function App() {
             <div className="w-full p-4 overflow-hidden">
               <Suspense
                 fallback={
-                  <div className="flex h-full items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+                  <div className="flex h-full items-center justify-center text-sm text-faint">
                     Loading editor…
                   </div>
                 }
@@ -906,41 +893,29 @@ function App() {
               className="flex-1"
             >
               {/* Left Panel - Tree View */}
-              <div className="h-full bg-white dark:bg-gray-800 min-w-0 overflow-hidden">
+              <div className="h-full min-w-0 overflow-hidden bg-bg">
                 {jsonData ? (
                   <div className="h-full flex flex-col">
                     {/* Tree Header */}
-                    <div className="flex items-center justify-between p-2 border-b border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between border-b border-line-2 p-2">
                       <div className="flex items-center gap-1">
-                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 mr-1">
-                          JSON Tree
-                        </span>
+                        <span className="eyebrow mr-1">JSON Tree</span>
                         {treeFoldButtons}
                       </div>
                       <div className="flex items-center gap-1">
                         <button
                           onClick={handleCopy}
-                          className="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                          className="flex items-center gap-1 rounded-sm px-2 py-1 text-faint transition-colors hover:bg-mass hover:text-ink"
                         >
-                          <Copy
-                            size={16}
-                            className="text-gray-500 dark:text-gray-400"
-                          />
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            Copy
-                          </span>
+                          <Copy size={16} className="text-current" />
+                          <span className="text-xs">Copy</span>
                         </button>
                         <button
                           onClick={enterFullscreen}
-                          className="flex items-center gap-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                          className="flex items-center gap-1 rounded-sm px-2 py-1 text-faint transition-colors hover:bg-mass hover:text-ink"
                         >
-                          <Maximize
-                            size={16}
-                            className="text-gray-500 dark:text-gray-400"
-                          />
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            Fullscreen
-                          </span>
+                          <Maximize size={16} className="text-current" />
+                          <span className="text-xs">Fullscreen</span>
                         </button>
                       </div>
                     </div>
@@ -960,7 +935,7 @@ function App() {
                   </div>
                 ) : (
                   <div className="h-full flex items-center justify-center">
-                    <div className="text-center text-gray-500 dark:text-gray-400">
+                    <div className="text-center text-faint">
                       <FileCode className="w-16 h-16 mx-auto mb-4 opacity-30" />
                       <p className="text-lg mb-2">No JSON data loaded</p>
                       <p className="text-sm">
@@ -972,7 +947,7 @@ function App() {
               </div>
 
               {/* Right Panel - Structural navigation */}
-              <div className="h-full bg-gray-50 dark:bg-gray-800 min-w-0 overflow-hidden">
+              <div className="h-full min-w-0 overflow-hidden border-l border-line-2 bg-panel">
                 <JsonNavigator
                   data={jsonData}
                   selectedNodePath={selectedNodePath}
@@ -985,11 +960,11 @@ function App() {
 
           {/* Graph Tab Content */}
           {activeTab === "graph" && (
-            <div className="w-full h-full bg-white dark:bg-gray-900 min-w-0 overflow-hidden">
+            <div className="h-full w-full min-w-0 overflow-hidden bg-bg">
               {jsonData ? (
                 <Suspense
                   fallback={
-                    <div className="flex h-full items-center justify-center text-sm text-gray-500 dark:text-gray-400">
+                    <div className="flex h-full items-center justify-center text-sm text-faint">
                       Loading graph…
                     </div>
                   }
@@ -1002,7 +977,7 @@ function App() {
                 </Suspense>
               ) : (
                 <div className="flex h-full items-center justify-center">
-                  <div className="text-center text-gray-500 dark:text-gray-400">
+                  <div className="text-center text-faint">
                     <FileCode className="w-16 h-16 mx-auto mb-4 opacity-30" />
                     <p className="text-lg mb-2">No JSON data loaded</p>
                     <p className="text-sm">
@@ -1016,7 +991,7 @@ function App() {
         </div>
 
         {/* Footer */}
-        <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4">
+        <footer className="border-t border-line-2 bg-panel py-4">
           <div className="px-4">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               {/* Logo, Company Name and Social Links */}
@@ -1025,11 +1000,9 @@ function App() {
                   <img
                     src={brandAsset("favicon.png")}
                     alt={`${brand.siteName} logo`}
-                    className="w-6 h-6 rounded"
+                    className="h-6 w-6 rounded-sm"
                   />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {brand.ownerName}
-                  </span>
+                  <span className="text-sm text-dim">{brand.ownerName}</span>
                 </div>
 
                 <div className="flex items-center space-x-3">
@@ -1041,7 +1014,7 @@ function App() {
                         href={href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                        className="text-faint transition-colors hover:text-ink"
                         data-tooltip={label}
                         aria-label={`${brand.ownerName} on ${label}`}
                       >
@@ -1054,7 +1027,7 @@ function App() {
 
               {/* Version and Report Issues - Right */}
               <div className="flex items-center space-x-4">
-                <span className="text-xs text-gray-400 dark:text-gray-500">
+                <span className="font-mono text-xs text-faint-2">
                   v{__APP_VERSION__}
                 </span>
                 {/* Opens the About dialog (the crawlable content in index.html)
@@ -1062,7 +1035,7 @@ function App() {
                 <button
                   type="button"
                   data-about-open
-                  className="flex items-center space-x-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  className="flex items-center space-x-2 text-faint transition-colors hover:text-ink"
                 >
                   <Info size={16} />
                   <span className="text-xs">About</span>
@@ -1071,7 +1044,7 @@ function App() {
                   href={brand.issuesUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center space-x-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                  className="flex items-center space-x-2 text-faint transition-colors hover:text-ink"
                 >
                   <Bug size={16} />
                   <span className="text-xs">Report Issues</span>
@@ -1084,7 +1057,7 @@ function App() {
         {/* Fullscreen Tree Container */}
         <div
           id="json-tree-fullscreen"
-          className={`${isFullscreen ? "bg-white dark:bg-gray-900" : "hidden"}`}
+          className={`${isFullscreen ? "bg-bg" : "hidden"}`}
           style={
             isFullscreen
               ? {
@@ -1101,19 +1074,19 @@ function App() {
           {isFullscreen && (
             <div className="h-full flex flex-col">
               {/* Fullscreen Header */}
-              <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between border-b border-line-2 p-4">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  <h2 className="font-disp text-lg font-extrabold tracking-tight text-ink">
                     JSON Tree - Fullscreen View
                   </h2>
                   {treeFoldButtons}
                 </div>
                 <button
                   onClick={exitFullscreen}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors"
+                  className="rounded-sm p-2 transition-colors hover:bg-mass"
                   data-tooltip="Exit fullscreen (ESC)"
                 >
-                  <X size={20} className="text-gray-500 dark:text-gray-400" />
+                  <X size={20} className="text-faint" />
                 </button>
               </div>
 
@@ -1132,7 +1105,7 @@ function App() {
                   />
                 ) : (
                   <div className="h-full flex items-center justify-center">
-                    <div className="text-center text-gray-500 dark:text-gray-400">
+                    <div className="text-center text-faint">
                       <FileCode className="w-16 h-16 mx-auto mb-4 opacity-30" />
                       <p className="text-lg mb-2">No JSON data loaded</p>
                       <p className="text-sm">

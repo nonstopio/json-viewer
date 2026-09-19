@@ -2,62 +2,47 @@ import {useState, useEffect, useCallback} from "react";
 
 export type Theme = "light" | "dark" | "system";
 
+/** The two grounds defined in src/styles/tokens.css. */
+export type Ground = "ink" | "paper";
+
+export const THEME_STORAGE_KEY = "json-viewer-theme";
+
+const GROUND: Record<"light" | "dark", Ground> = {light: "paper", dark: "ink"};
+
+const systemTheme = (): "light" | "dark" =>
+  window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+
+/** The single place the ground is applied. index.html runs the same
+ *  assignment inline before first paint so there is no flash. */
+const applyGround = (effective: "light" | "dark") => {
+  document.documentElement.dataset.mode = GROUND[effective];
+};
+
 export const useTheme = () => {
-  const [theme, setTheme] = useState<Theme>(() => {
-    const stored = localStorage.getItem("json-viewer-theme");
-    return (stored as Theme) || "system";
-  });
+  const [theme, setTheme] = useState<Theme>(
+    () => (localStorage.getItem(THEME_STORAGE_KEY) as Theme) || "system"
+  );
 
-  const getSystemTheme = useCallback((): "light" | "dark" => {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
-  }, []);
-
-  const getEffectiveTheme = useCallback((): "light" | "dark" => {
-    return theme === "system" ? getSystemTheme() : theme;
-  }, [theme, getSystemTheme]);
+  const getEffectiveTheme = useCallback(
+    (): "light" | "dark" => (theme === "system" ? systemTheme() : theme),
+    [theme]
+  );
 
   useEffect(() => {
-    const effectiveTheme = getEffectiveTheme();
-    const root = document.documentElement;
-
-    if (effectiveTheme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-
-    // Store theme preference
-    localStorage.setItem("json-viewer-theme", theme);
+    applyGround(getEffectiveTheme());
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme, getEffectiveTheme]);
 
   useEffect(() => {
-    // Listen for system theme changes when using system theme
-    if (theme === "system") {
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-
-      const handleChange = () => {
-        const effectiveTheme = getEffectiveTheme();
-        const root = document.documentElement;
-
-        if (effectiveTheme === "dark") {
-          root.classList.add("dark");
-        } else {
-          root.classList.remove("dark");
-        }
-      };
-
-      mediaQuery.addEventListener("change", handleChange);
-      return () => mediaQuery.removeEventListener("change", handleChange);
-    }
+    if (theme !== "system") return;
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = () => applyGround(getEffectiveTheme());
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
   }, [theme, getEffectiveTheme]);
 
   const toggleTheme = useCallback(() => {
-    const currentEffective = getEffectiveTheme();
-    const newTheme = currentEffective === "dark" ? "light" : "dark";
-
-    setTheme(newTheme);
+    setTheme(getEffectiveTheme() === "dark" ? "light" : "dark");
   }, [getEffectiveTheme]);
 
   const setThemeMode = useCallback((newTheme: Theme) => {
@@ -67,6 +52,7 @@ export const useTheme = () => {
   return {
     theme,
     effectiveTheme: getEffectiveTheme(),
+    ground: GROUND[getEffectiveTheme()],
     toggleTheme,
     setTheme: setThemeMode,
     isSystemTheme: theme === "system",

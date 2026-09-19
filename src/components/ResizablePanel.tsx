@@ -79,13 +79,13 @@ export const ResizablePanel: React.FC<ResizablePanelProps> = ({
 
       {/* Resizer */}
       <div
-        className={`w-1 bg-gray-200 dark:bg-gray-700 hover:bg-blue-400 dark:hover:bg-blue-500 cursor-col-resize flex-shrink-0 transition-colors duration-150 ${
-          isDragging ? "bg-blue-400 dark:bg-blue-500" : ""
+        className={`w-px flex-shrink-0 cursor-col-resize bg-line-2 transition-colors hover:bg-spot ${
+          isDragging ? "bg-spot" : ""
         }`}
         onMouseDown={handleMouseDown}
       >
         <div className="w-full h-full relative">
-          <div className="absolute inset-y-0 -left-1 -right-1 hover:bg-blue-400/20 dark:hover:bg-blue-500/20" />
+          <div className="absolute inset-y-0 -left-1 -right-1 hover:bg-spot-soft" />
         </div>
       </div>
 

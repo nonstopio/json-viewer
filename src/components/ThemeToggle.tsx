@@ -53,11 +53,11 @@ export const ThemeToggle: React.FC = () => {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors duration-200 text-gray-700 dark:text-gray-300"
+        className="flex items-center space-x-2 rounded-md border border-line-2 px-3 py-2 text-ink transition-colors hover:bg-mass"
         data-tooltip="Change theme"
       >
         {getThemeIcon(theme, true)}
-        <span className="text-sm font-medium hidden sm:inline">
+        <span className="hidden text-sm font-medium sm:inline">
           {getThemeLabel(theme)}
         </span>
         <ChevronDown
@@ -66,7 +66,7 @@ export const ThemeToggle: React.FC = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-1 w-36 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
+        <div className="absolute right-0 top-full z-50 mt-1 w-36 rounded-md border border-line-2 bg-panel shadow-lg">
           <div className="py-1">
             {themes.map((themeOption) => (
               <button
@@ -75,23 +75,21 @@ export const ThemeToggle: React.FC = () => {
                   setTheme(themeOption);
                   setIsOpen(false);
                 }}
-                className={`w-full flex items-center space-x-2 px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-150 ${
-                  theme === themeOption
-                    ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300"
-                    : "text-gray-700 dark:text-gray-300"
+                className={`flex w-full items-center space-x-2 px-3 py-2 text-left transition-colors hover:bg-hover ${
+                  theme === themeOption ? "bg-spot-soft text-spot" : "text-ink"
                 }`}
               >
                 {getThemeIcon(themeOption)}
                 <span className="text-sm">
                   {getThemeLabel(themeOption)}
                   {themeOption === "system" && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                    <span className="ml-1 text-xs text-faint">
                       ({effectiveTheme})
                     </span>
                   )}
                 </span>
                 {theme === themeOption && (
-                  <div className="ml-auto w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full" />
+                  <div className="ml-auto h-1.5 w-1.5 rounded-full bg-spot" />
                 )}
               </button>
             ))}

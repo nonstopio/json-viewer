@@ -40,12 +40,12 @@ const typeOf = (value: JsonValue): JsonNode["type"] => {
 
 // Same palette as JsonNode.tsx so the two panels read as one language.
 const TYPE_COLOR: Record<JsonNode["type"], string> = {
-  object: "text-purple-600 dark:text-purple-400",
-  array: "text-blue-600 dark:text-blue-400",
-  string: "text-green-600 dark:text-green-400",
-  number: "text-orange-600 dark:text-orange-400",
-  boolean: "text-pink-600 dark:text-pink-400",
-  null: "text-gray-500 dark:text-gray-400",
+  object: "text-json-object",
+  array: "text-json-array",
+  string: "text-json-string",
+  number: "text-json-number",
+  boolean: "text-json-boolean",
+  null: "text-json-null",
 };
 
 const preview = (value: JsonValue): string => {
@@ -147,7 +147,7 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
         data-testid="json-navigator"
         className="h-full flex items-center justify-center p-4"
       >
-        <div className="text-center text-gray-500 dark:text-gray-400">
+        <div className="text-center text-faint">
           <Compass className="w-12 h-12 mx-auto mb-2 opacity-30" />
           <p className="text-sm">Load JSON to navigate its structure</p>
         </div>
@@ -156,20 +156,15 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
   }
 
   return (
-    <div
-      data-testid="json-navigator"
-      className="h-full flex flex-col bg-gray-50 dark:bg-gray-800"
-    >
-      <div className="flex items-center justify-between gap-2 p-2 border-b border-gray-200 dark:border-gray-700">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          Navigator
-        </span>
-        <span className="text-xs text-gray-500 dark:text-gray-400">
+    <div data-testid="json-navigator" className="flex h-full flex-col bg-panel">
+      <div className="flex items-center justify-between gap-2 border-b border-line-2 p-2">
+        <span className="eyebrow">Navigator</span>
+        <span className="font-mono text-xs text-faint">
           {total} {total === 1 ? "child" : "children"}
         </span>
       </div>
 
-      <div className="flex items-center gap-1 px-2 py-1.5 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center gap-1 border-b border-line-2 px-2 py-1.5">
         <div
           ref={crumbRef}
           data-testid="nav-breadcrumb"
@@ -180,12 +175,12 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
               {index > 0 && (
                 <ChevronRight
                   size={12}
-                  className="flex-shrink-0 text-gray-400 dark:text-gray-500"
+                  className="flex-shrink-0 text-faint-2"
                 />
               )}
               <button
                 onClick={() => onFocusNode(segment.path)}
-                className="flex-shrink-0 max-w-[10rem] truncate px-1 py-0.5 text-xs rounded text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                className="max-w-[10rem] flex-shrink-0 truncate rounded-sm px-1 py-0.5 text-xs text-dim transition-colors hover:bg-mass hover:text-ink"
               >
                 {segment.key}
               </button>
@@ -195,13 +190,13 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
         <button
           onClick={() => copyPath(currentPath)}
           aria-label="Copy path of the current level"
-          className="flex-shrink-0 p-1 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          className="flex-shrink-0 rounded-sm p-1 text-faint transition-colors hover:bg-mass hover:text-ink"
         >
           {copied ? <Check size={12} /> : <Copy size={12} />}
         </button>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         {rows.map((row) => {
           const type = typeOf(row.value);
           const container = isContainer(row.value);
@@ -214,10 +209,8 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
           return (
             <div
               key={row.path}
-              className={`group flex items-center gap-1 px-2 border-b border-gray-100 dark:border-gray-700/50 ${
-                selectedNodePath === row.path
-                  ? "bg-blue-50 dark:bg-blue-900/30"
-                  : "hover:bg-gray-100 dark:hover:bg-gray-700/50"
+              className={`group flex items-center gap-1 border-b border-line px-2 ${
+                selectedNodePath === row.path ? "bg-sel" : "hover:bg-hover"
               }`}
             >
               <button
@@ -236,14 +229,12 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
                     </span>
                   )}
                 </span>
-                <span className="flex-shrink-0 text-sm text-gray-800 dark:text-gray-200 font-medium truncate max-w-[10rem]">
+                <span className="max-w-[10rem] flex-shrink-0 truncate font-mono text-sm font-medium text-json-key">
                   {row.key}
                 </span>
                 <span
                   className={`min-w-0 truncate text-xs ${
-                    container
-                      ? "text-gray-500 dark:text-gray-400"
-                      : TYPE_COLOR[type]
+                    container ? "text-faint" : TYPE_COLOR[type]
                   }`}
                 >
                   {container ? count : preview(row.value)}
@@ -251,7 +242,7 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
                 {container && (
                   <ChevronRight
                     size={14}
-                    className="flex-shrink-0 ml-auto text-gray-400 dark:text-gray-500"
+                    className="ml-auto flex-shrink-0 text-faint-2"
                   />
                 )}
               </button>
@@ -259,7 +250,7 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
                 data-testid="nav-isolate"
                 onClick={() => onIsolateNode(row.path)}
                 aria-label={`Show only "${row.key}"`}
-                className="flex-shrink-0 p-1 rounded text-gray-500 dark:text-gray-400 opacity-0 group-hover:opacity-100 focus:opacity-100 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                className="flex-shrink-0 rounded-sm p-1 text-faint opacity-0 transition-colors hover:bg-mass hover:text-ink focus:opacity-100 group-hover:opacity-100"
               >
                 <Focus size={14} />
               </button>
@@ -267,14 +258,12 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
           );
         })}
         {total > MAX_ROWS && (
-          <p className="px-2 py-2 text-xs text-gray-500 dark:text-gray-400">
+          <p className="px-2 py-2 text-xs text-faint">
             Showing first {MAX_ROWS} of {total} — use search to reach the rest.
           </p>
         )}
         {total === 0 && (
-          <p className="px-2 py-3 text-xs text-gray-500 dark:text-gray-400">
-            This node is empty.
-          </p>
+          <p className="px-2 py-3 text-xs text-faint">This node is empty.</p>
         )}
       </div>
     </div>

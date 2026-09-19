@@ -1,63 +1,97 @@
+@import "./styles/tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   html {
-    font-family: "Inter", sans-serif;
+    font-family: var(--font-body);
   }
 
   body {
-    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    /* The rule grid: it gives the flat ground a measure without adding
+       another surface colour. Sections are separated by hairlines, never
+       by a change of background — that is what makes one theme toggle
+       able to repaint the whole app. */
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 72px 72px;
     transition:
-      background-color 0.2s ease,
-      color 0.2s ease;
+      background-color var(--duration-base) var(--ease),
+      color var(--duration-base) var(--ease);
+  }
+
+  ::selection {
+    background: var(--spot);
+    color: var(--spot-ink);
+  }
+
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
+  }
+
+  /* Scrollbars are chrome too, and the default ones are the one surface
+     that would keep rendering the old theme. */
+  * {
+    scrollbar-color: var(--line-2) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--line-2);
+    border: 2px solid transparent;
+    background-clip: content-box;
+    border-radius: var(--radius-pill);
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--faint-2);
+    background-clip: content-box;
   }
 }
 
 @layer components {
+  /* ---------- shared type ---------- */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: var(--tracking-caps-wide);
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  /* ---------- the tree ---------- */
   .json-node {
-    @apply transition-all duration-200 ease-out;
+    @apply transition-colors;
+    transition-duration: var(--duration-fast);
   }
 
-  .json-node:hover {
-    @apply bg-gray-100 dark:bg-gray-800 rounded-md;
-  }
-
-  .json-key {
-    @apply font-medium text-json-key dark:text-gray-300;
-  }
-
-  .json-string {
-    @apply text-json-string;
-  }
-
-  .json-number {
-    @apply text-json-number;
-  }
-
-  .json-boolean {
-    @apply text-json-boolean;
-  }
-
-  .json-null {
-    @apply text-json-null italic;
-  }
-
-  .expand-collapse-btn {
-    @apply inline-flex items-center justify-center w-5 h-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-150 cursor-pointer select-none;
-  }
-
+  /* ---------- tooltips ----------
+     Inverted against the ground so a tip always separates from whatever
+     it covers; --ink/--bg swap roles rather than naming a fixed pair. */
   .tooltip-chip {
-    @apply fixed z-[9999] pointer-events-none max-w-xs px-2.5 py-1.5 rounded-lg text-xs font-medium leading-snug shadow-lg;
-    @apply bg-gray-900 text-gray-50 dark:bg-gray-100 dark:text-gray-900;
+    @apply pointer-events-none fixed z-[9999] max-w-xs rounded-md px-2.5 py-1.5 text-xs font-medium leading-snug shadow-lg;
+    background: var(--ink);
+    color: var(--bg);
     white-space: normal;
     word-break: break-word;
-    animation: tooltip-in 120ms ease-out;
+    animation: tooltip-in var(--duration-fast) var(--ease);
   }
 
   .tooltip-arrow {
-    @apply absolute w-2 h-2 rotate-45 bg-gray-900 dark:bg-gray-100;
+    @apply absolute h-2 w-2 rotate-45;
+    background: var(--ink);
     transform: translateX(-50%) rotate(45deg);
   }
 

@@ -114,10 +114,10 @@ export const JsonTree: React.FC<JsonTreeProps> = ({
 
   if (!nodes.length) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-gray-500 dark:text-gray-400">
+      <div className="flex flex-col items-center justify-center p-12 text-faint">
         <Package className="w-12 h-12 mb-3 opacity-30" />
         <p className="text-sm font-medium mb-1">No JSON data to display</p>
-        <p className="text-xs text-gray-400 dark:text-gray-500">
+        <p className="text-xs text-faint-2">
           Parse some JSON to see the tree view here
         </p>
       </div>
@@ -133,7 +133,7 @@ export const JsonTree: React.FC<JsonTreeProps> = ({
       data={nodes}
       itemContent={renderRow}
       overscan={400}
-      className="json-tree-container scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent"
+      className="json-tree-container"
       style={{height: "100%"}}
     />
   );
