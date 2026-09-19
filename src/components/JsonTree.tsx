@@ -39,6 +39,19 @@ export const JsonTree: React.FC<JsonTreeProps> = ({
     }
   }, [searchMatchIndices, currentMatchIndex]);
 
+  // Bring a node picked outside the tree (the Navigator) into view. Search
+  // wins when active, and scrollIntoView is a no-op for an already visible row
+  // so clicking a row in the tree itself never yanks the list around.
+  const lastFocusedPath = useRef<string>();
+  useEffect(() => {
+    if (searchQuery || !selectedNodePath) return;
+    if (lastFocusedPath.current === selectedNodePath) return;
+    const index = nodes.findIndex((node) => node.path === selectedNodePath);
+    if (index === -1) return;
+    lastFocusedPath.current = selectedNodePath;
+    virtuosoRef.current?.scrollIntoView({index, align: "center"});
+  }, [selectedNodePath, nodes, searchQuery]);
+
   const handleCopy = useCallback(async (value: string) => {
     try {
       await navigator.clipboard.writeText(value);
