@@ -224,17 +224,12 @@ function App() {
     setFilteredNodes(list);
   }, []);
 
-  const handleFocusNode = useCallback(
-    (path: string) => {
-      // While searching the list is a search result; don't rebuild it.
-      if (!searchQuery) applyNodes(revealNode(nodes, path));
-      setSelectedNodePath(path);
-    },
-    [applyNodes, revealNode, nodes, searchQuery]
-  );
-
+  // The Navigator's one action: open that node and fold everything beside it,
+  // which is the whole point of picking a node there.
   const handleIsolateNode = useCallback(
     (path: string) => {
+      setSelectedNodePath(path);
+      // While searching the list is a search result; don't rebuild it.
       if (searchQuery) return;
       let next = revealNode(nodes, path);
       const target = next.find((node) => node.path === path);
@@ -250,7 +245,6 @@ function App() {
         next = jsonParser.collapseNode(next, sibling.path);
       }
       applyNodes(next);
-      setSelectedNodePath(path);
     },
     [applyNodes, revealNode, nodes, searchQuery]
   );
@@ -989,8 +983,7 @@ function App() {
                 <JsonNavigator
                   data={jsonData}
                   selectedNodePath={selectedNodePath}
-                  onFocusNode={handleFocusNode}
-                  onIsolateNode={handleIsolateNode}
+                  onSelectNode={handleIsolateNode}
                 />
               </div>
             </ResizablePanel>

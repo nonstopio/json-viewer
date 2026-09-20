@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Compass,
   Copy,
-  Focus,
 } from "lucide-react";
 import {JsonNode, JsonValue} from "../types/json";
 import {appendPath, pathSegments} from "../utils/jsonParser";
@@ -14,10 +13,8 @@ import {appendPath, pathSegments} from "../utils/jsonParser";
 interface JsonNavigatorProps {
   data: JsonValue | null;
   selectedNodePath: string;
-  /** Select the node and scroll it into view in the tree. */
-  onFocusNode: (path: string) => void;
-  /** Expand only this node and collapse its siblings. */
-  onIsolateNode: (path: string) => void;
+  /** Select this node: open it in the tree and fold everything beside it. */
+  onSelectNode: (path: string) => void;
 }
 
 interface PathSegment {
@@ -53,8 +50,16 @@ const preview = (value: JsonValue): string => {
   return text.length > 60 ? `${text.slice(0, 60)}…` : text;
 };
 
-// ponytail: plain cap instead of virtualizing this list — a level with more
-// than this many children is rare, and the tree search covers finding one.
+const countOf = (value: JsonValue): number =>
+  Array.isArray(value)
+    ? value.length
+    : Object.keys(value as Record<string, JsonValue>).length;
+
+const summary = (value: JsonValue): string =>
+  Array.isArray(value) ? `${value.length} items` : `${countOf(value)} keys`;
+
+// ponytail: plain cap instead of virtualizing these two levels — a level with
+// more than this many children is rare, and search covers finding one.
 const MAX_ROWS = 200;
 
 interface NavRow {
@@ -63,14 +68,99 @@ interface NavRow {
   value: JsonValue;
 }
 
+const childRows = (value: JsonValue, basePath: string): NavRow[] => {
+  if (Array.isArray(value))
+    return value.slice(0, MAX_ROWS).map((child, index) => ({
+      key: `[${index}]`,
+      path: appendPath(basePath, `[${index}]`),
+      value: child,
+    }));
+  const object = value as Record<string, JsonValue>;
+  return Object.keys(object)
+    .slice(0, MAX_ROWS)
+    .map((key) => ({key, path: appendPath(basePath, key), value: object[key]}));
+};
+
+interface RowProps {
+  row: NavRow;
+  checked: boolean;
+  onSelect: (path: string) => void;
+  rowRef?: React.Ref<HTMLLabelElement>;
+}
+
+const Row: React.FC<RowProps> = ({row, checked, onSelect, rowRef}) => {
+  const type = typeOf(row.value);
+  const container = isContainer(row.value);
+
+  return (
+    <label
+      ref={rowRef}
+      data-testid="nav-row"
+      data-path={row.path}
+      className={`flex cursor-pointer items-center gap-2 border-b border-line px-2 py-1.5 ${
+        checked ? "bg-sel" : "hover:bg-hover"
+      }`}
+    >
+      {/* A radio rather than a checkbox input: exactly one node is open at a
+          time, and the native group brings single-selection plus arrow-key
+          roving with it. It reads as a box with a tick either way. */}
+      <input
+        type="radio"
+        name="navigator-node"
+        className="peer sr-only"
+        checked={checked}
+        onChange={() => onSelect(row.path)}
+      />
+      <span
+        aria-hidden
+        className={`grid h-4 w-4 flex-shrink-0 place-items-center border peer-focus-visible:shadow-ring ${
+          checked ? "border-spot bg-spot text-spot-ink" : "border-line-2"
+        }`}
+      >
+        {checked && <Check size={11} strokeWidth={3} />}
+      </span>
+      <span className={`flex-shrink-0 ${TYPE_COLOR[type]}`}>
+        {type === "object" ? (
+          <Braces size={14} />
+        ) : type === "array" ? (
+          <Brackets size={14} />
+        ) : (
+          <span className="block w-[14px] text-center font-mono text-[10px]">
+            •
+          </span>
+        )}
+      </span>
+      <span className="max-w-[10rem] flex-shrink-0 truncate font-mono text-sm font-medium text-json-key">
+        {row.key}
+      </span>
+      <span
+        className={`min-w-0 truncate text-xs ${
+          container ? "text-faint" : TYPE_COLOR[type]
+        }`}
+      >
+        {container ? summary(row.value) : preview(row.value)}
+      </span>
+      {container && (
+        <ChevronRight
+          size={14}
+          className={`ml-auto flex-shrink-0 ${
+            checked ? "rotate-90 text-spot" : "text-faint-2"
+          }`}
+        />
+      )}
+    </label>
+  );
+};
+
 export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
   data,
   selectedNodePath,
-  onFocusNode,
-  onIsolateNode,
+  onSelectNode,
 }) => {
   const [copied, setCopied] = useState(false);
   const crumbRef = useRef<HTMLDivElement>(null);
+  const selectedRef = useRef<HTMLLabelElement>(null);
+  const graphRef = useRef<HTMLDivElement>(null);
 
   const copyPath = useCallback(async (path: string) => {
     try {
@@ -82,11 +172,19 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
     }
   }, []);
 
-  // The level being browsed is the selected node when it is a container, and
-  // its parent otherwise — a primitive has no contents to list.
-  const {segments, rows, total} = useMemo(() => {
-    if (data === null)
-      return {segments: [] as PathSegment[], rows: [], total: 0};
+  // Two levels, never more: the selected node's own level (its siblings, so it
+  // is clear where you are) and the selected node's children (so you can step
+  // in). Picking a child re-roots the graph on it, which is what holds the
+  // depth at two while the walk goes arbitrarily deep.
+  const {segments, rows, children, selectedPath, total} = useMemo(() => {
+    const empty = {
+      segments: [] as PathSegment[],
+      rows: [] as NavRow[],
+      children: [] as NavRow[],
+      selectedPath: "",
+      total: 0,
+    };
+    if (data === null) return empty;
 
     const requested = pathSegments(selectedNodePath || "root");
     const chain: PathSegment[] = [requested[0] ?? {key: "root", path: "root"}];
@@ -100,35 +198,23 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
       chain.push(segment);
       values.push(next);
     }
-    while (values.length > 1 && !isContainer(values[values.length - 1])) {
-      chain.pop();
-      values.pop();
-    }
 
-    const levelPath = chain[chain.length - 1].path;
-    const level = values[values.length - 1];
+    const selected = values[values.length - 1];
+    const atRoot = values.length === 1;
+    // Root has no siblings, so it lists its own children as the level.
+    const levelIndex = atRoot ? 0 : values.length - 2;
+    const level = values[levelIndex];
+    if (!isContainer(level)) return empty;
 
-    if (Array.isArray(level)) {
-      return {
-        segments: chain,
-        rows: level.slice(0, MAX_ROWS).map((value, index) => ({
-          key: `[${index}]`,
-          path: appendPath(levelPath, `[${index}]`),
-          value,
-        })),
-        total: level.length,
-      };
-    }
-    const object = level as Record<string, JsonValue>;
-    const keys = Object.keys(object);
     return {
       segments: chain,
-      rows: keys.slice(0, MAX_ROWS).map((key) => ({
-        key,
-        path: appendPath(levelPath, key),
-        value: object[key],
-      })) as NavRow[],
-      total: keys.length,
+      rows: childRows(level, chain[levelIndex].path),
+      children:
+        !atRoot && isContainer(selected)
+          ? childRows(selected, chain[chain.length - 1].path)
+          : [],
+      selectedPath: atRoot ? "" : chain[chain.length - 1].path,
+      total: countOf(level),
     };
   }, [data, selectedNodePath]);
 
@@ -139,6 +225,23 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
   useEffect(() => {
     const el = crumbRef.current;
     if (el) el.scrollLeft = el.scrollWidth;
+  }, [currentPath]);
+
+  // Put the selection in the middle of the panel, so its children come on
+  // screen with it instead of hanging below the bottom edge. Scrolling the
+  // panel by hand rather than with scrollIntoView, which walks up and scrolls
+  // every scrollable ancestor — including the window, which drags the whole
+  // app off screen on a long level.
+  useEffect(() => {
+    const pane = graphRef.current;
+    const row = selectedRef.current;
+    if (!pane || !row) return;
+    const offset =
+      row.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+    pane.scrollTo({
+      top: pane.scrollTop + offset - (pane.clientHeight - row.offsetHeight) / 2,
+      behavior: "smooth",
+    });
   }, [currentPath]);
 
   if (data === null) {
@@ -179,7 +282,7 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
                 />
               )}
               <button
-                onClick={() => onFocusNode(segment.path)}
+                onClick={() => onSelectNode(segment.path)}
                 className="btn btn--quiet max-w-[10rem] flex-shrink-0 truncate !px-1 !py-0.5 !text-xs"
               >
                 {segment.key}
@@ -196,64 +299,44 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
         </button>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div
+        ref={graphRef}
+        data-testid="nav-graph"
+        role="radiogroup"
+        aria-label="JSON structure"
+        className="min-h-0 flex-1 overflow-y-auto"
+      >
         {rows.map((row) => {
-          const type = typeOf(row.value);
-          const container = isContainer(row.value);
-          const count = Array.isArray(row.value)
-            ? `${row.value.length} items`
-            : container
-              ? `${Object.keys(row.value as Record<string, JsonValue>).length} keys`
-              : "";
-
+          const checked = row.path === selectedPath;
           return (
-            <div
-              key={row.path}
-              className={`group flex items-center gap-1 border-b border-line px-2 ${
-                selectedNodePath === row.path ? "bg-sel" : "hover:bg-hover"
-              }`}
-            >
-              <button
-                data-testid="nav-row"
-                onClick={() => onFocusNode(row.path)}
-                className="flex-1 min-w-0 flex items-center gap-2 py-1.5 text-left"
-              >
-                <span className={`flex-shrink-0 ${TYPE_COLOR[type]}`}>
-                  {type === "object" ? (
-                    <Braces size={14} />
-                  ) : type === "array" ? (
-                    <Brackets size={14} />
-                  ) : (
-                    <span className="block w-[14px] text-center text-[10px] font-mono">
-                      •
-                    </span>
-                  )}
-                </span>
-                <span className="max-w-[10rem] flex-shrink-0 truncate font-mono text-sm font-medium text-json-key">
-                  {row.key}
-                </span>
-                <span
-                  className={`min-w-0 truncate text-xs ${
-                    container ? "text-faint" : TYPE_COLOR[type]
-                  }`}
+            <div key={row.path}>
+              <Row
+                row={row}
+                checked={checked}
+                onSelect={onSelectNode}
+                rowRef={checked ? selectedRef : undefined}
+              />
+              {checked && children.length > 0 && (
+                <div
+                  data-testid="nav-children"
+                  className="ml-4 border-l-2 border-spot-line pl-1"
                 >
-                  {container ? count : preview(row.value)}
-                </span>
-                {container && (
-                  <ChevronRight
-                    size={14}
-                    className="ml-auto flex-shrink-0 text-faint-2"
-                  />
-                )}
-              </button>
-              <button
-                data-testid="nav-isolate"
-                onClick={() => onIsolateNode(row.path)}
-                aria-label={`Show only "${row.key}"`}
-                className="btn btn--quiet btn--icon !h-7 !w-7 flex-shrink-0 opacity-0 focus:opacity-100 group-hover:opacity-100"
-              >
-                <Focus size={14} />
-              </button>
+                  {children.map((child) => (
+                    <Row
+                      key={child.path}
+                      row={child}
+                      checked={false}
+                      onSelect={onSelectNode}
+                    />
+                  ))}
+                  {countOf(row.value) > MAX_ROWS && (
+                    <p className="px-2 py-2 text-xs text-faint">
+                      Showing first {MAX_ROWS} of {countOf(row.value)} — use
+                      search to reach the rest.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}

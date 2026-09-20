@@ -6,7 +6,8 @@ import {tmpdir} from "os";
 // E2E coverage for the reworked Viewer tab: the expand/collapse buttons moved
 // out of the search row and next to the "JSON Tree" title, the search box no
 // longer stretches across the toolbar, and the unused "Property Details" table
-// was replaced by the Navigator panel (breadcrumb + drill-down + isolate).
+// was replaced by the Navigator panel: a two-level graph of checkbox rows where
+// checking a key opens it (and folds everything else) in both panels.
 
 // A document with one wide container (so collapsing it genuinely reflows the
 // tree), one deep chain (so drilling needs several levels), and three
@@ -36,6 +37,14 @@ async function loadViewer(page: Page, json: string, name: string) {
 
 const navRow = (page: Page, key: string) =>
   page.getByTestId("nav-row").filter({hasText: key}).first();
+
+// A row inside the open node's child list — the graph's second level.
+const childRow = (page: Page, key: string) =>
+  page
+    .getByTestId("nav-children")
+    .getByTestId("nav-row")
+    .filter({hasText: key})
+    .first();
 
 const searchInput = (page: Page) =>
   page.locator('input[placeholder^="Search JSON"]');
@@ -170,40 +179,124 @@ test("the case-sensitivity toggle narrows the matches", async ({
   await expect(matchCounter(page)).toHaveText("1 of 3");
 });
 
-test("the navigator drills down and the breadcrumb walks back up", async ({
+test("the navigator graph shows two levels and re-roots as you descend", async ({
   page,
 }, testInfo) => {
-  // Guards the panel that replaced the Property Details table: each container
-  // row descends one level and the crumb strip is the way back.
+  // Guards the graph shape: the selected node's own level plus its children,
+  // never deeper — descending re-roots the graph rather than indenting further.
   await loadViewer(
     page,
     buildFixture(),
     `vn-drill-${testInfo.workerIndex}.json`
   );
 
-  // Root level lists every top-level key with a container summary/preview.
+  // Root level lists every top-level key with a container summary/preview, and
+  // nothing is open yet.
   await expect(page.getByTestId("nav-row")).toHaveCount(4);
   await expect(navRow(page, "alpha")).toContainText("40 keys");
   await expect(navRow(page, "gamma")).toContainText("3 items");
   await expect(navRow(page, "Marker")).toContainText('"first"');
+  await expect(page.getByTestId("nav-children")).toHaveCount(0);
 
+  // Checking `beta` opens it in place: its level stays listed, its one child
+  // appears beneath it, and that is the whole depth.
   await navRow(page, "beta").click();
   await expect(page.getByTestId("nav-breadcrumb")).toContainText("beta");
-  await expect(navRow(page, "level2")).toBeVisible();
+  await expect(childRow(page, "level2")).toBeVisible();
+  await expect(page.getByTestId("nav-row")).toHaveCount(5);
 
-  await navRow(page, "level2").click();
-  await expect(navRow(page, "level3")).toBeVisible();
+  // Checking that child re-roots the graph on it: the level is now beta's
+  // children, and level2's own children are the second level.
+  await childRow(page, "level2").click();
+  await expect(page.getByTestId("nav-row")).toHaveCount(3); // level2 + marker + level3
+  await expect(childRow(page, "level3")).toBeVisible();
+  await expect(navRow(page, "alpha")).toHaveCount(0);
 
-  await navRow(page, "level3").click();
-  await expect(navRow(page, "target")).toContainText('"found me"');
+  await childRow(page, "level3").click();
+  await expect(childRow(page, "target")).toContainText('"found me"');
 
   // Back up two levels via the breadcrumb.
   await page
     .getByTestId("nav-breadcrumb")
     .getByRole("button", {name: "beta", exact: true})
     .click();
-  await expect(navRow(page, "level2")).toBeVisible();
-  await expect(page.getByTestId("nav-row")).toHaveCount(1);
+  await expect(page.getByTestId("nav-row")).toHaveCount(5);
+  await expect(childRow(page, "level2")).toBeVisible();
+});
+
+test("checking a key collapses every other key, in both panels", async ({
+  page,
+}, testInfo) => {
+  // The core of the request: one node open at a time, everything else folded.
+  await loadViewer(
+    page,
+    buildFixture(),
+    `vn-single-${testInfo.workerIndex}.json`
+  );
+
+  // alpha, beta and gamma are all expanded in the tree on load.
+  await expect(page.locator(".json-node", {hasText: "alphaKey0"})).toHaveCount(
+    1
+  );
+
+  await navRow(page, "beta").click();
+
+  // Navigator: only beta carries children, and only beta is checked.
+  await expect(page.getByTestId("nav-children")).toHaveCount(1);
+  // Scoped to the panel: the ground picker is a radio group too.
+  await expect(
+    page.getByTestId("nav-graph").getByRole("radio", {checked: true})
+  ).toHaveCount(1);
+
+  // Tree: alpha's 40 rows and gamma's items are folded away; beta stays open.
+  await expect(page.locator(".json-node", {hasText: "alphaKey0"})).toHaveCount(
+    0
+  );
+  await expect(page.locator(".json-node", {hasText: "level2"})).toHaveCount(1);
+  await expect(
+    page.locator(".json-node", {hasText: "alpha"}).first()
+  ).toBeVisible();
+
+  // Switching the checked key moves both the open child list and the tree.
+  await navRow(page, "gamma").click();
+  await expect(childRow(page, "[0]")).toBeVisible();
+  await expect(page.getByTestId("nav-row").filter({hasText: "level2"})).toHaveCount(
+    0
+  );
+  await expect(page.locator(".json-node", {hasText: "level2"})).toHaveCount(0);
+});
+
+test("the checked row is scrolled to the middle of the navigator", async ({
+  page,
+}, testInfo) => {
+  // Guards the auto-scroll: a key picked far down the level has to come into
+  // focus on its own, together with the children it just opened.
+  const data: Record<string, unknown> = {};
+  for (let i = 0; i < 80; i++) data[`key${i}`] = {inner: `value ${i}`};
+  await loadViewer(
+    page,
+    JSON.stringify(data),
+    `vn-center-${testInfo.workerIndex}.json`
+  );
+
+  const graph = page.getByTestId("nav-graph");
+  expect(await graph.evaluate((el) => el.scrollTop)).toBe(0);
+
+  // key60 is well below the fold, so centring it demands a real scroll.
+  await page.getByTestId("nav-row").filter({hasText: "key60"}).first().click();
+
+  const offset = async () => {
+    const pane = (await graph.boundingBox())!;
+    const row = (await page
+      .locator('[data-testid="nav-row"][data-path="root.key60"]')
+      .boundingBox())!;
+    return Math.abs(row.y + row.height / 2 - (pane.y + pane.height / 2));
+  };
+
+  // Smooth scrolling, so poll until it settles near the middle.
+  await expect.poll(offset, {timeout: 5000}).toBeLessThan(60);
+  // And its children came along with it.
+  await expect(page.getByTestId("nav-children")).toHaveCount(1);
 });
 
 test("clicking a navigator row expands the node's ancestors in the tree", async ({
@@ -224,8 +317,8 @@ test("clicking a navigator row expands the node's ancestors in the tree", async 
   );
 
   await navRow(page, "beta").click();
-  await navRow(page, "level2").click();
-  await navRow(page, "level3").click();
+  await childRow(page, "level2").click();
+  await childRow(page, "level3").click();
 
   await expect(
     page.locator(".json-node", {hasText: "found me"}).first()
@@ -264,38 +357,6 @@ test("a selection deep in a long document is scrolled into the tree viewport", a
   expect(rowBox.y + rowBox.height).toBeLessThanOrEqual(
     paneBox.y + paneBox.height + 1
   );
-});
-
-test("the isolate button keeps one node open and folds its siblings", async ({
-  page,
-}, testInfo) => {
-  // Guards the per-row isolate action — the whole point of the panel is to cut
-  // the scrolling needed to reach one branch.
-  await loadViewer(
-    page,
-    buildFixture(),
-    `vn-isolate-${testInfo.workerIndex}.json`
-  );
-
-  // alpha, beta and gamma are all expanded on load.
-  await expect(page.locator(".json-node", {hasText: "alphaKey0"})).toHaveCount(
-    1
-  );
-  await expect(page.locator(".json-node", {hasText: "level2"})).toHaveCount(1);
-
-  await page.getByRole("button", {name: 'Show only "beta"'}).click();
-
-  // alpha's 40 rows and gamma's items are folded away; beta stays open.
-  await expect(page.locator(".json-node", {hasText: "alphaKey0"})).toHaveCount(
-    0
-  );
-  await expect(page.locator(".json-node", {hasText: "level2"})).toHaveCount(1);
-  await expect(
-    page.locator(".json-node", {hasText: "alpha"}).first()
-  ).toBeVisible();
-
-  // Isolating also makes it the current level in the navigator.
-  await expect(page.getByTestId("nav-breadcrumb")).toContainText("beta");
 });
 
 test("the navigator shows an empty state and the old table view is gone", async ({
