@@ -512,8 +512,8 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Longest gated animation: the footer beam, 13s on a 5s delay.
-    const done = setTimeout(() => setIntro(false), 19_000);
+    // Longest gated animation: the footer beam, 6.5s on a 5s delay.
+    const done = setTimeout(() => setIntro(false), 12_000);
     return () => clearTimeout(done);
   }, []);
 

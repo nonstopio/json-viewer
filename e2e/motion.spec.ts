@@ -45,12 +45,13 @@ test("the ambient motion settles, and leaves the ground visible", async ({
   await expect(page.locator(".glow--hi")).toHaveCSS("opacity", "0.55");
   await expect(page.locator(".grid-layer")).toBeVisible();
 
-  // And the seam's beam ends off-screen, so no band is left lit.
+  // And the seam's beam ends off-screen past the right edge — one pass, left
+  // to right, no return — so no band is left lit.
   const beamAtRest = await page.evaluate(() => {
     const seam = document.querySelector(".seam")!;
     return getComputedStyle(seam, "::after").backgroundPosition;
   });
-  expect(beamAtRest).toMatch(/calc\(0% ?- ?240px\)/);
+  expect(beamAtRest).toMatch(/calc\(100% ?\+ ?240px\)/);
 });
 
 // The regression this file exists for. The beam sits on bands that are
@@ -65,7 +66,7 @@ test("a tab switch after the intro replays nothing", async ({page}) => {
   // The intro really does happen.
   await expect(page.locator(".intro")).toBeAttached();
 
-  // Past the intro window (the footer beam is the longest, 13s on a 5s delay).
+  // Past the intro window (the footer beam is the longest, 6.5s on a 5s delay).
   await page.clock.fastForward("00:25");
   await expect(page.locator(".intro")).toHaveCount(0);
 

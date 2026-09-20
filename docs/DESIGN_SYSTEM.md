@@ -79,15 +79,16 @@ Three arrival gestures, all slow and low-contrast, none carrying information:
 - **`.glow` / `.glow--hi` / `.glow--lo`** — two accent glows that breathe and
   wander in, on different periods so they never line up. These are what give
   the app depth; without them the grounds are flat greys.
-- **`.seam`** — one accent beam travelling out and back along the hairlines
+- **`.seam`** — one accent beam travelling left to right along the hairlines
   between bands, staggered by `--delay-1` / `--delay-2` so the bands light in
-  sequence. Borrowed from Eklavya's shuttle.
+  sequence. One pass only, never a return: a beam that comes back reads as a
+  loop rather than an arrival. Borrowed from Eklavya's shuttle.
 
 **They are gated on an `.intro` class on the app root, not simply declared
 once.** The bands and panels that carry them are conditionally rendered, and a
 remounted element restarts its CSS animation from the top — so without the
 gate, every tab switch replays the beam for as long as the session lasts.
-`App` drops the class after the longest one (19s), and the root never
+`App` drops the class after the longest one (12s), and the root never
 unmounts, so nothing can bring them back short of a reload. Use `.pop-in` for
 something that appears once by its own nature and so needs no gate.
 
