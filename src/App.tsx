@@ -1075,30 +1075,6 @@ function App() {
                     );
                   })}
                 </div>
-
-                {/* Built by: the author's GitHub picture, linking to the
-                    profile. Sits with the brand rather than the tools, because
-                    it is a credit, not a control. */}
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs text-faint">Built by</span>
-                  <a
-                    href={AUTHOR.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    data-tooltip={`${AUTHOR.name} (@${AUTHOR.login})`}
-                    aria-label={`${AUTHOR.name} on GitHub`}
-                    className="block"
-                  >
-                    <img
-                      src={AUTHOR.avatar}
-                      alt={AUTHOR.name}
-                      loading="lazy"
-                      width={24}
-                      height={24}
-                      className="h-6 w-6 border border-line-2 transition-colors hover:border-spot"
-                    />
-                  </a>
-                </div>
               </div>
 
               {/* Version and Report Issues - Right */}
@@ -1125,6 +1101,31 @@ function App() {
                   <Bug size={16} />
                   <span className="text-xs">Report Issues</span>
                 </a>
+                {/* Built by: the author's GitHub picture, linking to the
+                    profile. Last in the row, hard right — it is a signature,
+                    and a signature goes at the end. */}
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-faint">Built by</span>
+                  <a
+                    href={AUTHOR.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-tooltip={`${AUTHOR.name} (@${AUTHOR.login})`}
+                    aria-label={`${AUTHOR.name} on GitHub`}
+                    className="block"
+                  >
+                    {/* Round, against the square rule everything else follows:
+                        this is a face, not a box. */}
+                    <img
+                      src={AUTHOR.avatar}
+                      alt={AUTHOR.name}
+                      loading="lazy"
+                      width={24}
+                      height={24}
+                      className="avatar h-6 w-6 rounded-full border border-line-2 transition-colors hover:border-spot"
+                    />
+                  </a>
+                </div>
               </div>
             </div>
           </div>
