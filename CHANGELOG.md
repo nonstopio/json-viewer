@@ -1,3 +1,17 @@
+# [1.9.0](https://github.com/nonstopio/json-viewer/compare/v1.8.0...v1.9.0) (2026-09-20)
+
+
+### Bug Fixes
+
+* leave the top level open when nothing is ticked ([9bd26fd](https://github.com/nonstopio/json-viewer/commit/9bd26fd28a7f829b38740a6da521291c3421612c))
+
+
+### Features
+
+* credit the author in the footer with their GitHub picture ([e937977](https://github.com/nonstopio/json-viewer/commit/e937977b854334716b351c587f5cf1b027066440))
+* list only branches in the navigator, and make the tick a toggle ([296d67e](https://github.com/nonstopio/json-viewer/commit/296d67ebfb1748bab0899f4a9e6044dd743f4d16))
+* turn the navigator into a two-level graph you pick with a checkbox ([040887f](https://github.com/nonstopio/json-viewer/commit/040887fdacf7266e544ec40d08a2eb3423caca66))
+
 # [1.8.0](https://github.com/nonstopio/json-viewer/compare/v1.7.0...v1.8.0) (2026-09-20)
 
 
