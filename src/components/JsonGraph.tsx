@@ -205,7 +205,7 @@ function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
         </div>
       )}
 
-      {data.hasChildren && (
+      {data.childCount > 0 && (
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -324,10 +324,9 @@ function GraphInner({
     [truncated, data, nodes.length]
   );
 
-  // New document → reset view state (including the dismissed notice, so a
-  // freshly loaded large document warns again).
-  // Skipped on arrival, where the state above is already seeded from the
-  // picked branch; this is only a genuinely new document.
+  // A genuinely new document resets the view, the dismissed notice included,
+  // so a freshly loaded large one warns again. Skipped on arrival, where the
+  // state above is already seeded from the branch the other tab had picked.
   const loaded = useRef(data);
   useEffect(() => {
     if (loaded.current === data) return;

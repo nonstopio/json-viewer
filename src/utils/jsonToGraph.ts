@@ -7,9 +7,11 @@ export interface GraphNodeData {
   kind: "object" | "array" | "value";
   fields: {k: string; v: string}[]; // scalar members shown inline
   path: string; // same convention as the tree (root.user.name, root.items[0])
-  childCount: number; // number of nested object/array children
+  // Members this node holds, scalars included — the count the tree and the
+  // Navigator already show, and what folding hides. A node holding only
+  // scalars folds too, so it needs a toggle as much as one holding children.
+  childCount: number;
   collapsed: boolean;
-  hasChildren: boolean;
   [key: string]: unknown; // satisfies React Flow's Record<string, unknown>
 }
 
@@ -45,8 +47,7 @@ const MIN_W = 140;
 const MAX_W = 320;
 // A field row is text between two 8px paddings. The header carries more: the
 // type badge and its margin, the gap, and the copy button. Budget that, or a
-// key as short as "upiAutoCollect" is clipped inside a card sized for its
-// fields.
+// key as short as "upiAutopay" is clipped inside a card sized for its fields.
 const ROW_CHROME = 28;
 const HEADER_CHROME = 76;
 // A clipped value is still readable; a clipped key names nothing, so a title
@@ -149,9 +150,8 @@ export function jsonToGraph(
               .filter(([, v]) => !isContainer(v))
               .map(([k, v]) => ({k, v: scalarStr(v)})),
         path,
-        childCount: children.length,
+        childCount: entries.length,
         collapsed: isCollapsed,
-        hasChildren: children.length > 0,
       };
       nodes.push({id, type: "json", position: {x: 0, y: 0}, data: nodeData});
       if (parentId) {
@@ -172,7 +172,6 @@ export function jsonToGraph(
         path,
         childCount: 0,
         collapsed: false,
-        hasChildren: false,
       };
       nodes.push({id, type: "json", position: {x: 0, y: 0}, data: nodeData});
       if (parentId) {

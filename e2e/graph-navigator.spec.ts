@@ -222,3 +222,28 @@ test("a branch picked in one tab is the branch the other tab opens on", async ({
     page.getByTestId("nav-graph").locator("input:checked")
   ).toHaveCount(1);
 });
+
+test("a node holding only values can still be folded and brought back", async ({
+  page,
+}, testInfo) => {
+  // Folding hides a node's values, so a node whose members are all values
+  // needs a toggle as much as one with nested children — without it, picking
+  // a branch elsewhere left such a card blank with no way to reopen it.
+  const json = JSON.stringify({
+    pagination: {page: 1, perPage: 3, total: 1847},
+    orders: {first: {id: 1}},
+  });
+  await loadGraph(page, json, `gleaf-${testInfo.workerIndex}.json`);
+
+  const card = page.locator(".react-flow__node", {hasText: "pagination"});
+  await expect(card).toContainText("perPage");
+  const toggle = card.locator("button", {hasText: /^\d+$/});
+  await expect(toggle).toHaveCount(1);
+
+  await toggle.click();
+  await expect(card).not.toContainText("perPage");
+  // Still offering the way back.
+  await expect(toggle).toBeVisible();
+  await toggle.click();
+  await expect(card).toContainText("perPage");
+});
