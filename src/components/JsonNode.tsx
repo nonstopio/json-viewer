@@ -248,8 +248,11 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
       style={{marginLeft: `${node.depth * 20}px`}}
       onClick={handleRowClick}
     >
-      {/* Expand/Collapse Button */}
-      <div className="w-4 h-4 flex items-center justify-center mr-1">
+      {/* Expand/Collapse Button. The box is as tall as one line of the key
+          beside it, so it centres on that line — the row itself is
+          items-start, because a long value wraps and the controls have to
+          stay on the first line rather than drift to the middle of it. */}
+      <div className="mr-1 flex h-6 w-4 items-center justify-center">
         {canExpand ? (
           <button
             onClick={handleToggleClick}
@@ -270,7 +273,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
       {/* Type Icon for primitive values */}
       {!hasChildren && (
         <span
-          className={`mr-1 ${getTypeColor(node.type)}`}
+          className={`mr-1 flex h-6 w-4 items-center justify-center ${getTypeColor(node.type)}`}
           data-tooltip={`Type: ${node.type}`}
         >
           {getTypeIcon(node.type)}

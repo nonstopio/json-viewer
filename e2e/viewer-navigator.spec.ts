@@ -82,8 +82,10 @@ test("expand/collapse-all sit in the tree header, not in the search row", async 
   // …centred on the title rather than sitting a pixel off it, and with room
   // between them instead of running together.
   const midY = (box: {y: number; height: number}) => box.y + box.height / 2;
-  expect(Math.abs(midY(expandBox) - midY(titleBox))).toBeLessThanOrEqual(1);
-  expect(Math.abs(midY(collapseBox) - midY(titleBox))).toBeLessThanOrEqual(1);
+  // 1.5px, not 0: the eyebrow is 11px mono and the labels 12px sans, so their
+  // centres land on different sub-pixels. The misalignment this guards was 4px.
+  expect(Math.abs(midY(expandBox) - midY(titleBox))).toBeLessThanOrEqual(1.5);
+  expect(Math.abs(midY(collapseBox) - midY(titleBox))).toBeLessThanOrEqual(1.5);
   expect(collapseBox.x - (expandBox.x + expandBox.width)).toBeGreaterThanOrEqual(
     8
   );
@@ -437,6 +439,40 @@ test("a selection deep in a long document is scrolled into the tree viewport", a
   expect(rowBox.y + rowBox.height).toBeLessThanOrEqual(
     paneBox.y + paneBox.height + 1
   );
+});
+
+test("the row controls sit on the centre line of the key beside them", async ({
+  page,
+}, testInfo) => {
+  // The rows are items-start so a wrapped value keeps its controls on the
+  // first line; that is also what leaves those controls a few pixels high
+  // unless their boxes are as tall as one line of the key.
+  await loadViewer(page, buildFixture(), `vn-rows-${testInfo.workerIndex}.json`);
+  await page.locator(".json-node").first().waitFor();
+
+  const centres = await page.evaluate(() => {
+    const mid = (el: Element) => {
+      const box = el.getBoundingClientRect();
+      return box.top + box.height / 2;
+    };
+    return [...document.querySelectorAll(".json-node")]
+      .slice(0, 8)
+      .map((row) => {
+        const key = row.querySelector("span.font-mono");
+        const toggle = row.querySelector("button[aria-label]");
+        const icon = row.querySelector("span[data-tooltip^='Type:']");
+        return {
+          toggle: key && toggle ? mid(toggle) - mid(key) : 0,
+          icon: key && icon ? mid(icon) - mid(key) : 0,
+        };
+      });
+  });
+
+  expect(centres.length).toBeGreaterThan(3);
+  for (const row of centres) {
+    expect(Math.abs(row.toggle)).toBeLessThanOrEqual(1.5);
+    expect(Math.abs(row.icon)).toBeLessThanOrEqual(1.5);
+  }
 });
 
 test("the navigator shows an empty state and the old table view is gone", async ({
