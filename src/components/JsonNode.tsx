@@ -82,8 +82,8 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
     if (index === -1) return text;
 
     const highlightClass = isCurrentMatch
-      ? "bg-orange-300 dark:bg-orange-600 px-1 rounded"
-      : "bg-yellow-300 dark:bg-yellow-600 px-1 rounded";
+      ? "rounded-sm bg-mark-current px-1 text-mark-current-ink"
+      : "rounded-sm bg-mark px-1 text-mark-ink";
 
     return (
       <>
@@ -118,19 +118,19 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
   const getTypeColor = (type: string) => {
     switch (type) {
       case "object":
-        return "text-purple-600 dark:text-purple-400";
+        return "text-json-object";
       case "array":
-        return "text-blue-600 dark:text-blue-400";
+        return "text-json-array";
       case "string":
-        return "text-green-600 dark:text-green-400";
+        return "text-json-string";
       case "number":
-        return "text-orange-600 dark:text-orange-400";
+        return "text-json-number";
       case "boolean":
-        return "text-pink-600 dark:text-pink-400";
+        return "text-json-boolean";
       case "null":
-        return "text-gray-500 dark:text-gray-400";
+        return "text-json-null italic";
       default:
-        return "text-gray-600 dark:text-gray-300";
+        return "text-dim";
     }
   };
 
@@ -235,11 +235,11 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
     <div
       className={`json-node flex items-start py-1 px-2 group transition-all duration-150 ${
         isSelected
-          ? "bg-blue-50 dark:bg-blue-900/30 border-l-2 border-blue-500 shadow-sm"
-          : "border-l-2 border-transparent hover:border-gray-300 dark:hover:border-gray-600"
+          ? "border-l-2 border-spot bg-sel"
+          : "border-l-2 border-transparent hover:border-line-2"
       } ${
-        isCurrentMatch ? "ring-2 ring-orange-400 ring-opacity-50" : ""
-      } cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-r`}
+        isCurrentMatch ? "ring-1 ring-spot" : ""
+      } cursor-pointer hover:bg-hover`}
       style={{marginLeft: `${node.depth * 20}px`}}
       onClick={handleRowClick}
     >
@@ -248,10 +248,10 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
         {canExpand ? (
           <button
             onClick={handleToggleClick}
-            className={`w-3 h-3 rounded-sm flex items-center justify-center text-white text-xs font-bold transition-all duration-150 ${
+            className={`flex h-3.5 w-3.5 items-center justify-center rounded-sm text-xs font-bold transition-colors ${
               node.isExpanded
-                ? "bg-orange-500 hover:bg-orange-600 shadow-sm"
-                : "bg-blue-500 hover:bg-blue-600 shadow-sm"
+                ? "bg-spot text-spot-ink"
+                : "border border-line-2 text-dim hover:border-spot hover:text-spot"
             }`}
             aria-label={node.isExpanded ? "Collapse" : "Expand"}
           >
@@ -274,9 +274,9 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
 
       {/* Key */}
       {node.key && (
-        <span className="font-medium text-gray-700 dark:text-gray-300 mr-1">
+        <span className="mr-1 font-mono font-medium text-json-key">
           {highlightText(node.key)}
-          <span className="text-gray-500 dark:text-gray-500 ml-1">:</span>
+          <span className="ml-1 text-json-punct">:</span>
         </span>
       )}
 
@@ -288,11 +288,11 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
         {/* Copy Value Button */}
         <button
           onClick={handleCopyValue}
-          className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all duration-150"
+          className="btn btn--quiet btn--icon !h-6 !w-6"
           data-tooltip="Copy value"
         >
           {isValueCopied ? (
-            <Check size={12} className="text-green-500" />
+            <Check size={12} className="text-success" />
           ) : (
             <Copy size={12} />
           )}
@@ -301,11 +301,11 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
         {/* Copy Path Button */}
         <button
           onClick={handleCopyPath}
-          className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all duration-150"
+          className="btn btn--quiet btn--icon !h-6 !w-6"
           data-tooltip="Copy path"
         >
           {isPathCopied ? (
-            <Check size={12} className="text-green-500" />
+            <Check size={12} className="text-success" />
           ) : (
             <Package size={12} />
           )}
@@ -318,7 +318,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
               e.stopPropagation();
               setShowDetails(!showDetails);
             }}
-            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all duration-150"
+            className="btn btn--quiet btn--icon !h-6 !w-6"
             data-tooltip="Property details"
           >
             <Info size={12} />
@@ -327,24 +327,22 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
           {/* Property Details Popup */}
           {showDetails && (
             <div
-              className="absolute right-0 top-full mt-1 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 p-3"
+              className="absolute right-0 top-full z-50 mt-1 w-64 border border-line-2 bg-panel p-3 shadow-lg"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                Property Details
-              </div>
+              <div className="eyebrow mb-2">Property Details</div>
               <div className="space-y-2">
                 {getPropertyDetails().map((detail, index) => (
                   <div
                     key={index}
                     className="flex items-center justify-between group/detail"
                   >
-                    <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                    <span className="text-xs font-medium text-dim">
                       {detail.label}:
                     </span>
                     <div className="flex items-center gap-1">
                       <span
-                        className="text-xs text-gray-900 dark:text-gray-100 font-mono max-w-32 truncate"
+                        className="max-w-32 truncate font-mono text-xs text-ink"
                         data-tooltip={detail.value}
                       >
                         {detail.value}
@@ -353,7 +351,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
                         onClick={() =>
                           copyPropertyDetail(detail.label, detail.value)
                         }
-                        className="opacity-0 group-hover/detail:opacity-100 p-0.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-all duration-150"
+                        className="btn btn--quiet btn--icon !h-5 !w-5 opacity-0 group-hover/detail:opacity-100"
                         data-tooltip={`Copy ${detail.label.toLowerCase()}`}
                       >
                         <Copy size={10} />
@@ -364,7 +362,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
               </div>
               <button
                 onClick={() => setShowDetails(false)}
-                className="w-full mt-3 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 py-1 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors"
+                className="btn btn--quiet btn--block mt-3 !py-1 !text-xs"
               >
                 Close
               </button>

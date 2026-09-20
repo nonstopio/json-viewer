@@ -17,6 +17,8 @@
   },
   "dependencies": {
     "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/language": "^6.12.4",
+    "@lezer/highlight": "^1.2.3",
     "@uiw/react-codemirror": "^4.25.11",
     "@xyflow/react": "^12.11.2",
     "dagre": "^0.8.5",

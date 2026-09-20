@@ -1,7 +1,9 @@
-import React, {useState, useRef, useCallback, useEffect} from "react";
+import React, {useState, useRef, useCallback, useEffect, useMemo} from "react";
 import CodeMirror, {ReactCodeMirrorRef} from "@uiw/react-codemirror";
 import {json} from "@codemirror/lang-json";
 import {Upload, FileText, X, AlertCircle} from "lucide-react";
+import {useGround} from "../hooks/useTheme";
+import {editorTheme} from "../styles/editorTheme";
 
 interface JsonInputProps {
   onJsonSubmit: (json: string, shouldSwitchTab?: boolean) => void;
@@ -35,21 +37,12 @@ export const JsonInput: React.FC<JsonInputProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<ReactCodeMirrorRef>(null);
 
-  // Mirror the app's dark mode (toggled via the `dark` class on <html>) so the
-  // editor theme matches.
-  const [isDark, setIsDark] = useState(() =>
-    document.documentElement.classList.contains("dark")
-  );
-  useEffect(() => {
-    const observer = new MutationObserver(() =>
-      setIsDark(document.documentElement.classList.contains("dark"))
-    );
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-    return () => observer.disconnect();
-  }, []);
+  // The editor is themed from the same role tokens as everything else; it
+  // only needs the ground to set CodeMirror's own `dark` flag. Read from the
+  // applied attribute, not a second useTheme instance, which would never hear
+  // about a swap made while the editor stays mounted.
+  const ground = useGround();
+  const cmTheme = useMemo(() => editorTheme(ground), [ground]);
 
   useEffect(() => {
     setJsonText(initialValue);
@@ -327,13 +320,11 @@ export const JsonInput: React.FC<JsonInputProps> = ({
           min-height:auto), which is what keeps scrolling inside the editor. */}
       <div className="flex-1 flex flex-col min-h-0">
         <div className="flex items-center justify-between mb-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Paste your JSON here
-          </label>
+          <label className="eyebrow">Paste your JSON here</label>
           {jsonText && (
             <button
               onClick={handleClear}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              className="btn btn--quiet btn--icon"
               data-tooltip="Clear input"
             >
               <X size={16} />
@@ -345,15 +336,15 @@ export const JsonInput: React.FC<JsonInputProps> = ({
             multi-MB / hundreds-of-thousands-of-lines input where a plain
             <textarea> would block the main thread laying out every line. */}
         <div
-          className="min-h-0 flex-1 overflow-hidden rounded-lg border border-gray-300 focus-within:ring-2 focus-within:ring-blue-500 dark:border-gray-600"
+          className="min-h-0 flex-1 overflow-hidden border border-line-2 focus-within:border-spot"
           onKeyDown={handleKeyDown}
         >
           <CodeMirror
             ref={editorRef}
             value={jsonText}
             height="100%"
-            theme={isDark ? "dark" : "light"}
-            extensions={[json()]}
+            theme="none"
+            extensions={[json(), cmTheme]}
             editable={!isLoading}
             placeholder="Paste the JSON code here (your code is not saved anywhere)"
             onChange={(value) => {
@@ -370,10 +361,10 @@ export const JsonInput: React.FC<JsonInputProps> = ({
         </div>
 
         <div className="flex items-center justify-between mt-2">
-          <div className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="text-xs text-faint">
             Ctrl+Enter (Cmd+Enter) to parse • Attempts to auto-fix common errors
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="font-mono text-xs text-faint">
             {jsonText.length} characters
           </div>
         </div>
@@ -381,9 +372,9 @@ export const JsonInput: React.FC<JsonInputProps> = ({
 
       {/* Auto-fix notice — the parsed result may differ from the raw input */}
       {!error && wasModified && (
-        <div className="mt-3 flex items-start space-x-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20">
-          <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-500" />
-          <div className="text-sm text-amber-800 dark:text-amber-200">
+        <div className="mt-3 flex items-start space-x-2 rounded-md border-l-2 border-warning bg-warning-soft p-3">
+          <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-warning" />
+          <div className="text-sm text-ink">
             <div className="font-medium">Input was auto-corrected</div>
             <div className="mt-1 text-xs">
               Your JSON didn&apos;t parse as-is, so it was cleaned up before
@@ -396,16 +387,16 @@ export const JsonInput: React.FC<JsonInputProps> = ({
 
       {/* Error Display */}
       {error && (
-        <div className="flex items-start space-x-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-red-800 dark:text-red-200">
+        <div className="flex items-start space-x-2 rounded-md border-l-2 border-error bg-error-soft p-3">
+          <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-error" />
+          <div className="text-sm text-ink">
             <div className="font-medium">JSON Parse Error</div>
             <div className="mt-1">{error}</div>
             {errorDetails &&
               (errorDetails.line ||
                 errorDetails.column ||
                 errorDetails.position !== undefined) && (
-                <div className="mt-1 text-xs text-red-600 dark:text-red-300">
+                <div className="mt-1 text-xs text-dim">
                   {errorDetails.line && errorDetails.column
                     ? `Error at line ${errorDetails.line}, column ${errorDetails.column}`
                     : errorDetails.line
@@ -416,19 +407,19 @@ export const JsonInput: React.FC<JsonInputProps> = ({
                   {errorDetails.position &&
                     ` (position ${errorDetails.position})`}
                   {hasAutoJumped && (
-                    <span className="ml-2 text-green-600 dark:text-green-400">
+                    <span className="ml-2 text-success">
                       ✓ Auto-jumped to error
                     </span>
                   )}
                   <button
                     onClick={handleJumpToError}
                     disabled={isJumpingToError}
-                    className="ml-2 px-2 py-1 text-xs bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded hover:bg-red-200 dark:hover:bg-red-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn btn--ghost ml-2 !border-error !text-error"
                     data-tooltip="Click to jump to error location"
                   >
                     {isJumpingToError ? (
                       <>
-                        <span className="inline-block animate-spin w-3 h-3 border border-red-500 border-t-transparent rounded-full mr-1"></span>
+                        <span className="mr-1 inline-block h-3 w-3 animate-spin rounded-full border border-current border-t-transparent"></span>
                         Finding...
                       </>
                     ) : hasAutoJumped ? (
@@ -448,7 +439,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
         <button
           onClick={handleTextSubmit}
           disabled={!jsonText.trim() || isLoading}
-          className="w-full flex items-center justify-center space-x-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-1.5 px-3 rounded text-sm transition-colors duration-200"
+          className="btn btn--brand btn--block"
         >
           <FileText className="w-3 h-3" />
           <span>{isLoading ? "Parsing..." : "Parse JSON"}</span>
@@ -458,27 +449,27 @@ export const JsonInput: React.FC<JsonInputProps> = ({
       {/* File Upload Area - Now at bottom and smaller */}
       <div className="mt-3">
         <div
-          className={`border-2 border-dashed rounded-lg p-3 text-center transition-all duration-200 ${
+          className={`border border-dashed p-3 text-center transition-colors ${
             isDragOver
-              ? "border-blue-400 bg-blue-50 dark:bg-blue-900/20"
-              : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
+              ? "border-spot bg-spot-soft"
+              : "border-line-2 hover:border-faint"
           }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
           <div className="flex flex-col items-center space-y-1">
-            <Upload className="w-5 h-5 text-gray-400" />
-            <div className="text-xs text-gray-600 dark:text-gray-400">
+            <Upload className="h-5 w-5 text-faint" />
+            <div className="text-xs text-dim">
               <button
                 onClick={triggerFileInput}
-                className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                className="font-medium text-spot hover:underline"
               >
                 Click to upload
               </button>{" "}
               or drag and drop your JSON file here
             </div>
-            <div className="text-xs text-gray-500 dark:text-gray-500">
+            <div className="text-xs text-faint">
               Supports .json files up to 5MB
             </div>
             <input

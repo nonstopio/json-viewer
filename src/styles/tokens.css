@@ -1,0 +1,237 @@
+/* ============================================================
+   JSON Viewer design tokens — the whole theme, in one file.
+
+   Two layers, and the order matters:
+
+   1. A SCALE — accent ramp, type, spacing, radii, motion. Fixed
+      values that mean the same thing on every ground.
+   2. GROUNDS — `ink` (dark) and `paper` (light), each redefining
+      the same set of ROLE tokens. Components must only ever name a
+      role (--ink, --dim, --line, --spot) — in practice via the
+      Tailwind utilities wired to them in tailwind.config.js
+      (bg-panel, text-dim, border-line, …). Naming a scale step or
+      a raw hex in a component is a bug: it pins that component to
+      one ground and the theme toggle stops working for it.
+
+   The ground is set as data-mode on <html> by a blocking inline
+   script in index.html, before any CSS loads. Custom properties
+   inherit, so flipping that one attribute re-resolves every role
+   for the whole tree — no `dark:` variant anywhere in the app.
+
+   To retheme the product, edit the GROUNDS block below. Nothing
+   else should need to change.
+   ============================================================ */
+
+:root {
+  /* ---------- ACCENT: verdigris ----------
+     Aged bronze on a bow fitting. One hue, spent sparingly. The
+     ground blocks below pick which step is --spot; these steps are
+     for the rare tint or border that needs a specific value. */
+  --vd-50: #e6f7f3;
+  --vd-100: #c4ede4;
+  --vd-200: #9be0d2;
+  --vd-300: #79d5c4; /* accent on ink   — 10.33:1 */
+  --vd-400: #3fb8a3;
+  --vd-500: #199688;
+  --vd-600: #0e6e66;
+  --vd-700: #0a5751; /* accent on paper — 7.20:1 */
+  --vd-800: #07403c;
+  --vd-900: #052e2b;
+
+  /* ---------- TYPE FAMILIES ----------
+     Two extremes, no middle: tight display for the wordmark and
+     headings, wide-tracked uppercase mono for micro-labels. Body
+     text stays small and quiet. JSON itself is always mono. */
+  --font-disp: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Helvetica, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+
+  /* ---------- TYPE SCALE ---------- */
+  --text-xs: 12px;
+  --lh-xs: 16px;
+  --text-sm: 14px;
+  --lh-sm: 20px;
+  --text-base: 16px;
+  --lh-base: 24px;
+  --text-lg: 20px;
+  --lh-lg: 28px;
+  --text-xl: 24px;
+  --lh-xl: 32px;
+  --text-2xl: 30px;
+  --lh-2xl: 38px;
+
+  --display-1: clamp(28px, 3.2vw, 44px);
+  --display-2: clamp(22px, 2.2vw, 30px);
+
+  /* Display tracking is aggressively negative — this, plus the
+     sub-1 leading, is most of what reads as "designed". */
+  --tracking-display: -0.055em;
+  --tracking-tight: -0.045em;
+  --tracking-snug: -0.02em;
+  --tracking-caps: 0.16em;
+  --tracking-caps-wide: 0.24em;
+  --leading-display: 0.9;
+
+  /* ---------- RADII ----------
+     The chrome is square: hairline rules, not rounded cards. The ramp is kept
+     as three distinct names rather than collapsed to one, so a future theme
+     can reintroduce a radius here and have every surface pick it up — which
+     is the whole point of naming them. --radius-pill stays round because the
+     only things using it are actually circles (the spinner, the scrollbar
+     thumb), not boxes with softened corners. */
+  --radius-none: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-pill: 999px;
+
+  /* Every control that sits in the nav row is this tall, so the row reads as
+     one band rather than a set of near-misses. */
+  --nav-control-h: 32px;
+
+  /* ---------- MOTION ---------- */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --ease: cubic-bezier(0.2, 0.6, 0.2, 1);
+}
+
+/* ============================================================
+   GROUNDS
+   Every role below exists in both blocks. A role defined in only
+   one of them renders one ground's text on the other's surface.
+   ============================================================ */
+
+:root,
+:root[data-mode="ink"] {
+  /* -- surfaces -- */
+  --bg: #17171a; /* page */
+  --panel: #1e1e22; /* raised band, toolbar, sidebar, popover */
+  --mass: #26262a; /* wells, inputs, inline code */
+  --hover: #232327; /* row hover */
+  --sel: #1c2b2c; /* selected row — a verdigris-leaning well */
+
+  /* -- text -- */
+  --ink: #eae7e1; /* primary */
+  --dim: #a29c93; /* secondary */
+  --faint: #8b857b; /* captions, micro-labels — 4.89:1 */
+  --faint-2: #565249; /* disabled, placeholder */
+
+  /* -- rules -- */
+  --line: #26262a; /* hairline */
+  --line-2: #33333a; /* stronger hairline, frame edges */
+
+  /* -- accent -- */
+  --spot: var(--vd-300);
+  --spot-ink: #17171a; /* text ON a --spot fill */
+  --spot-soft: color-mix(in srgb, var(--spot) 14%, transparent);
+  --spot-line: color-mix(in srgb, var(--spot) 40%, transparent);
+
+  /* -- state (kept off the accent hue so state never reads as branding) -- */
+  --error: #ff6369;
+  --error-soft: color-mix(in srgb, var(--error) 14%, transparent);
+  --warning: #e8920c;
+  --warning-soft: color-mix(in srgb, var(--warning) 14%, transparent);
+  --success: #8ecf7a;
+  --info: #4a9eff;
+
+  /* -- the living ground --
+     The grid gives the flat surface a measure; the glows give it depth. Both
+     are deliberately at the edge of visibility: the app has to be read, not
+     admired. --glow is the colour the accent throws when it is spread over
+     600px, which is why it is a raw rgba rather than a mix of --spot. */
+  --grid: #1f1f23;
+  --glow: rgba(25, 150, 136, 0.22);
+  --glow-low: rgba(25, 150, 136, 0.1);
+
+  /* -- JSON syntax --
+     Keys are primary text; the value hues are a deliberately small
+     set that sits alongside verdigris rather than fighting it. */
+  --json-key: var(--ink);
+  --json-string: #e6c060;
+  --json-number: var(--vd-300);
+  --json-boolean: #8ecf7a;
+  --json-null: var(--faint);
+  --json-object: #c9a8ff;
+  --json-array: #7fc4ff;
+  --json-punct: var(--faint-2);
+
+  /* -- search highlight -- */
+  --mark: #4a4326;
+  --mark-ink: #f5e9c4;
+  --mark-current: var(--spot);
+  --mark-current-ink: var(--spot-ink);
+
+  /* -- the graph canvas -- */
+  --graph-bg: var(--bg);
+  --graph-edge: #4b4b53;
+
+  --code-bg: var(--mass);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+  --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--spot);
+  --scrim: rgba(0, 0, 0, 0.62);
+}
+
+:root[data-mode="paper"] {
+  --bg: #f0ede6;
+  --panel: #e7e3da;
+  --mass: #ddd8cc;
+  --hover: #e4e0d6;
+  --sel: #dce7e2;
+
+  --ink: #16150f;
+  --dim: #57534a;
+  --faint: #635e52; /* 5.04:1 on --panel, the darkest ground it sits on */
+  --faint-2: #a09a8c;
+
+  --line: #e3dfd4;
+  --line-2: #cec8b9;
+
+  --spot: var(--vd-700);
+  --spot-ink: #ffffff;
+  --spot-soft: color-mix(in srgb, var(--spot) 10%, transparent);
+  --spot-line: color-mix(in srgb, var(--spot) 35%, transparent);
+
+  /* A light ground carries far less saturation before a state colour
+     reads as a stain, and each of these must still pass as text. */
+  --error: #b4262b;
+  --error-soft: color-mix(in srgb, var(--error) 10%, transparent);
+  --warning: #7a4b00; /* 5.21:1 on --mass */
+  --warning-soft: color-mix(in srgb, var(--warning) 10%, transparent);
+  --success: #2f6b1f;
+  --info: #14539e;
+
+  --grid: #e5e1d7;
+  /* A light ground carries far less glow before it reads as a stain. */
+  --glow: rgba(14, 110, 102, 0.1);
+  --glow-low: rgba(14, 110, 102, 0.05);
+
+  --json-key: var(--ink);
+  --json-string: #8a5300;
+  --json-number: var(--vd-700);
+  --json-boolean: #2f6b1f;
+  --json-null: var(--faint);
+  --json-object: #6d3fa8;
+  --json-array: #14539e;
+  --json-punct: var(--faint-2);
+
+  --mark: #f3e4a8;
+  --mark-ink: #3d3411;
+  --mark-current: var(--spot);
+  --mark-current-ink: var(--spot-ink);
+
+  --graph-bg: var(--bg);
+  --graph-edge: #b3ac9c;
+
+  /* A syntax theme's dimmest token lands under 4.5:1 on --mass, so the
+     well is lightened rather than the theme repainted. */
+  --code-bg: #edeae2;
+  --shadow-sm: 0 1px 2px rgba(22, 21, 15, 0.12);
+  --shadow: 0 12px 28px rgba(22, 21, 15, 0.1);
+  --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--spot);
+  --scrim: rgba(22, 21, 15, 0.42);
+}

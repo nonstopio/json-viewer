@@ -315,7 +315,15 @@ playwright/.cache/
 **/secrets/
 **/*secret*
 **/*key*
-**/*token*
+# Named for what they are rather than for the word "token", which also names
+# design tokens, tokenizers and lexers. A blanket **/*token* once swallowed
+# src/styles/tokens.css — the file the entire theme lives in — and the build
+# only failed in CI, because locally the file was still on disk.
+*.token
+*auth-token*
+*access-token*
+*refresh-token*
+*api-token*
 **/config/local*
 
 # Analytics and tracking files (if any)

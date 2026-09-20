@@ -43,6 +43,8 @@ import {
 } from "lucide-react";
 import {JsonValue} from "../types/json";
 import {brand} from "../brand";
+import {readRole} from "../styles/roles";
+import {useGround} from "../hooks/useTheme";
 import {
   jsonToGraph,
   allContainerPaths,
@@ -97,10 +99,10 @@ function Highlighted({
     out.push(
       <mark
         key={k++}
-        className={`rounded px-0.5 ${
+        className={`rounded-sm px-0.5 ${
           active
-            ? "bg-amber-400 text-black"
-            : "bg-amber-200/70 text-black dark:bg-amber-500/40 dark:text-amber-50"
+            ? "bg-mark-current text-mark-current-ink"
+            : "bg-mark text-mark-ink"
         }`}
       >
         {text.slice(idx, idx + ql.length)}
@@ -113,7 +115,7 @@ function Highlighted({
   return <>{out}</>;
 }
 
-// Tailwind drives light/dark via the html.dark class, so nodes restyle for free.
+// Every colour below is a role token, so nodes repaint with the ground for free.
 function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
   const {onToggle, onCopyPath, direction, query, activeHit, selectedPath} =
     useContext(ActionsContext);
@@ -126,16 +128,19 @@ function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
 
   return (
     <div
-      className={`rounded-md border shadow-sm text-xs bg-white dark:bg-gray-800 ${
-        isHighlight
-          ? "border-blue-500 ring-2 ring-blue-400/50"
-          : "border-gray-300 dark:border-gray-600"
+      className={`rounded-md border bg-panel text-xs shadow-sm ${
+        isHighlight ? "border-spot ring-2 ring-spot" : "border-line-2"
       }`}
     >
-      <Handle type="target" position={targetPos} className="!bg-gray-400" />
-      <div className="flex items-center justify-between gap-2 px-2 py-1.5 border-b border-gray-200 dark:border-gray-700">
-        <span className="font-semibold text-gray-800 dark:text-gray-100 truncate">
-          <span className="mr-1 text-blue-500 dark:text-blue-400">{badge}</span>
+      <Handle
+        type="target"
+        position={targetPos}
+        /* React Flow draws its handles as circles; the chrome here is square. */
+        className="!rounded-none !bg-faint-2"
+      />
+      <div className="flex items-center justify-between gap-2 border-b border-line-2 px-2 py-1.5">
+        <span className="truncate font-mono font-semibold text-ink">
+          <span className="mr-1 text-spot">{badge}</span>
           <Highlighted
             text={data.title}
             query={query}
@@ -147,7 +152,7 @@ function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
             e.stopPropagation();
             onCopyPath(data.path);
           }}
-          className="shrink-0 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+          className="btn btn--quiet !h-6 !w-6 !p-0 shrink-0"
           data-tooltip="Copy JSON path"
         >
           <Copy size={12} />
@@ -161,12 +166,12 @@ function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
             return (
               <div
                 key={i}
-                className={`truncate text-gray-700 dark:text-gray-300 ${
-                  activeField ? "rounded bg-blue-500/10" : ""
+                className={`truncate font-mono text-dim ${
+                  activeField ? "rounded-sm bg-spot-soft" : ""
                 }`}
               >
                 {f.k && (
-                  <span className="text-purple-600 dark:text-purple-400">
+                  <span className="text-json-key">
                     <Highlighted
                       text={f.k}
                       query={query}
@@ -175,7 +180,7 @@ function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
                     {": "}
                   </span>
                 )}
-                <span className="text-emerald-700 dark:text-emerald-400">
+                <span className="text-json-string">
                   <Highlighted text={f.v} query={query} active={activeField} />
                 </span>
               </div>
@@ -190,7 +195,7 @@ function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
             e.stopPropagation();
             onToggle(data.path);
           }}
-          className="w-full flex items-center justify-center gap-1 px-2 py-1 border-t border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-b-md"
+          className="btn btn--quiet btn--block border-t border-t-line-2 !px-2 !py-1"
         >
           {data.collapsed ? (
             <ChevronRight size={12} />
@@ -200,31 +205,17 @@ function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
           <span>{data.childCount}</span>
         </button>
       )}
-      <Handle type="source" position={sourcePos} className="!bg-gray-400" />
+      <Handle
+        type="source"
+        position={sourcePos}
+        /* React Flow draws its handles as circles; the chrome here is square. */
+        className="!rounded-none !bg-faint-2"
+      />
     </div>
   );
 }
 
 const nodeTypes: NodeTypes = {json: JsonFlowNode};
-
-// Follow the actual applied theme (html.dark), which useTheme toggles from any
-// source (manual or system). A second useTheme instance wouldn't share state.
-function useIsDark(): boolean {
-  const [dark, setDark] = useState(() =>
-    document.documentElement.classList.contains("dark")
-  );
-  useEffect(() => {
-    const obs = new MutationObserver(() =>
-      setDark(document.documentElement.classList.contains("dark"))
-    );
-    obs.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-    return () => obs.disconnect();
-  }, []);
-  return dark;
-}
 
 // Shared style for every toolbar button.
 function ToolBtn({
@@ -243,11 +234,7 @@ function ToolBtn({
       onClick={onClick}
       data-tooltip={label}
       aria-label={label}
-      className={`flex h-8 w-8 items-center justify-center rounded transition-colors ${
-        active
-          ? "bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300"
-          : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-      }`}
+      className={`btn btn--icon ${active ? "btn--on" : "btn--quiet"}`}
     >
       {children}
     </button>
@@ -273,7 +260,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const {setCenter, fitView, zoomIn, zoomOut, getZoom, flowToScreenPosition} =
     useReactFlow();
-  const isDark = useIsDark();
+  const isDark = useGround() === "ink";
 
   const {nodes, edges, truncated} = useMemo(
     () => jsonToGraph(data, collapsed, direction),
@@ -421,7 +408,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
     )}.png`;
 
     toPng(viewport, {
-      backgroundColor: isDark ? "#111827" : "#ffffff",
+      backgroundColor: readRole("graph-bg"),
       width,
       height,
       pixelRatio,
@@ -440,7 +427,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
       a.href = dataUrl;
       a.click();
     });
-  }, [nodes, isDark]);
+  }, [nodes]);
 
   // Re-fit whenever the laid-out graph changes (data / direction / collapse).
   // The `fitView` prop fires before custom nodes are measured, so re-fit on the
@@ -582,11 +569,10 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
         {/* Fullscreen elements default to a black backdrop — restore the page
             background for both themes. */}
         <style>{`
-          .json-graph-root:fullscreen { background-color: #ffffff; }
-          .dark .json-graph-root:fullscreen { background-color: #111827; }
+          .json-graph-root:fullscreen { background-color: var(--graph-bg); }
         `}</style>
         {truncated && !noticeDismissed && (
-          <div className="absolute right-3 top-3 z-20 w-80 max-w-[calc(100%-1.5rem)] rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 shadow-lg dark:border-amber-500/40 dark:bg-amber-900/50 dark:text-amber-100">
+          <div className="absolute right-3 top-3 z-20 w-80 max-w-[calc(100%-1.5rem)] rounded-md border border-line-2 border-l-2 border-l-warning bg-panel p-3 text-xs text-ink shadow-lg">
             <div className="flex items-start gap-2">
               <AlertTriangle size={16} className="mt-0.5 shrink-0" />
               <div className="flex-1">
@@ -613,7 +599,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
                 onClick={() => setNoticeDismissed(true)}
                 aria-label="Dismiss"
                 data-tooltip="Dismiss"
-                className="shrink-0 rounded p-0.5 text-amber-700 hover:bg-amber-200/60 dark:text-amber-200 dark:hover:bg-amber-800/60"
+                className="btn btn--quiet btn--icon !h-6 !w-6 shrink-0"
               >
                 <X size={14} />
               </button>
@@ -634,9 +620,10 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
           nodesDraggable={false}
           nodesConnectable={false}
           // The default dark-mode edge color is near-black on our canvas —
-          // give edges an explicit, visible stroke in both themes.
+          // give edges an explicit stroke. SVG resolves the var() itself, so
+          // this follows the ground without a re-render.
           defaultEdgeOptions={{
-            style: {stroke: isDark ? "#94a3b8" : "#64748b", strokeWidth: 1.5},
+            style: {stroke: "var(--graph-edge)", strokeWidth: 1.5},
           }}
           // Scroll pans (what users expect from "moving" the canvas); pinch or
           // Ctrl+scroll zooms, alongside the toolbar buttons.
@@ -646,19 +633,13 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
           panOnDrag
         >
           <Background />
-          {showMinimap && (
-            <MiniMap
-              pannable
-              zoomable
-              className="!bg-gray-100 dark:!bg-gray-700"
-            />
-          )}
+          {showMinimap && <MiniMap pannable zoomable className="!bg-mass" />}
         </ReactFlow>
 
         {/* Floating search box (JSON Crack style) */}
         {searchOpen && (
-          <div className="absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 shadow-lg dark:border-gray-700 dark:bg-gray-800">
-            <Search size={14} className="text-gray-400" />
+          <div className="absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 border border-line-2 bg-panel px-3 py-1.5 shadow-lg">
+            <Search size={14} className="text-faint" />
             <input
               autoFocus
               value={query}
@@ -672,30 +653,30 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
                 }
               }}
               placeholder="Search nodes…"
-              className="w-40 bg-transparent text-sm text-gray-900 outline-none dark:text-gray-100"
+              className="w-40 bg-transparent text-sm text-ink outline-none placeholder:text-faint-2"
             />
-            <span className="min-w-[36px] text-center text-xs text-gray-500 dark:text-gray-400">
+            <span className="min-w-[36px] text-center font-mono text-xs text-faint">
               {query
                 ? `${matches.length ? matchIndex + 1 : 0}/${matches.length}`
                 : ""}
             </span>
             <button
               onClick={() => stepMatch(-1)}
-              className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              className="btn btn--quiet btn--icon !h-7 !w-7"
               data-tooltip="Previous (Shift+Enter)"
             >
               <ChevronUp size={14} />
             </button>
             <button
               onClick={() => stepMatch(1)}
-              className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              className="btn btn--quiet btn--icon !h-7 !w-7"
               data-tooltip="Next (Enter)"
             >
               <ChevronDown size={14} />
             </button>
             <button
               onClick={() => setSearchOpen(false)}
-              className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+              className="btn btn--quiet btn--icon !h-7 !w-7"
               data-tooltip="Close"
             >
               <X size={14} />
@@ -705,8 +686,8 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
 
         {/* Settings popover */}
         {showSettings && (
-          <div className="absolute bottom-16 right-4 z-10 w-44 rounded-lg border border-gray-200 bg-white p-3 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-800">
-            <label className="flex items-center justify-between gap-2 text-gray-700 dark:text-gray-300">
+          <div className="absolute bottom-16 right-4 z-10 w-44 border border-line-2 bg-panel p-3 text-sm shadow-lg">
+            <label className="flex items-center justify-between gap-2 text-ink">
               <span>Show minimap</span>
               <input
                 type="checkbox"
@@ -714,14 +695,14 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
                 onChange={(e) => setShowMinimap(e.target.checked)}
               />
             </label>
-            <label className="mt-2 flex items-center justify-between gap-2 text-gray-700 dark:text-gray-300">
+            <label className="mt-2 flex items-center justify-between gap-2 text-ink">
               <span>Layout</span>
               <select
                 value={direction}
                 onChange={(e) =>
                   setDirection(e.target.value as LayoutDirection)
                 }
-                className="rounded border border-gray-300 bg-white px-1 py-0.5 dark:border-gray-600 dark:bg-gray-700"
+                className="border border-line-2 bg-mass px-1 py-0.5 text-ink"
               >
                 <option value="LR">Horizontal</option>
                 <option value="TB">Vertical</option>
@@ -731,7 +712,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
         )}
 
         {/* Bottom toolbar */}
-        <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+        <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 border border-line-2 bg-panel p-1 shadow-lg">
           <ToolBtn label="Center first item (⇧1)" onClick={centerFirst}>
             <Focus size={16} />
           </ToolBtn>
@@ -751,7 +732,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
           >
             {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
           </ToolBtn>
-          <div className="mx-1 h-5 w-px bg-gray-200 dark:bg-gray-600" />
+          <div className="mx-1 h-5 w-px bg-line-2" />
           <ToolBtn label="Export as PNG (⌘S)" onClick={exportImage}>
             <ImageIcon size={16} />
           </ToolBtn>

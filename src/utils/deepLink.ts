@@ -145,13 +145,20 @@ export async function encodePayload(json: string): Promise<string> {
 /**
  * Build a shareable link, or `null` when the document is too big to travel in a
  * URL — those go by clipboard, which only the producer can fill.
+ *
+ * `view` carries the tab the link should open on, so a link made from the
+ * Visualizer arrives in the Visualizer. It is omitted for "viewer", which is
+ * what a link with no view already opens on — a flag that only ever restates
+ * the default is length the recipient has to copy for nothing.
  */
 export async function buildShareLink(
   json: string,
+  view?: DeepLinkView,
   base = `${window.location.origin}${window.location.pathname}`
 ): Promise<string | null> {
   if (!canCompress) return null;
   const payload = await encodePayload(json);
   if (payload.length > MAX_PAYLOAD_LENGTH) return null;
-  return `${base}#data=${payload}`;
+  const tab = view && view !== "viewer" ? `&view=${view}` : "";
+  return `${base}#data=${payload}${tab}`;
 }

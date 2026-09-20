@@ -2,62 +2,92 @@ import {useState, useEffect, useCallback} from "react";
 
 export type Theme = "light" | "dark" | "system";
 
-export const useTheme = () => {
-  const [theme, setTheme] = useState<Theme>(() => {
-    const stored = localStorage.getItem("json-viewer-theme");
-    return (stored as Theme) || "system";
-  });
+/** The two grounds defined in src/styles/tokens.css. */
+export type Ground = "ink" | "paper";
 
-  const getSystemTheme = useCallback((): "light" | "dark" => {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
+export const THEME_STORAGE_KEY = "json-viewer-theme";
+
+const GROUND: Record<"light" | "dark", Ground> = {light: "paper", dark: "ink"};
+
+const systemTheme = (): "light" | "dark" =>
+  window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+
+/* Storage is a preference, never a dependency. It throws outright where site
+   data is blocked, and a theme that cannot be remembered is not a reason to
+   fail to render. */
+const readStored = (): Theme | null => {
+  try {
+    return localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
+  } catch {
+    return null;
+  }
+};
+
+const writeStored = (theme: Theme): void => {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch {
+    /* nothing to do — the ground still applies for this session */
+  }
+};
+
+/** The single place the ground is applied. index.html runs the same
+ *  assignment inline before first paint so there is no flash. */
+const applyGround = (effective: "light" | "dark") => {
+  document.documentElement.dataset.mode = GROUND[effective];
+};
+
+const currentGround = (): Ground =>
+  document.documentElement.dataset.mode === "paper" ? "paper" : "ink";
+
+/**
+ * The ground that is actually applied, for the handful of consumers that take
+ * a value rather than a `var()` — a library prop, a canvas rasteriser.
+ *
+ * It reads `html[data-mode]` rather than calling `useTheme`, because every
+ * `useTheme` call is its own `useState` and only the instance that was clicked
+ * would update. The attribute is the one thing they all agree on, and it moves
+ * for a system change as well as for a click.
+ */
+export const useGround = (): Ground => {
+  const [ground, setGround] = useState(currentGround);
+  useEffect(() => {
+    const obs = new MutationObserver(() => setGround(currentGround()));
+    obs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-mode"],
+    });
+    // The attribute may have moved between first render and this effect.
+    setGround(currentGround());
+    return () => obs.disconnect();
   }, []);
+  return ground;
+};
 
-  const getEffectiveTheme = useCallback((): "light" | "dark" => {
-    return theme === "system" ? getSystemTheme() : theme;
-  }, [theme, getSystemTheme]);
+export const useTheme = () => {
+  const [theme, setTheme] = useState<Theme>(() => readStored() || "system");
+  const ground = useGround();
+
+  const getEffectiveTheme = useCallback(
+    (): "light" | "dark" => (theme === "system" ? systemTheme() : theme),
+    [theme]
+  );
 
   useEffect(() => {
-    const effectiveTheme = getEffectiveTheme();
-    const root = document.documentElement;
-
-    if (effectiveTheme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-
-    // Store theme preference
-    localStorage.setItem("json-viewer-theme", theme);
+    applyGround(getEffectiveTheme());
+    writeStored(theme);
   }, [theme, getEffectiveTheme]);
 
   useEffect(() => {
-    // Listen for system theme changes when using system theme
-    if (theme === "system") {
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-
-      const handleChange = () => {
-        const effectiveTheme = getEffectiveTheme();
-        const root = document.documentElement;
-
-        if (effectiveTheme === "dark") {
-          root.classList.add("dark");
-        } else {
-          root.classList.remove("dark");
-        }
-      };
-
-      mediaQuery.addEventListener("change", handleChange);
-      return () => mediaQuery.removeEventListener("change", handleChange);
-    }
+    if (theme !== "system") return;
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = () => applyGround(getEffectiveTheme());
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
   }, [theme, getEffectiveTheme]);
 
   const toggleTheme = useCallback(() => {
-    const currentEffective = getEffectiveTheme();
-    const newTheme = currentEffective === "dark" ? "light" : "dark";
-
-    setTheme(newTheme);
+    setTheme(getEffectiveTheme() === "dark" ? "light" : "dark");
   }, [getEffectiveTheme]);
 
   const setThemeMode = useCallback((newTheme: Theme) => {
@@ -67,6 +97,7 @@ export const useTheme = () => {
   return {
     theme,
     effectiveTheme: getEffectiveTheme(),
+    ground,
     toggleTheme,
     setTheme: setThemeMode,
     isSystemTheme: theme === "system",

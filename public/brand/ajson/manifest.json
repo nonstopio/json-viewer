@@ -4,8 +4,8 @@
   "description": "Free online JSON viewer and formatter with tree and node-graph visualization",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#3B82F6",
+  "background_color": "#17171a",
+  "theme_color": "#199688",
   "orientation": "portrait-primary",
   "icons": [
     {

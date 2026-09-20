@@ -1,63 +1,352 @@
+@import "./styles/tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   html {
-    font-family: "Inter", sans-serif;
+    font-family: var(--font-body);
   }
 
   body {
-    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    /* The grid itself lives on .grid-layer, not here. Sections are separated
+       by hairlines, never by a change of background — that is what lets the
+       ground, and the glows behind it, carry through the whole app. */
     transition:
-      background-color 0.2s ease,
-      color 0.2s ease;
+      background-color var(--duration-base) var(--ease),
+      color var(--duration-base) var(--ease);
+  }
+
+  ::selection {
+    background: var(--spot);
+    color: var(--spot-ink);
+  }
+
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
+  }
+
+  /* Scrollbars are chrome too, and the default ones are the one surface
+     that would keep rendering the old theme. */
+  * {
+    scrollbar-color: var(--line-2) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--line-2);
+    border: 2px solid transparent;
+    background-clip: content-box;
+    border-radius: var(--radius-pill);
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--faint-2);
+    background-clip: content-box;
   }
 }
 
 @layer components {
+  /* ---------- shared type ---------- */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: var(--tracking-caps-wide);
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+
+  /* ---------- buttons ----------
+     Eklavya's button idiom: square, a hairline rather than a fill, bold
+     body type. One definition, so every button in the app is the same
+     object and a change here reaches all of them. Variants differ only in
+     how loud they are, never in shape. */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 13px;
+    padding: 8px 14px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-none);
+    transition:
+      background-color var(--duration-fast) var(--ease),
+      color var(--duration-fast) var(--ease),
+      border-color var(--duration-fast) var(--ease);
+  }
+
+  .btn:disabled {
+    @apply cursor-not-allowed opacity-40;
+  }
+
+  /* The default: a hairline box on the ground it sits on. */
+  .btn--ghost {
+    border-color: var(--line-2);
+    color: var(--ink);
+  }
+  .btn--ghost:not(:disabled):hover {
+    background: var(--mass);
+    border-color: var(--faint-2);
+  }
+
+  /* The one loud button per view — the primary action. */
+  .btn--brand {
+    background: var(--spot);
+    color: var(--spot-ink);
+    font-weight: 700;
+  }
+  .btn--brand:not(:disabled):hover {
+    background: var(--spot);
+    filter: brightness(1.08);
+  }
+  .btn--brand:disabled {
+    background: var(--faint-2);
+    color: var(--bg);
+  }
+
+  /* Borderless, for dense rows where a box per item would read as a grid. */
+  .btn--quiet {
+    color: var(--dim);
+  }
+  .btn--quiet:not(:disabled):hover {
+    background: var(--mass);
+    color: var(--ink);
+  }
+
+  /* Selected state for a button that toggles something on. */
+  .btn--on {
+    background: var(--spot-soft);
+    border-color: var(--spot-line);
+    color: var(--spot);
+  }
+
+  /* Denser, for the nav row where a full-size button crowds the tab bar. */
+  .btn--sm {
+    height: var(--nav-control-h);
+    padding: 0 12px;
+    font-size: 12.5px;
+  }
+
+  /* Square, icon-only. */
+  .btn--icon {
+    padding: 0;
+    width: 32px;
+    height: 32px;
+  }
+
+  .btn--block {
+    @apply w-full;
+  }
+
+  /* ---------- the living ground ----------
+     Two glows behind everything, drifting on different periods so they never
+     line up twice. They sit under the whole shell at z-0 and are inert to the
+     pointer; every band above them is transparent, so this is what gives the
+     app depth instead of a stack of flat greys. */
+  /* The dot grid drifts a single tile as the page settles, then stops. It
+     is its own oversized fixed layer moved with transform, not a
+     background-position on <body>: background-position is not a composited
+     property, so drifting it there repaints the whole viewport every frame.
+
+     Every loop in this file runs once. The app is a tool people keep open
+     next to their work — an ambient motion that never stops stops being
+     ambient and becomes something to look away from. */
+  .grid-layer {
+    @apply pointer-events-none fixed;
+    inset: -40px;
+    z-index: 0;
+    background-image: radial-gradient(circle, var(--grid) 1px, transparent 1px);
+    background-size: 34px 34px;
+    animation: grid-drift 24s linear both;
+  }
+
+  .glow {
+    @apply pointer-events-none fixed;
+    z-index: 0;
+  }
+
+  .glow--hi {
+    top: -240px;
+    right: -160px;
+    width: 720px;
+    height: 720px;
+    background: radial-gradient(circle, var(--glow) 0%, transparent 65%);
+    animation:
+      glow-breathe 7s ease-in-out both,
+      glow-drift 21s ease-in-out both;
+  }
+
+  .glow--lo {
+    bottom: -300px;
+    left: -220px;
+    width: 640px;
+    height: 640px;
+    background: radial-gradient(circle, var(--glow-low) 0%, transparent 65%);
+    animation: glow-drift 26s ease-in-out both reverse;
+  }
+
+  /* ---------- chrome bands ----------
+     Sticky chrome is translucent over the ground rather than opaque on top of
+     it: the grid and the glows carry through, so the band reads as glass laid
+     on the page instead of a second surface.
+
+     Deliberately no backdrop-filter. It was measured at better than 2x the
+     graph suite's runtime back when the glows drifted continuously; the loops
+     run once now, so that particular cost is gone, but a blur still repaints
+     whenever anything behind it moves and it bought almost nothing over a
+     soft radial gradient. The translucency is what reads as glass. */
+  .band {
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+  }
+
+  /* ---------- the shuttle ----------
+     One accent beam that travels out and back along the app's own lines —
+     the hairlines between bands — as the page arrives, and then never again.
+     Staggered, so the bands light in sequence rather than together. Each
+     pass ends with the beam off-screen, which is why it needs no resting
+     state of its own. */
+  .seam {
+    position: relative;
+  }
+
+  .seam::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 1px;
+    --beam: 240px;
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      var(--spot),
+      transparent
+    );
+    background-repeat: no-repeat;
+    background-size: var(--beam) 100%;
+    background-position: calc(-1 * var(--beam)) 0;
+    pointer-events: none;
+  }
+
+  /* The beam runs during the intro and never again. It has to be gated on an
+     ancestor rather than simply declared once, because the bands it sits on
+     are conditionally rendered — switching tabs unmounts and remounts them,
+     and a remounted element restarts its CSS animation from the top. The
+     .intro class lives on the app root, which never unmounts, so once it is
+     gone no remount can bring the beam back. */
+  .intro .seam::after {
+    animation: shuttle 13s var(--ease) both;
+  }
+
+  .seam--delay-1::after {
+    animation-delay: 2.5s;
+  }
+  .seam--delay-2::after {
+    animation-delay: 5s;
+  }
+
+  /* A seam that sits on a top border instead of a bottom one. */
+  .seam--top::after {
+    bottom: auto;
+    top: -1px;
+  }
+
+  /* ---------- entrance ----------
+     Gated for the same reason as the beam: tab panels remount on every
+     switch, and an entrance that replays each time is motion after load. */
+  .intro .fade-up {
+    animation: fade-up 0.45s var(--ease) both;
+  }
+
+  /* For something that appears once by its own nature and so needs no gate —
+     the Share hint, which is shown a single time per reader. */
+  .pop-in {
+    animation: fade-up 0.45s var(--ease) both;
+  }
+
+  /* ---------- the ground picker ----------
+     Eklavya's idiom: not a dropdown but a bordered strip of uppercase mono
+     segments, the chosen one inverted. It names the grounds the design system
+     defines, so the control and the tokens use the same words. */
+  .ground {
+    @apply flex flex-none;
+    height: var(--nav-control-h);
+    border: 1px solid var(--line-2);
+  }
+
+  .ground label {
+    position: relative;
+    display: flex;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--faint);
+    padding: 6px 11px;
+    line-height: 1.4;
+    cursor: pointer;
+    transition:
+      background-color var(--duration-fast) var(--ease),
+      color var(--duration-fast) var(--ease);
+  }
+
+  /* Out of sight, still in the accessibility tree and still focusable — the
+     label is the target and carries the state, the ring and the pointer. */
+  .ground input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .ground label:hover {
+    color: var(--ink);
+  }
+
+  .ground label:has(input:checked) {
+    background: var(--ink);
+    color: var(--bg);
+  }
+
+  .ground label:has(input:focus-visible) {
+    box-shadow: var(--ring);
+  }
+
+  /* ---------- the tree ---------- */
   .json-node {
-    @apply transition-all duration-200 ease-out;
+    @apply transition-colors;
+    transition-duration: var(--duration-fast);
   }
 
-  .json-node:hover {
-    @apply bg-gray-100 dark:bg-gray-800 rounded-md;
-  }
-
-  .json-key {
-    @apply font-medium text-json-key dark:text-gray-300;
-  }
-
-  .json-string {
-    @apply text-json-string;
-  }
-
-  .json-number {
-    @apply text-json-number;
-  }
-
-  .json-boolean {
-    @apply text-json-boolean;
-  }
-
-  .json-null {
-    @apply text-json-null italic;
-  }
-
-  .expand-collapse-btn {
-    @apply inline-flex items-center justify-center w-5 h-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-150 cursor-pointer select-none;
-  }
-
+  /* ---------- tooltips ----------
+     Inverted against the ground so a tip always separates from whatever
+     it covers; --ink/--bg swap roles rather than naming a fixed pair. */
   .tooltip-chip {
-    @apply fixed z-[9999] pointer-events-none max-w-xs px-2.5 py-1.5 rounded-lg text-xs font-medium leading-snug shadow-lg;
-    @apply bg-gray-900 text-gray-50 dark:bg-gray-100 dark:text-gray-900;
+    @apply pointer-events-none fixed z-[9999] max-w-xs rounded-md px-2.5 py-1.5 text-xs font-medium leading-snug shadow-lg;
+    background: var(--ink);
+    color: var(--bg);
     white-space: normal;
     word-break: break-word;
-    animation: tooltip-in 120ms ease-out;
+    animation: tooltip-in var(--duration-fast) var(--ease);
   }
 
   .tooltip-arrow {
-    @apply absolute w-2 h-2 rotate-45 bg-gray-900 dark:bg-gray-100;
+    @apply absolute h-2 w-2 rotate-45;
+    background: var(--ink);
     transform: translateX(-50%) rotate(45deg);
   }
 
@@ -70,6 +359,58 @@
   }
 }
 
+/* ============================================================
+   MOTION
+   Every loop here is slow and low-contrast on purpose. Nothing in
+   this app should compete with the document being read.
+   ============================================================ */
+@keyframes grid-drift {
+  to {
+    transform: translate(34px, 34px);
+  }
+}
+
+@keyframes glow-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes glow-drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-70px, 46px);
+  }
+}
+
+@keyframes shuttle {
+  0%,
+  100% {
+    background-position: calc(-1 * var(--beam)) 0;
+  }
+  50% {
+    background-position: calc(100% + var(--beam)) 0;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @keyframes tooltip-in {
   from {
     opacity: 0;
@@ -78,5 +419,18 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Motion is decoration here, never information: every animation can be
+   skipped without anything becoming unreadable. Each one also runs a single
+   time and ends in the state a reader should see, so killing them needs no
+   companion rules to restore a resting state. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
   }
 }

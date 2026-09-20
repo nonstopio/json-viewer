@@ -231,12 +231,13 @@ test("edges render with a visible stroke (not near-black on dark)", async ({
   const paths = page.locator(".react-flow__edge-path");
   await expect.poll(() => paths.count()).toBeGreaterThan(5);
 
-  // Every edge must use our explicit slate stroke, not React Flow's dark
-  // default (rgb(62,62,62)) that was invisible on the dark canvas.
+  // Every edge must resolve our --graph-edge role, not React Flow's dark
+  // default (rgb(62,62,62)) that was invisible on the dark canvas. Both
+  // grounds are accepted because the test doesn't pin which one is active.
   const stroke = await paths
     .first()
     .evaluate((el) => getComputedStyle(el).stroke);
-  expect(["rgb(148, 163, 184)", "rgb(100, 116, 139)"]).toContain(stroke);
+  expect(["rgb(75, 75, 83)", "rgb(179, 172, 156)"]).toContain(stroke);
 });
 
 test("scroll pans the canvas, and center-first zooms to a readable level", async ({

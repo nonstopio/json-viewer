@@ -1,0 +1,140 @@
+# Design system
+
+The whole theme lives in **`src/styles/tokens.css`**. To retheme the product,
+edit that file. Nothing else should need to change.
+
+## Two layers
+
+1. **A scale** — the accent ramp (`--vd-*`), type families, type scale,
+   tracking, radii, motion. Fixed values that mean the same thing everywhere.
+2. **Two grounds** — `ink` (dark) and `paper` (light). Each redefines the same
+   set of **role** tokens: `--bg`, `--panel`, `--mass`, `--ink`, `--dim`,
+   `--faint`, `--line`, `--spot`, the `--json-*` syntax roles, and so on.
+
+The ground is an attribute on `<html>`: `data-mode="ink" | "paper"`. Custom
+properties inherit, so flipping that one attribute re-resolves every role for
+the whole tree. `index.html` sets it in a blocking inline script before first
+paint (no flash); `src/hooks/useTheme.ts` sets it thereafter and is the only
+place that writes it.
+
+**Read the ground back with `useGround()`, never with a second `useTheme()`.**
+Every `useTheme()` call is its own `useState`, so only the instance that was
+clicked hears about a swap — an editor or a canvas holding a second instance
+keeps painting the old ground until something remounts it. `useGround()`
+watches the attribute, which is the one thing every consumer agrees on, and
+moves for a system change as well as for a click.
+
+**There is no `dark:` variant anywhere in this app, and adding one is a bug.**
+A `dark:` utility hardcodes a second palette next to the first, which is the
+thing the ground swap exists to avoid.
+
+## Naming a role
+
+`tailwind.config.js` maps each role to a utility, so components write
+`bg-panel`, `text-dim`, `border-line-2`, `text-json-string`, `bg-spot` /
+`text-spot-ink`. **Naming a palette step or a raw hex in a component is a bug**:
+it pins that component to one ground and the theme toggle stops working for it.
+
+Tints are their own roles (`--spot-soft`, `--error-soft`) rather than opacity
+modifiers, because a `var()` colour cannot carry Tailwind's `<alpha-value>`.
+If you need a new tint, add it to both ground blocks.
+
+**Every role must exist in both ground blocks.** A role defined in only one of
+them renders one ground's text on the other's surface.
+
+## Components
+
+Three component classes live in `src/index.css`, and they exist because the
+alternative is every instance carrying its own stack of utilities — which
+makes "they all look alike" a coincidence that holds until the next edit.
+
+- **`.btn`** — every button in the app. Square, a hairline rather than a fill,
+  bold body type. Variants differ in loudness, never in shape: `--ghost` (the
+  default), `--brand` (the one loud button per view), `--quiet` (borderless,
+  for dense rows), `--on` (a toggle that is on), `--icon` (square, icon-only),
+  `--sm` (the nav row), `--block` (full width).
+- **`.ground`** — the ground picker: a bordered strip of uppercase mono
+  segments with the chosen one inverted. Not a dropdown; with three choices
+  the current one should be readable without opening anything. It is a native
+  radio group behind the paint — three mutually exclusive choices *are* a
+  radio group, and the platform then supplies the arrow-key roving and the
+  single tab stop that toggle buttons would each have to hand-roll.
+- **`.eyebrow`** — a micro-label: 11px mono, uppercase, wide tracking.
+
+Controls that sit in the nav row take their height from `--nav-control-h`, so
+the row reads as one band rather than a set of near-misses.
+
+## Motion
+
+The app is meant to read as alive, not as decorated. **Every animation runs
+exactly once, as the page arrives.** This is a tool people keep open next to
+their work, and motion that never stops in the corner of the eye stops being
+ambient and becomes something to look away from. An `infinite` here is a bug;
+`e2e/motion.spec.ts` fails on one.
+
+Three arrival gestures, all slow and low-contrast, none carrying information:
+
+- **`.grid-layer`** — the dot grid behind everything, drifting a single tile
+  as the page settles.
+- **`.glow` / `.glow--hi` / `.glow--lo`** — two accent glows that breathe and
+  wander in, on different periods so they never line up. These are what give
+  the app depth; without them the grounds are flat greys.
+- **`.seam`** — one accent beam travelling out and back along the hairlines
+  between bands, staggered by `--delay-1` / `--delay-2` so the bands light in
+  sequence. Borrowed from Eklavya's shuttle.
+
+**They are gated on an `.intro` class on the app root, not simply declared
+once.** The bands and panels that carry them are conditionally rendered, and a
+remounted element restarts its CSS animation from the top — so without the
+gate, every tab switch replays the beam for as long as the session lasts.
+`App` drops the class after the longest one (19s), and the root never
+unmounts, so nothing can bring them back short of a reload. Use `.pop-in` for
+something that appears once by its own nature and so needs no gate.
+
+Each ends in the state a reader should see — the glows rest at their resting
+opacity and offset, the beam ends off-screen — so nothing needs a companion
+rule to restore it, and `prefers-reduced-motion` can simply switch them off.
+
+Plus `.fade-up`, a one-shot entrance for tab content.
+
+**Animate transforms and opacity, nothing else.** The grid began as a
+`background-position` drift on `<body>`; because that is not a composited
+property, it repainted the whole viewport every frame — the graph e2e suite
+went from 11s to over a minute, which is a user feeling a janky pan. Moving it
+to its own layer and drifting it with `transform` fixed both.
+
+For the same reason `.band` has **no `backdrop-filter`**. Eklavya's nav blurs,
+but its ground is static; here the glows drift continuously, so a blurred band
+re-blurs every frame — measured at better than 2x the graph suite's runtime.
+The translucency is what reads as glass; the blur bought almost nothing over a
+soft radial gradient.
+
+`will-change` is deliberately absent: it pins a compositor layer for good,
+which only pays off while something is still moving.
+
+## Reaching a token from somewhere that isn't CSS
+
+CSS, SVG (`stroke: var(--graph-edge)`) and CodeMirror all take `var()`
+directly and re-resolve on a ground flip — prefer that. For the few consumers
+that take a value rather than a stylesheet (the PNG rasteriser, a library
+prop), `src/styles/roles.ts` exposes `readRole("graph-bg")`.
+
+## Where the pieces are
+
+| File                        | What it holds                                                                                                          |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `src/styles/tokens.css`     | the scale and both grounds — **the theme**                                                                             |
+| `tailwind.config.js`        | roles → utilities, fonts, radii, shadows                                                                               |
+| `src/index.css`             | base (body, grid, scrollbars, selection) and the components: `.btn`, `.ground`, `.eyebrow`, `.json-node`, `.tooltip-*` |
+| `src/styles/editorTheme.ts` | the CodeMirror chrome and JSON syntax highlighting, built from the same roles                                          |
+| `src/styles/roles.ts`       | `readRole()`, for non-CSS consumers                                                                                    |
+| `src/hooks/useTheme.ts`     | light/dark/system → `data-mode`, and `useGround()` to read it back; stored values stay `light`/`dark`/`system` while the labels say Ink/Paper/Auto |
+| `index.html`                | the no-flash ground script, fonts, and the static About panel's styles                                                 |
+
+## The look
+
+Verdigris accent, spent sparingly. Archivo for display (900 weight, tracking
+`-0.055em`, sub-1 leading), Inter for body, JetBrains Mono for anything that is
+JSON. Square chrome — hairline rules and 2–6px radii, not rounded cards.
+Sections separate by a `--line-2` hairline, never by a change of background;
+that is what makes one theme toggle able to repaint the whole app.
