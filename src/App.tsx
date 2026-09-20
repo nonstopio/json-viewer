@@ -660,7 +660,7 @@ function App() {
         className="btn btn--quiet"
       >
         <UnfoldVertical size={16} className="text-current" />
-        <span className="text-xs">Expand all</span>
+        <span className="text-xs leading-none">Expand all</span>
       </button>
       <button
         onClick={handleCollapseAll}
@@ -669,7 +669,7 @@ function App() {
         className="btn btn--quiet"
       >
         <FoldVertical size={16} className="text-current" />
-        <span className="text-xs">Collapse all</span>
+        <span className="text-xs leading-none">Collapse all</span>
       </button>
     </>
   );
@@ -954,7 +954,7 @@ function App() {
                   <div className="h-full flex flex-col">
                     {/* Tree Header */}
                     <div className="flex items-center justify-between border-b border-line-2 p-2">
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-2">
                         <span className="eyebrow mr-1">JSON Tree</span>
                         {treeFoldButtons}
                       </div>

@@ -79,7 +79,14 @@ test("expand/collapse-all sit in the tree header, not in the search row", async 
   // Right of the title, on the same header line…
   expect(expandBox.x).toBeGreaterThan(titleBox.x + titleBox.width - 1);
   expect(collapseBox.x).toBeGreaterThan(expandBox.x);
-  expect(Math.abs(expandBox.y - titleBox.y)).toBeLessThan(titleBox.height);
+  // …centred on the title rather than sitting a pixel off it, and with room
+  // between them instead of running together.
+  const midY = (box: {y: number; height: number}) => box.y + box.height / 2;
+  expect(Math.abs(midY(expandBox) - midY(titleBox))).toBeLessThanOrEqual(1);
+  expect(Math.abs(midY(collapseBox) - midY(titleBox))).toBeLessThanOrEqual(1);
+  expect(collapseBox.x - (expandBox.x + expandBox.width)).toBeGreaterThanOrEqual(
+    8
+  );
 
   // …and below the search row, which is where they used to be.
   expect(expandBox.y).toBeGreaterThan(inputBox.y + inputBox.height);
@@ -295,6 +302,50 @@ test("checking a key collapses every other key, in both panels", async ({
     0
   );
   await expect(page.locator(".json-node", {hasText: "level2"})).toHaveCount(0);
+});
+
+test("the picked object is washed in the tree, not just its top row", async ({
+  page,
+}, testInfo) => {
+  // Picking a branch has to show what was picked: the head row carries the
+  // selection fill and everything inside it a lighter wash, so the extent of
+  // the object is readable at a glance.
+  await loadViewer(page, buildFixture(), `vn-wash-${testInfo.workerIndex}.json`);
+
+  const background = (row: ReturnType<Page["locator"]>) =>
+    row.evaluate((el) => getComputedStyle(el).backgroundColor);
+
+  // Nothing is ticked on load, so nothing is washed — the root being the
+  // selection by default must not paint the whole document.
+  await page.waitForTimeout(400);
+  expect(
+    await page
+      .locator(".json-node", {hasText: "alpha"})
+      .first()
+      .evaluate((el) => getComputedStyle(el).backgroundColor)
+  ).toMatch(/rgba\(0, 0, 0, 0\)/);
+
+  await navRow(page, "beta").click();
+
+  // The rows cross-fade on a 150ms transition, and a colour read mid-flight
+  // is an interpolation of both states rather than either one.
+  await page.waitForTimeout(400);
+
+  const head = page.locator(".json-node", {hasText: "beta"}).first();
+  const inside = page.locator(".json-node", {hasText: "found me"}).first();
+  const outside = page.locator(".json-node", {hasText: "alpha"}).first();
+
+  const [headBg, insideBg, outsideBg] = await Promise.all([
+    background(head),
+    background(inside),
+    background(outside),
+  ]);
+
+  // Rows outside the selection keep the ground; rows inside are tinted, and
+  // the head row is the strongest of the three.
+  expect(outsideBg).toMatch(/rgba\(0, 0, 0, 0\)/);
+  expect(insideBg).not.toBe(outsideBg);
+  expect(headBg).not.toBe(insideBg);
 });
 
 test("the checked row is scrolled to the middle of the navigator", async ({
