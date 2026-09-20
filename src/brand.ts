@@ -104,6 +104,18 @@ const AJSON: Brand = {
   },
 };
 
+/**
+ * Who wrote it, credited in the footer under both brands. The avatar comes
+ * from github.com/<login>.png, which redirects to the current picture — no API
+ * call, no key, and it follows the profile if the picture changes.
+ */
+export const AUTHOR = {
+  name: "Ajay Kumar",
+  login: "ProjectAJ14",
+  href: "https://github.com/ProjectAJ14",
+  avatar: "https://github.com/ProjectAJ14.png?size=64",
+} as const;
+
 export const BRANDS: Record<BrandId, Brand> = {
   nonstopio: NONSTOPIO,
   ajson: AJSON,
