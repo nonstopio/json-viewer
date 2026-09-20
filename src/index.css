@@ -71,6 +71,87 @@
     color: var(--faint);
   }
 
+  /* ---------- buttons ----------
+     Eklavya's button idiom: square, a hairline rather than a fill, bold
+     body type. One definition, so every button in the app is the same
+     object and a change here reaches all of them. Variants differ only in
+     how loud they are, never in shape. */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 13px;
+    padding: 8px 14px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-none);
+    transition:
+      background-color var(--duration-fast) var(--ease),
+      color var(--duration-fast) var(--ease),
+      border-color var(--duration-fast) var(--ease);
+  }
+
+  .btn:disabled {
+    @apply cursor-not-allowed opacity-40;
+  }
+
+  /* The default: a hairline box on the ground it sits on. */
+  .btn--ghost {
+    border-color: var(--line-2);
+    color: var(--ink);
+  }
+  .btn--ghost:not(:disabled):hover {
+    background: var(--mass);
+    border-color: var(--faint-2);
+  }
+
+  /* The one loud button per view — the primary action. */
+  .btn--brand {
+    background: var(--spot);
+    color: var(--spot-ink);
+    font-weight: 700;
+  }
+  .btn--brand:not(:disabled):hover {
+    background: var(--spot);
+    filter: brightness(1.08);
+  }
+  .btn--brand:disabled {
+    background: var(--faint-2);
+    color: var(--bg);
+  }
+
+  /* Borderless, for dense rows where a box per item would read as a grid. */
+  .btn--quiet {
+    color: var(--dim);
+  }
+  .btn--quiet:not(:disabled):hover {
+    background: var(--mass);
+    color: var(--ink);
+  }
+
+  /* Selected state for a button that toggles something on. */
+  .btn--on {
+    background: var(--spot-soft);
+    border-color: var(--spot-line);
+    color: var(--spot);
+  }
+
+  /* Denser, for the nav row where a full-size button crowds the tab bar. */
+  .btn--sm {
+    padding: 5px 12px;
+    font-size: 12.5px;
+  }
+
+  /* Square, icon-only. */
+  .btn--icon {
+    padding: 0;
+    width: 32px;
+    height: 32px;
+  }
+
+  .btn--block {
+    @apply w-full;
+  }
+
   /* ---------- the tree ---------- */
   .json-node {
     @apply transition-colors;

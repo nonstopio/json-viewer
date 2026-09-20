@@ -146,7 +146,7 @@ function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
             e.stopPropagation();
             onCopyPath(data.path);
           }}
-          className="shrink-0 text-faint hover:text-ink"
+          className="btn btn--quiet !h-6 !w-6 !p-0 shrink-0"
           data-tooltip="Copy JSON path"
         >
           <Copy size={12} />
@@ -189,7 +189,7 @@ function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
             e.stopPropagation();
             onToggle(data.path);
           }}
-          className="flex w-full items-center justify-center gap-1 rounded-b-md border-t border-line-2 px-2 py-1 text-faint hover:bg-hover hover:text-ink"
+          className="btn btn--quiet btn--block border-t border-t-line-2 !px-2 !py-1"
         >
           {data.collapsed ? (
             <ChevronRight size={12} />
@@ -244,11 +244,7 @@ function ToolBtn({
       onClick={onClick}
       data-tooltip={label}
       aria-label={label}
-      className={`flex h-8 w-8 items-center justify-center rounded-sm transition-colors ${
-        active
-          ? "bg-spot-soft text-spot"
-          : "text-dim hover:bg-hover hover:text-ink"
-      }`}
+      className={`btn btn--icon ${active ? "btn--on" : "btn--quiet"}`}
     >
       {children}
     </button>
@@ -613,7 +609,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
                 onClick={() => setNoticeDismissed(true)}
                 aria-label="Dismiss"
                 data-tooltip="Dismiss"
-                className="shrink-0 rounded-sm p-0.5 text-faint hover:bg-mass hover:text-ink"
+                className="btn btn--quiet btn--icon !h-6 !w-6 shrink-0"
               >
                 <X size={14} />
               </button>
@@ -652,7 +648,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
 
         {/* Floating search box (JSON Crack style) */}
         {searchOpen && (
-          <div className="absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-md border border-line-2 bg-panel px-3 py-1.5 shadow-lg">
+          <div className="absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 border border-line-2 bg-panel px-3 py-1.5 shadow-lg">
             <Search size={14} className="text-faint" />
             <input
               autoFocus
@@ -676,21 +672,21 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
             </span>
             <button
               onClick={() => stepMatch(-1)}
-              className="text-faint hover:text-ink"
+              className="btn btn--quiet btn--icon !h-7 !w-7"
               data-tooltip="Previous (Shift+Enter)"
             >
               <ChevronUp size={14} />
             </button>
             <button
               onClick={() => stepMatch(1)}
-              className="text-faint hover:text-ink"
+              className="btn btn--quiet btn--icon !h-7 !w-7"
               data-tooltip="Next (Enter)"
             >
               <ChevronDown size={14} />
             </button>
             <button
               onClick={() => setSearchOpen(false)}
-              className="text-faint hover:text-ink"
+              className="btn btn--quiet btn--icon !h-7 !w-7"
               data-tooltip="Close"
             >
               <X size={14} />
@@ -700,7 +696,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
 
         {/* Settings popover */}
         {showSettings && (
-          <div className="absolute bottom-16 right-4 z-10 w-44 rounded-md border border-line-2 bg-panel p-3 text-sm shadow-lg">
+          <div className="absolute bottom-16 right-4 z-10 w-44 border border-line-2 bg-panel p-3 text-sm shadow-lg">
             <label className="flex items-center justify-between gap-2 text-ink">
               <span>Show minimap</span>
               <input
@@ -716,7 +712,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
                 onChange={(e) =>
                   setDirection(e.target.value as LayoutDirection)
                 }
-                className="rounded-sm border border-line-2 bg-mass px-1 py-0.5 text-ink"
+                className="border border-line-2 bg-mass px-1 py-0.5 text-ink"
               >
                 <option value="LR">Horizontal</option>
                 <option value="TB">Vertical</option>
@@ -726,7 +722,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
         )}
 
         {/* Bottom toolbar */}
-        <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 rounded-md border border-line-2 bg-panel p-1 shadow-lg">
+        <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1 border border-line-2 bg-panel p-1 shadow-lg">
           <ToolBtn label="Center first item (⇧1)" onClick={centerFirst}>
             <Focus size={16} />
           </ToolBtn>

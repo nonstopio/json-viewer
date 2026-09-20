@@ -20,6 +20,7 @@ import {
   Maximize,
   Info,
   Link2,
+  Layers,
 } from "lucide-react";
 // Lazy-loaded so the CodeMirror editor bundle stays off the initial load.
 const JsonInput = lazy(() =>
@@ -37,6 +38,7 @@ import {ResizablePanel} from "./components/ResizablePanel";
 import {Tooltip} from "./components/Tooltip";
 import {ancestorPaths, jsonParser} from "./utils/jsonParser";
 import {brand, brandAsset} from "./brand";
+import {complexSample} from "./data/complexSample";
 import {
   buildShareLink,
   CLIPBOARD_PAYLOAD,
@@ -84,7 +86,7 @@ function App() {
   const [clipboardPrompt, setClipboardPrompt] = useState<DeepLinkView | null>(
     null
   );
-  const [shareLabel, setShareLabel] = useState("Copy link");
+  const [shareLabel, setShareLabel] = useState("Share");
   const searchDebounce = useRef<ReturnType<typeof setTimeout>>();
   const shareLabelReset = useRef<ReturnType<typeof setTimeout>>();
 
@@ -402,10 +404,7 @@ function App() {
 
     setShareLabel(label);
     clearTimeout(shareLabelReset.current);
-    shareLabelReset.current = setTimeout(
-      () => setShareLabel("Copy link"),
-      2500
-    );
+    shareLabelReset.current = setTimeout(() => setShareLabel("Share"), 2500);
   }, [inputText]);
 
   const handleCopy = useCallback(() => {
@@ -502,6 +501,12 @@ function App() {
     setCurrentMatchIndex(0);
     setSelectedNodePath("");
   }, []);
+
+  const handleLoadComplexData = useCallback(() => {
+    const jsonText = JSON.stringify(complexSample, null, 2);
+    setInputText(jsonText);
+    handleJsonSubmit(jsonText, false); // Don't switch tabs for load data
+  }, [handleJsonSubmit]);
 
   const handleLoadData = useCallback(() => {
     const sampleData = {
@@ -616,7 +621,7 @@ function App() {
         onClick={handleExpandAll}
         aria-label="Expand all nodes"
         data-tooltip="Expand all nodes - Shows all nested objects and arrays"
-        className="flex items-center gap-1 rounded-sm px-2 py-1 text-faint transition-colors hover:bg-mass hover:text-ink"
+        className="btn btn--quiet"
       >
         <UnfoldVertical size={16} className="text-current" />
         <span className="text-xs">Expand all</span>
@@ -625,7 +630,7 @@ function App() {
         onClick={handleCollapseAll}
         aria-label="Collapse all nodes"
         data-tooltip="Collapse all nodes - Hides all nested objects and arrays"
-        className="flex items-center gap-1 rounded-sm px-2 py-1 text-faint transition-colors hover:bg-mass hover:text-ink"
+        className="btn btn--quiet"
       >
         <FoldVertical size={16} className="text-current" />
         <span className="text-xs">Collapse all</span>
@@ -691,7 +696,7 @@ function App() {
                 onClick={handleShareLink}
                 disabled={!inputText.trim()}
                 data-tooltip="Copy a link that reopens this JSON here"
-                className="flex min-w-[9.5rem] items-center justify-center space-x-2 rounded-md border border-line-2 px-3 py-2 text-ink transition-colors hover:bg-mass disabled:cursor-not-allowed disabled:opacity-50"
+                className="btn btn--ghost btn--sm min-w-[9.5rem]"
               >
                 <Link2 className="w-4 h-4" />
                 <span className="text-sm font-medium">{shareLabel}</span>
@@ -704,10 +709,7 @@ function App() {
         {activeTab === "text" && (
           <div className="flex-shrink-0 border-b border-line-2 bg-panel px-4 py-2">
             <div className="flex items-center space-x-3">
-              <button
-                onClick={handlePaste}
-                className="flex items-center space-x-1 rounded-sm border border-line-2 px-3 py-1.5 text-sm text-ink transition-colors hover:bg-mass"
-              >
+              <button onClick={handlePaste} className="btn btn--ghost">
                 <ClipboardPaste size={14} />
                 <span>Paste</span>
               </button>
@@ -715,7 +717,7 @@ function App() {
               <button
                 onClick={handleCopy}
                 disabled={!inputText.trim()}
-                className="flex items-center space-x-1 rounded-sm border border-line-2 px-3 py-1.5 text-sm text-ink transition-colors hover:bg-mass disabled:cursor-not-allowed disabled:opacity-50"
+                className="btn btn--ghost"
               >
                 <Copy size={14} />
                 <span>Copy</span>
@@ -724,7 +726,7 @@ function App() {
               <button
                 onClick={handleFormat}
                 disabled={!inputText.trim()}
-                className="flex items-center space-x-1 rounded-sm border border-line-2 px-3 py-1.5 text-sm text-ink transition-colors hover:bg-mass disabled:cursor-not-allowed disabled:opacity-50"
+                className="btn btn--ghost"
               >
                 <AlignLeft size={14} />
                 <span>Format</span>
@@ -733,26 +735,28 @@ function App() {
               <button
                 onClick={handleRemoveWhitespace}
                 disabled={!inputText.trim()}
-                className="flex items-center space-x-1 rounded-sm border border-line-2 px-3 py-1.5 text-sm text-ink transition-colors hover:bg-mass disabled:cursor-not-allowed disabled:opacity-50"
+                className="btn btn--ghost"
               >
                 <Minimize2 size={14} />
                 <span>Remove white space</span>
               </button>
 
-              <button
-                onClick={handleClear}
-                className="flex items-center space-x-1 rounded-sm border border-line-2 px-3 py-1.5 text-sm text-ink transition-colors hover:bg-mass"
-              >
+              <button onClick={handleClear} className="btn btn--ghost">
                 <Trash2 size={14} />
                 <span>Clear</span>
               </button>
 
-              <button
-                onClick={handleLoadData}
-                className="flex items-center space-x-1 rounded-sm border border-line-2 px-3 py-1.5 text-sm text-ink transition-colors hover:bg-mass"
-              >
+              <button onClick={handleLoadData} className="btn btn--ghost">
                 <FileText size={14} />
                 <span>Load Test JSON</span>
+              </button>
+
+              <button
+                onClick={handleLoadComplexData}
+                className="btn btn--ghost"
+              >
+                <Layers size={14} />
+                <span>Load Complex Test JSON</span>
               </button>
             </div>
           </div>
@@ -766,17 +770,14 @@ function App() {
               This link carries its JSON on your clipboard — your browser needs
               a click before it can read it.
             </span>
-            <button
-              onClick={handleClipboardPrompt}
-              className="flex items-center space-x-1 rounded-sm bg-spot px-3 py-1.5 text-sm font-semibold text-spot-ink transition-colors hover:brightness-110"
-            >
+            <button onClick={handleClipboardPrompt} className="btn btn--brand">
               <ClipboardPaste size={14} />
               <span>Load from clipboard</span>
             </button>
             <button
               onClick={() => setClipboardPrompt(null)}
               aria-label="Dismiss"
-              className="ml-auto rounded-sm p-1 text-spot transition-colors hover:bg-mass"
+              className="btn btn--quiet btn--icon ml-auto !text-spot"
             >
               <X size={16} />
             </button>
@@ -824,11 +825,7 @@ function App() {
               </div>
               <button
                 onClick={() => handleSearch(searchQuery, !caseSensitive)}
-                className={`px-3 py-2 text-sm rounded transition-colors ${
-                  caseSensitive
-                    ? "bg-spot text-spot-ink"
-                    : "border border-line-2 text-dim hover:bg-mass hover:text-ink"
-                }`}
+                className={`btn ${caseSensitive ? "btn--on" : "btn--ghost"}`}
                 data-tooltip="Toggle case sensitivity - Match exact case when enabled"
               >
                 Aa
@@ -840,14 +837,14 @@ function App() {
                   </div>
                   <button
                     onClick={handleNavigateToPrevMatch}
-                    className="rounded-sm border border-line-2 p-2 text-dim transition-colors hover:bg-mass hover:text-ink"
+                    className="btn btn--ghost btn--icon"
                     data-tooltip="Previous match (Shift+Enter or Shift+F3)"
                   >
                     <ChevronUp size={16} />
                   </button>
                   <button
                     onClick={handleNavigateToNextMatch}
-                    className="rounded-sm border border-line-2 p-2 text-dim transition-colors hover:bg-mass hover:text-ink"
+                    className="btn btn--ghost btn--icon"
                     data-tooltip="Next match (Enter or F3)"
                   >
                     <ChevronDown size={16} />
@@ -903,16 +900,13 @@ function App() {
                         {treeFoldButtons}
                       </div>
                       <div className="flex items-center gap-1">
-                        <button
-                          onClick={handleCopy}
-                          className="flex items-center gap-1 rounded-sm px-2 py-1 text-faint transition-colors hover:bg-mass hover:text-ink"
-                        >
+                        <button onClick={handleCopy} className="btn btn--quiet">
                           <Copy size={16} className="text-current" />
                           <span className="text-xs">Copy</span>
                         </button>
                         <button
                           onClick={enterFullscreen}
-                          className="flex items-center gap-1 rounded-sm px-2 py-1 text-faint transition-colors hover:bg-mass hover:text-ink"
+                          className="btn btn--quiet"
                         >
                           <Maximize size={16} className="text-current" />
                           <span className="text-xs">Fullscreen</span>
@@ -1083,7 +1077,7 @@ function App() {
                 </div>
                 <button
                   onClick={exitFullscreen}
-                  className="rounded-sm p-2 transition-colors hover:bg-mass"
+                  className="btn btn--quiet btn--icon"
                   data-tooltip="Exit fullscreen (ESC)"
                 >
                   <X size={20} className="text-faint" />

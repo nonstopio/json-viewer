@@ -180,7 +180,7 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
               )}
               <button
                 onClick={() => onFocusNode(segment.path)}
-                className="max-w-[10rem] flex-shrink-0 truncate rounded-sm px-1 py-0.5 text-xs text-dim transition-colors hover:bg-mass hover:text-ink"
+                className="btn btn--quiet max-w-[10rem] flex-shrink-0 truncate !px-1 !py-0.5 !text-xs"
               >
                 {segment.key}
               </button>
@@ -190,7 +190,7 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
         <button
           onClick={() => copyPath(currentPath)}
           aria-label="Copy path of the current level"
-          className="flex-shrink-0 rounded-sm p-1 text-faint transition-colors hover:bg-mass hover:text-ink"
+          className="btn btn--quiet btn--icon !h-7 !w-7 flex-shrink-0"
         >
           {copied ? <Check size={12} /> : <Copy size={12} />}
         </button>
@@ -250,7 +250,7 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
                 data-testid="nav-isolate"
                 onClick={() => onIsolateNode(row.path)}
                 aria-label={`Show only "${row.key}"`}
-                className="flex-shrink-0 rounded-sm p-1 text-faint opacity-0 transition-colors hover:bg-mass hover:text-ink focus:opacity-100 group-hover:opacity-100"
+                className="btn btn--quiet btn--icon !h-7 !w-7 flex-shrink-0 opacity-0 focus:opacity-100 group-hover:opacity-100"
               >
                 <Focus size={14} />
               </button>

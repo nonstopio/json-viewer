@@ -111,7 +111,7 @@ test("clipboard links fall back to a button when the read is refused", async ({
   await expect(treeRow(page, "deepLink")).toBeVisible();
 });
 
-test("Copy link round-trips the document back into the viewer", async ({
+test("Share round-trips the document back into the viewer", async ({
   page,
   context,
 }) => {
@@ -119,7 +119,7 @@ test("Copy link round-trips the document back into the viewer", async ({
   await page.goto("/");
   await page.getByRole("button", {name: "Load Test JSON"}).click();
 
-  await page.getByRole("button", {name: "Copy link"}).click();
+  await page.getByRole("button", {name: "Share"}).click();
   await expect(page.getByRole("button", {name: "Link copied!"})).toBeVisible();
 
   const url = await page.evaluate(() => navigator.clipboard.readText());
@@ -140,7 +140,7 @@ test("the share button rides the tab bar, so every view can share", async ({
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
 
-  const share = page.getByRole("button", {name: "Copy link"});
+  const share = page.getByRole("button", {name: "Share"});
   // Nothing loaded yet — present but inert, never a link to an empty document.
   await expect(share).toBeDisabled();
   // And gone from the toolbar it used to live in.

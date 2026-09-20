@@ -36,12 +36,14 @@ export const ThemeToggle: React.FC = () => {
     );
   };
 
+  // The stored values stay "light"/"dark" so existing preferences keep
+  // working; only the labels name the grounds the design system defines.
   const getThemeLabel = (themeMode: Theme) => {
     switch (themeMode) {
       case "light":
-        return "Light";
+        return "Paper";
       case "dark":
-        return "Dark";
+        return "Ink";
       case "system":
         return "System";
     }
@@ -53,7 +55,7 @@ export const ThemeToggle: React.FC = () => {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-2 rounded-md border border-line-2 px-3 py-2 text-ink transition-colors hover:bg-mass"
+        className="btn btn--ghost btn--sm min-w-[7.5rem]"
         data-tooltip="Change theme"
       >
         {getThemeIcon(theme, true)}
@@ -66,7 +68,7 @@ export const ThemeToggle: React.FC = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-36 rounded-md border border-line-2 bg-panel shadow-lg">
+        <div className="absolute right-0 top-full z-50 mt-1 w-36 border border-line-2 bg-panel shadow-lg">
           <div className="py-1">
             {themes.map((themeOption) => (
               <button
@@ -75,7 +77,7 @@ export const ThemeToggle: React.FC = () => {
                   setTheme(themeOption);
                   setIsOpen(false);
                 }}
-                className={`flex w-full items-center space-x-2 px-3 py-2 text-left transition-colors hover:bg-hover ${
+                className={`flex w-full items-center space-x-2 px-3 py-2 text-left text-sm transition-colors hover:bg-hover ${
                   theme === themeOption ? "bg-spot-soft text-spot" : "text-ink"
                 }`}
               >
@@ -83,8 +85,8 @@ export const ThemeToggle: React.FC = () => {
                 <span className="text-sm">
                   {getThemeLabel(themeOption)}
                   {themeOption === "system" && (
-                    <span className="ml-1 text-xs text-faint">
-                      ({effectiveTheme})
+                    <span className="ml-1 font-mono text-[10px] uppercase tracking-caps text-faint">
+                      {getThemeLabel(effectiveTheme)}
                     </span>
                   )}
                 </span>

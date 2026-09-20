@@ -322,7 +322,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
           {jsonText && (
             <button
               onClick={handleClear}
-              className="text-faint transition-colors hover:text-ink"
+              className="btn btn--quiet btn--icon"
               data-tooltip="Clear input"
             >
               <X size={16} />
@@ -334,7 +334,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
             multi-MB / hundreds-of-thousands-of-lines input where a plain
             <textarea> would block the main thread laying out every line. */}
         <div
-          className="min-h-0 flex-1 overflow-hidden rounded-md border border-line-2 focus-within:border-spot"
+          className="min-h-0 flex-1 overflow-hidden border border-line-2 focus-within:border-spot"
           onKeyDown={handleKeyDown}
         >
           <CodeMirror
@@ -412,7 +412,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
                   <button
                     onClick={handleJumpToError}
                     disabled={isJumpingToError}
-                    className="ml-2 rounded-sm border border-error px-2 py-1 text-xs text-error transition-colors hover:bg-error hover:text-bg disabled:cursor-not-allowed disabled:opacity-50"
+                    className="btn btn--ghost ml-2 !border-error !text-error"
                     data-tooltip="Click to jump to error location"
                   >
                     {isJumpingToError ? (
@@ -437,7 +437,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
         <button
           onClick={handleTextSubmit}
           disabled={!jsonText.trim() || isLoading}
-          className="flex w-full items-center justify-center space-x-2 rounded-sm bg-spot px-3 py-1.5 text-sm font-semibold text-spot-ink transition-colors hover:brightness-110 disabled:bg-faint-2 disabled:text-bg"
+          className="btn btn--brand btn--block"
         >
           <FileText className="w-3 h-3" />
           <span>{isLoading ? "Parsing..." : "Parse JSON"}</span>
@@ -447,7 +447,7 @@ export const JsonInput: React.FC<JsonInputProps> = ({
       {/* File Upload Area - Now at bottom and smaller */}
       <div className="mt-3">
         <div
-          className={`rounded-md border border-dashed p-3 text-center transition-colors ${
+          className={`border border-dashed p-3 text-center transition-colors ${
             isDragOver
               ? "border-spot bg-spot-soft"
               : "border-line-2 hover:border-faint"

@@ -288,7 +288,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
         {/* Copy Value Button */}
         <button
           onClick={handleCopyValue}
-          className="rounded-sm p-1 text-faint transition-colors hover:bg-mass hover:text-ink"
+          className="btn btn--quiet btn--icon !h-6 !w-6"
           data-tooltip="Copy value"
         >
           {isValueCopied ? (
@@ -301,7 +301,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
         {/* Copy Path Button */}
         <button
           onClick={handleCopyPath}
-          className="rounded-sm p-1 text-faint transition-colors hover:bg-mass hover:text-ink"
+          className="btn btn--quiet btn--icon !h-6 !w-6"
           data-tooltip="Copy path"
         >
           {isPathCopied ? (
@@ -318,7 +318,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
               e.stopPropagation();
               setShowDetails(!showDetails);
             }}
-            className="rounded-sm p-1 text-faint transition-colors hover:bg-mass hover:text-ink"
+            className="btn btn--quiet btn--icon !h-6 !w-6"
             data-tooltip="Property details"
           >
             <Info size={12} />
@@ -327,7 +327,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
           {/* Property Details Popup */}
           {showDetails && (
             <div
-              className="absolute right-0 top-full z-50 mt-1 w-64 rounded-md border border-line-2 bg-panel p-3 shadow-lg"
+              className="absolute right-0 top-full z-50 mt-1 w-64 border border-line-2 bg-panel p-3 shadow-lg"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="eyebrow mb-2">Property Details</div>
@@ -351,7 +351,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
                         onClick={() =>
                           copyPropertyDetail(detail.label, detail.value)
                         }
-                        className="rounded-sm p-0.5 text-faint opacity-0 transition-colors hover:bg-mass hover:text-ink group-hover/detail:opacity-100"
+                        className="btn btn--quiet btn--icon !h-5 !w-5 opacity-0 group-hover/detail:opacity-100"
                         data-tooltip={`Copy ${detail.label.toLowerCase()}`}
                       >
                         <Copy size={10} />
@@ -362,7 +362,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
               </div>
               <button
                 onClick={() => setShowDetails(false)}
-                className="mt-3 w-full rounded-sm py-1 text-xs text-faint transition-colors hover:bg-hover hover:text-ink"
+                className="btn btn--quiet btn--block mt-3 !py-1 !text-xs"
               >
                 Close
               </button>
