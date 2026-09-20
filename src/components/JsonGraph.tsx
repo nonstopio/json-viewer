@@ -333,19 +333,19 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   }, []);
 
   // Every camera move keeps the graph clear of the chrome floating over it:
-  // the Navigator window on the left edge, the toolbar along the bottom.
+  // the Navigator window on the right edge, the toolbar along the bottom.
   // React Flow reads these as a minimum clearance, so a graph with room to
   // spare still centres — it just never ends up underneath them. Capped at a
   // share of the pane, so a narrow one is never padded down to nothing.
   const framing = useCallback(() => {
     const paneWidth = wrapperRef.current?.clientWidth ?? 0;
-    const left = navOpen
+    const right = navOpen
       ? Math.round(Math.min(NAV_W + GUTTER, paneWidth * 0.4))
       : GUTTER;
     return {
       padding: {
-        left: `${left}px`,
-        right: `${GUTTER}px`,
+        left: `${GUTTER}px`,
+        right: `${right}px`,
         top: `${GUTTER}px`,
         bottom: `${TOOLBAR_H}px`,
       },
@@ -648,7 +648,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
           .json-graph-root:fullscreen { background-color: var(--graph-bg); }
         `}</style>
         {truncated && !noticeDismissed && (
-          <div className="absolute right-3 top-3 z-20 w-80 max-w-[calc(100%-1.5rem)] rounded-md border border-line-2 border-l-2 border-l-warning bg-panel p-3 text-xs text-ink shadow-lg">
+          <div className="absolute left-3 top-3 z-20 w-80 max-w-[calc(100%-1.5rem)] rounded-md border border-line-2 border-l-2 border-l-warning bg-panel p-3 text-xs text-ink shadow-lg">
             <div className="flex items-start gap-2">
               <AlertTriangle size={16} className="mt-0.5 shrink-0" />
               <div className="flex-1">
@@ -709,14 +709,24 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
           panOnDrag
         >
           <Background />
-          {showMinimap && <MiniMap pannable zoomable className="!bg-mass" />}
+          {/* Bottom-left: the right edge belongs to the Navigator window now,
+              and a tall panel would otherwise land on top of the minimap. */}
+          {showMinimap && (
+            <MiniMap
+              pannable
+              zoomable
+              position="bottom-left"
+              className="!bg-mass"
+            />
+          )}
         </ReactFlow>
 
-        {/* The Viewer's Navigator, floated over the canvas. The graph wants
-            its whole width some of the time, so this one is a window: fold it
-            away to the opener beside it and bring it back. */}
+        {/* The Viewer's Navigator, floated over the canvas on the same edge
+            the Viewer keeps it, so moving between the two tabs doesn't move
+            the panel. The graph wants its whole width some of the time, so
+            this one is a window: fold it away to the opener in its place. */}
         {navOpen ? (
-          <div className="absolute left-3 top-3 z-20 flex h-[min(40rem,calc(100%-5.5rem))] w-72 flex-col border border-line-2 bg-panel shadow-lg">
+          <div className="absolute right-3 top-3 z-20 flex h-[min(40rem,calc(100%-5.5rem))] w-72 flex-col border border-line-2 bg-panel shadow-lg">
             <JsonNavigator
               data={data}
               selectedNodePath={selectedNodePath}
@@ -728,7 +738,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
           <button
             onClick={() => setNavOpen(true)}
             aria-label="Open the Navigator"
-            className="btn btn--quiet absolute left-3 top-3 z-20 border border-line-2 bg-panel shadow-lg"
+            className="btn btn--quiet absolute right-3 top-3 z-20 border border-line-2 bg-panel shadow-lg"
           >
             <Compass size={16} />
             <span className="text-xs">Navigator</span>
