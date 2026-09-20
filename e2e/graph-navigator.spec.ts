@@ -142,3 +142,26 @@ test("picking a branch washes the whole object, not just its head card", async (
   // …and its siblings are left alone.
   expect((await backgrounds(page, "service_5")).image).toBe("none");
 });
+
+test("a folded branch folds its own values too, not just its children", async ({
+  page,
+}, testInfo) => {
+  // Folding used to hide a node's nested children but leave its scalar fields
+  // on the card, so a "folded" node stayed as tall as an open one and a graph
+  // with one branch picked still read as a wall of cards.
+  await loadGraph(page, buildGraphJson(), `gfold-${testInfo.workerIndex}.json`);
+
+  const sibling = page
+    .locator(".react-flow__node", {hasText: "service_5"})
+    .first();
+  await expect(sibling).toContainText("svc 5");
+
+  await navRow(page, "service_3").click();
+
+  // Head and child count only — the picked branch keeps its values.
+  await expect(sibling).not.toContainText("svc 5");
+  await expect(sibling).toContainText("service_5");
+  await expect(
+    page.locator(".react-flow__node", {hasText: "service_3"}).first()
+  ).toContainText("svc 3");
+});

@@ -121,18 +121,24 @@ export function jsonToGraph(
         ? value.map((v, i) => [`[${i}]`, v])
         : Object.entries(value);
 
-      const fields = entries
-        .filter(([, v]) => !isContainer(v))
-        .map(([k, v]) => ({k, v: scalarStr(v)}));
       const children = entries.filter(([, v]) => isContainer(v));
+      const isCollapsed = collapsed.has(path);
 
       const nodeData: GraphNodeData = {
         title,
         kind,
-        fields,
+        // Folding a node folds everything it holds, scalars included — the
+        // same single line the tree collapses to. Leaving the inline fields
+        // behind made a folded node as big as an open one, so a graph with
+        // one branch open still read as a wall of cards.
+        fields: isCollapsed
+          ? []
+          : entries
+              .filter(([, v]) => !isContainer(v))
+              .map(([k, v]) => ({k, v: scalarStr(v)})),
         path,
         childCount: children.length,
-        collapsed: collapsed.has(path),
+        collapsed: isCollapsed,
         hasChildren: children.length > 0,
       };
       nodes.push({id, type: "json", position: {x: 0, y: 0}, data: nodeData});
@@ -140,7 +146,7 @@ export function jsonToGraph(
         edges.push({id: `${parentId}-${id}`, source: parentId, target: id});
       }
 
-      if (!nodeData.collapsed) {
+      if (!isCollapsed) {
         for (const [k, child] of children) {
           walk(child, k, appendPath(path, k), id);
         }
