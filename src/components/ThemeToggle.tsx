@@ -1,103 +1,40 @@
-import React, {useState, useRef, useEffect} from "react";
-import {Sun, Moon, Monitor, ChevronDown} from "lucide-react";
+import React from "react";
 import {useTheme, Theme} from "../hooks/useTheme";
 
+/* The ground picker. A bordered strip of segments rather than a dropdown:
+   there are only three choices and the current one should be readable
+   without opening anything.
+
+   The labels are the grounds the design system defines — see
+   src/styles/tokens.css. "Auto" follows the OS; the stored values stay
+   "light"/"dark"/"system" so preferences already in localStorage keep
+   working. */
+const OPTIONS: {value: Theme; label: string}[] = [
+  {value: "dark", label: "Ink"},
+  {value: "light", label: "Paper"},
+  {value: "system", label: "Auto"},
+];
+
 export const ThemeToggle: React.FC = () => {
-  const {theme, effectiveTheme, setTheme} = useTheme();
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const getThemeIcon = (themeMode: Theme, isEffective = false) => {
-    const iconClass = "w-4 h-4";
-
-    if (themeMode === "system") {
-      return <Monitor className={iconClass} />;
-    }
-
-    const displayTheme = isEffective ? effectiveTheme : themeMode;
-    return displayTheme === "dark" ? (
-      <Moon className={iconClass} />
-    ) : (
-      <Sun className={iconClass} />
-    );
-  };
-
-  // The stored values stay "light"/"dark" so existing preferences keep
-  // working; only the labels name the grounds the design system defines.
-  const getThemeLabel = (themeMode: Theme) => {
-    switch (themeMode) {
-      case "light":
-        return "Paper";
-      case "dark":
-        return "Ink";
-      case "system":
-        return "System";
-    }
-  };
-
-  const themes: Theme[] = ["light", "dark", "system"];
+  const {theme, ground, setTheme} = useTheme();
 
   return (
-    <div className="relative" ref={dropdownRef}>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="btn btn--ghost btn--sm min-w-[7.5rem]"
-        data-tooltip="Change theme"
-      >
-        {getThemeIcon(theme, true)}
-        <span className="hidden text-sm font-medium sm:inline">
-          {getThemeLabel(theme)}
-        </span>
-        <ChevronDown
-          className={`w-3 h-3 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {isOpen && (
-        <div className="absolute right-0 top-full z-50 mt-1 w-36 border border-line-2 bg-panel shadow-lg">
-          <div className="py-1">
-            {themes.map((themeOption) => (
-              <button
-                key={themeOption}
-                onClick={() => {
-                  setTheme(themeOption);
-                  setIsOpen(false);
-                }}
-                className={`flex w-full items-center space-x-2 px-3 py-2 text-left text-sm transition-colors hover:bg-hover ${
-                  theme === themeOption ? "bg-spot-soft text-spot" : "text-ink"
-                }`}
-              >
-                {getThemeIcon(themeOption)}
-                <span className="text-sm">
-                  {getThemeLabel(themeOption)}
-                  {themeOption === "system" && (
-                    <span className="ml-1 font-mono text-[10px] uppercase tracking-caps text-faint">
-                      {getThemeLabel(effectiveTheme)}
-                    </span>
-                  )}
-                </span>
-                {theme === themeOption && (
-                  <div className="ml-auto h-1.5 w-1.5 rounded-full bg-spot" />
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+    <div className="ground" role="group" aria-label="Colour ground">
+      {OPTIONS.map(({value, label}) => (
+        <button
+          key={value}
+          type="button"
+          onClick={() => setTheme(value)}
+          aria-pressed={theme === value}
+          data-tooltip={
+            value === "system"
+              ? `Follow the system setting (now ${ground})`
+              : `Use the ${label.toLowerCase()} ground`
+          }
+        >
+          {label}
+        </button>
+      ))}
     </div>
   );
 };
