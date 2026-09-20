@@ -261,3 +261,29 @@ test("scroll pans the canvas, and center-first zooms to a readable level", async
     .poll(async () => scaleOf(await viewportTransform(page)))
     .toBeGreaterThanOrEqual(1);
 });
+
+test("a node shows its key in full, not clipped by the card's own chrome", async ({
+  page,
+}, testInfo) => {
+  // The card was sized from its text alone, with no budget for the type badge
+  // and copy button sharing the header row — so a key as ordinary as
+  // "upiAutopay" was rendered as "upiAuto…" inside a card with room to spare.
+  const json = JSON.stringify({
+    upiAutopay: {enabled: false, rollout: {strategy: "allowlist"}},
+    aRatherLongFeatureFlagKey: {enabled: true, rollout: {value: 1}},
+    short: {a: {b: 1}},
+  });
+  await loadGraph(page, json, `key-${testInfo.workerIndex}.json`);
+
+  // A truncated title reports more text than it has room to show.
+  const clipped = await page.evaluate(() =>
+    [...document.querySelectorAll(".react-flow__node span.truncate")]
+      .filter((el) => el.scrollWidth > el.clientWidth + 1)
+      .map((el) => el.textContent ?? "")
+  );
+  expect(clipped).toEqual([]);
+
+  await expect(
+    page.locator(".react-flow__node", {hasText: "upiAutopay"}).first()
+  ).toContainText("upiAutopay");
+});

@@ -43,15 +43,27 @@ const ROW_H = 22;
 const CHAR_W = 7.5;
 const MIN_W = 140;
 const MAX_W = 320;
+// A field row is text between two 8px paddings. The header carries more: the
+// type badge and its margin, the gap, and the copy button. Budget that, or a
+// key as short as "upiAutoCollect" is clipped inside a card sized for its
+// fields.
+const ROW_CHROME = 28;
+const HEADER_CHROME = 76;
+// A clipped value is still readable; a clipped key names nothing, so a title
+// may push the card wider than a long value ever will.
+const MAX_TITLE_W = 420;
 
 function estimateSize(data: GraphNodeData): {width: number; height: number} {
   const rows = data.fields.length + (data.childCount > 0 ? 1 : 0);
-  const longest = Math.max(
-    data.title.length,
+  const longestField = Math.max(
     ...data.fields.map((f) => (f.k ? `${f.k}: ${f.v}` : f.v).length),
     0
   );
-  const width = Math.min(MAX_W, Math.max(MIN_W, longest * CHAR_W + 28));
+  const width = Math.max(
+    MIN_W,
+    Math.min(MAX_W, longestField * CHAR_W + ROW_CHROME),
+    Math.min(MAX_TITLE_W, data.title.length * CHAR_W + HEADER_CHROME)
+  );
   const height = HEADER_H + Math.max(rows, 1) * ROW_H;
   return {width, height};
 }
