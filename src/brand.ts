@@ -42,6 +42,21 @@ export interface Brand {
   sample: {name: string; description: string; website: string; email: string};
 }
 
+/**
+ * Who wrote it: credited in the footer under both brands, and the owner the
+ * ajson brand points at. The picture comes from github.com/<login>.png, which
+ * redirects to whatever the profile currently uses — no API call, no key, and
+ * nothing to change here when the picture does.
+ */
+const LOGIN = "ProjectAJ14";
+
+export const AUTHOR = {
+  name: "Ajay Kumar",
+  login: LOGIN,
+  href: `https://github.com/${LOGIN}`,
+  avatar: `https://github.com/${LOGIN}.png?size=64`,
+} as const;
+
 const NONSTOPIO: Brand = {
   id: "nonstopio",
   siteName: "NonStop io Technologies Pvt. Ltd.",
@@ -77,8 +92,8 @@ const NONSTOPIO: Brand = {
 const AJSON: Brand = {
   id: "ajson",
   siteName: "AJSON",
-  ownerName: "Ajay Kumar",
-  ownerHref: "https://github.com/ProjectAJ14",
+  ownerName: AUTHOR.name,
+  ownerHref: AUTHOR.href,
   assetBase: "/brand/ajson",
   // Issues still go to the shared repo — it's where the code lives.
   issuesUrl: "https://github.com/nonstopio/json-viewer/issues",
@@ -87,13 +102,7 @@ const AJSON: Brand = {
   title: "AJSON – JSON Formatter, Validator & Graph Visualizer",
   description:
     "Paste your JSON and view it as a clean, collapsible tree or an interactive node graph. Free online JSON formatter, validator, explorer & visualizer. No signup. Works in browser.",
-  social: [
-    {
-      label: "GitHub",
-      href: "https://github.com/ProjectAJ14",
-      icon: "github",
-    },
-  ],
+  social: [{label: "GitHub", href: AUTHOR.href, icon: "github"}],
   noindex: true,
   sample: {
     name: "AJSON",
@@ -103,18 +112,6 @@ const AJSON: Brand = {
     email: "ajay.kumar@example.com",
   },
 };
-
-/**
- * Who wrote it, credited in the footer under both brands. The avatar comes
- * from github.com/<login>.png, which redirects to the current picture — no API
- * call, no key, and it follows the profile if the picture changes.
- */
-export const AUTHOR = {
-  name: "Ajay Kumar",
-  login: "ProjectAJ14",
-  href: "https://github.com/ProjectAJ14",
-  avatar: "https://github.com/ProjectAJ14.png?size=64",
-} as const;
 
 export const BRANDS: Record<BrandId, Brand> = {
   nonstopio: NONSTOPIO,

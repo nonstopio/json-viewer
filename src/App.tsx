@@ -60,6 +60,10 @@ const SOCIAL_ICONS = {
   globe: Globe,
 } as const;
 
+// ponytail: unfolding a subtree one node at a time is a splice per node, so
+// it stops at this many rows. Expand-all is there for the rest.
+const SUBTREE_ROWS = 2000;
+
 function App() {
   const [jsonData, setJsonData] = useState<JsonValue | null>(null);
   // The arrival animations run once per page load. They are gated on this
@@ -209,10 +213,6 @@ function App() {
     setOriginalNodes(list);
     setFilteredNodes(list);
   }, []);
-
-  // ponytail: unfolding a subtree one node at a time is a splice per node, so
-  // it stops at this many rows. Expand-all is there for the rest.
-  const SUBTREE_ROWS = 2000;
 
   // The Navigator's one action. Everything folds, then the picked node's own
   // chain reopens with its whole subtree, so the tree shows exactly what the
