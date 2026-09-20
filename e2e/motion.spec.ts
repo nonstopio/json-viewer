@@ -72,14 +72,20 @@ test("a tab switch after the intro replays nothing", async ({page}) => {
   // getAnimations() returns transitions as well as animations. A transition
   // is interaction feedback — a colour settling under the pointer — and is
   // not what "runs once on load" is about, so only named animations count.
+  // Flush pending style before reading: a CSS animation on an element the
+  // click just mounted does not exist until the next style recalc, so reading
+  // straight away is an assertion that passes whether or not the gate is
+  // there. A forced layout is clock-independent; rAF is not, and the fake
+  // clock installed above would never fire it.
   const running = () =>
-    page.evaluate(() =>
-      document
+    page.evaluate(() => {
+      document.body.getBoundingClientRect();
+      return document
         .getAnimations()
         .filter((a) => a.playState === "running")
         .filter((a): a is CSSAnimation => "animationName" in a)
-        .map((a) => a.animationName)
-    );
+        .map((a) => a.animationName);
+    });
 
   // The fake clock advances JS timers, not the compositor's animation
   // timeline, so the arrival animations on the never-unmounting layers are

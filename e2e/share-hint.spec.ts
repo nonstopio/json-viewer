@@ -34,6 +34,19 @@ test("the hint waits for a parse, then shows once and never again", async ({
   await expect(page.locator(hint)).toHaveCount(0);
 });
 
+test("shown counts as shown, even unanswered", async ({page}) => {
+  await page.goto("/");
+  await page.getByRole("button", {name: "Load Complex Test JSON"}).click();
+  await expect(page.locator(hint)).toBeVisible();
+
+  // Reload without answering it. "Once" that only holds for the readers who
+  // click "Got it" is not once — it is once per session, forever.
+  await page.reload();
+  await page.getByRole("button", {name: "Load Complex Test JSON"}).click();
+  await expect(page.getByRole("button", {name: "Share"})).toBeEnabled();
+  await expect(page.locator(hint)).toHaveCount(0);
+});
+
 test("the hint dismisses on Escape", async ({page}) => {
   await page.goto("/");
   await page.getByRole("button", {name: "Load Complex Test JSON"}).click();

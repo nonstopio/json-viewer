@@ -18,22 +18,31 @@ const OPTIONS: {value: Theme; label: string}[] = [
 export const ThemeToggle: React.FC = () => {
   const {theme, ground, setTheme} = useTheme();
 
+  /* Native radios rather than buttons with aria-pressed: three mutually
+     exclusive choices are a radio group, and the platform then gives the
+     arrow-key roving and the single tab stop for free. The inputs are hidden
+     from sight but not from the accessibility tree, so the label is the whole
+     segment and the focus ring lands on it. */
   return (
-    <div className="ground" role="group" aria-label="Colour ground">
+    <div className="ground" role="radiogroup" aria-label="Colour ground">
       {OPTIONS.map(({value, label}) => (
-        <button
+        <label
           key={value}
-          type="button"
-          onClick={() => setTheme(value)}
-          aria-pressed={theme === value}
           data-tooltip={
             value === "system"
               ? `Follow the system setting (now ${ground})`
               : `Use the ${label.toLowerCase()} ground`
           }
         >
+          <input
+            type="radio"
+            name="ground"
+            value={value}
+            checked={theme === value}
+            onChange={() => setTheme(value)}
+          />
           {label}
-        </button>
+        </label>
       ))}
     </div>
   );

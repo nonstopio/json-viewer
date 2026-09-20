@@ -44,6 +44,7 @@ import {
 import {JsonValue} from "../types/json";
 import {brand} from "../brand";
 import {readRole} from "../styles/roles";
+import {useGround} from "../hooks/useTheme";
 import {
   jsonToGraph,
   allContainerPaths,
@@ -216,27 +217,6 @@ function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
 
 const nodeTypes: NodeTypes = {json: JsonFlowNode};
 
-// Follow the applied ground (html[data-mode]), which useTheme sets from any
-// source (manual or system). A second useTheme instance wouldn't share state.
-// React Flow and the PNG rasteriser are the only consumers: both take a
-// value, not a var(), so they need to be told when the ground changes.
-function useIsDark(): boolean {
-  const [dark, setDark] = useState(
-    () => document.documentElement.dataset.mode !== "paper"
-  );
-  useEffect(() => {
-    const obs = new MutationObserver(() =>
-      setDark(document.documentElement.dataset.mode !== "paper")
-    );
-    obs.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-mode"],
-    });
-    return () => obs.disconnect();
-  }, []);
-  return dark;
-}
-
 // Shared style for every toolbar button.
 function ToolBtn({
   label,
@@ -280,7 +260,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const {setCenter, fitView, zoomIn, zoomOut, getZoom, flowToScreenPosition} =
     useReactFlow();
-  const isDark = useIsDark();
+  const isDark = useGround() === "ink";
 
   const {nodes, edges, truncated} = useMemo(
     () => jsonToGraph(data, collapsed, direction),

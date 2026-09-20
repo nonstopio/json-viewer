@@ -50,7 +50,12 @@ export const ShareHint: React.FC<ShareHintProps> = ({active}) => {
   }, []);
 
   useEffect(() => {
-    if (active && !seen()) setOpen(true);
+    if (!active || seen()) return;
+    // Recorded on display, not on dismissal: a reader who reloads without
+    // answering it has still been shown it, and "exactly once" that only
+    // holds for people who click "Got it" is not exactly once.
+    markSeen();
+    setOpen(true);
   }, [active]);
 
   useEffect(() => {

@@ -170,6 +170,7 @@
   --graph-edge: #4b4b53;
 
   --code-bg: var(--mass);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
   --shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
   --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--spot);
   --scrim: rgba(0, 0, 0, 0.62);
@@ -229,6 +230,7 @@
   /* A syntax theme's dimmest token lands under 4.5:1 on --mass, so the
      well is lightened rather than the theme repainted. */
   --code-bg: #edeae2;
+  --shadow-sm: 0 1px 2px rgba(22, 21, 15, 0.12);
   --shadow: 0 12px 28px rgba(22, 21, 15, 0.1);
   --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--spot);
   --scrim: rgba(22, 21, 15, 0.42);

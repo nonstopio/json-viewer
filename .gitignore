@@ -315,14 +315,16 @@ playwright/.cache/
 **/secrets/
 **/*secret*
 **/*key*
-**/*token*
+# Named for what they are rather than for the word "token", which also names
+# design tokens, tokenizers and lexers. A blanket **/*token* once swallowed
+# src/styles/tokens.css — the file the entire theme lives in — and the build
+# only failed in CI, because locally the file was still on disk.
+*.token
+*auth-token*
+*access-token*
+*refresh-token*
+*api-token*
 **/config/local*
-
-# ...but the design tokens are a stylesheet, not a credential. The rule above
-# is there to keep auth tokens out of the repo, and it silently swallowed the
-# one file the entire theme lives in — the build only failed in CI, because
-# locally the file was on disk.
-!src/styles/tokens.css
 
 # Analytics and tracking files (if any)
 analytics-key.json

@@ -90,8 +90,8 @@ export default {
         "caps-wide": role("tracking-caps-wide"),
       },
       boxShadow: {
-        sm: "0 1px 2px rgba(0,0,0,.18)",
-        DEFAULT: "0 1px 2px rgba(0,0,0,.18)",
+        sm: role("shadow-sm"),
+        DEFAULT: role("shadow-sm"),
         md: role("shadow"),
         lg: role("shadow"),
         xl: role("shadow"),

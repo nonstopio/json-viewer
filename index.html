@@ -214,10 +214,11 @@
     </script>
 
     <!-- Styling for the static SEO content section (independent of the JS
-         bundle). Every colour names a role from src/styles/tokens.css, with a
-         literal fallback for the window before the bundle's CSS lands — so
-         this panel re-themes with everything else instead of being the one
-         surface stuck on the old palette. -->
+         bundle). Every colour names a role from src/styles/tokens.css and
+         carries no literal fallback: a fallback can only spell one ground, so
+         it would paint this panel ink-dark on paper for the window it covers.
+         The stylesheet is render-blocking, and the panel is hidden until a
+         click, so there is nothing to paint before the roles resolve. -->
     <style>
       /* Reserve the full viewport for the app shell before React mounts, so the
          static SEO content below stays below the fold and there is no layout
@@ -237,7 +238,7 @@
         align-items: center;
         justify-content: center;
         padding: 1rem;
-        background: var(--scrim, rgba(0, 0, 0, 0.62));
+        background: var(--scrim);
       }
       .about-overlay[hidden] {
         display: none;
@@ -248,12 +249,12 @@
         max-width: 56rem;
         max-height: 85vh;
         overflow-y: auto;
-        background: var(--panel, #1e1e22);
-        color: var(--dim, #a29c93);
-        border: 1px solid var(--line-2, #33333a);
-        border-radius: var(--radius-none, 0);
-        box-shadow: var(--shadow, 0 12px 28px rgba(0, 0, 0, 0.45));
-        font-family: var(--font-body, "Inter", sans-serif);
+        background: var(--panel);
+        color: var(--dim);
+        border: 1px solid var(--line-2);
+        border-radius: var(--radius-none);
+        box-shadow: var(--shadow);
+        font-family: var(--font-body);
         line-height: 1.65;
       }
       .about-close {
@@ -266,53 +267,53 @@
         align-items: center;
         justify-content: center;
         border: none;
-        border-radius: var(--radius-sm, 2px);
+        border-radius: var(--radius-sm);
         background: transparent;
-        color: var(--faint, #8b857b);
+        color: var(--faint);
         font-size: 1.5rem;
         line-height: 1;
         cursor: pointer;
       }
       .about-close:hover {
-        background: var(--mass, #26262a);
-        color: var(--ink, #eae7e1);
+        background: var(--mass);
+        color: var(--ink);
       }
       .seo-content__inner {
         padding: 2.5rem 2rem;
       }
       .seo-content h1 {
-        font-family: var(--font-disp, "Archivo", sans-serif);
-        font-size: var(--display-2, 30px);
+        font-family: var(--font-disp);
+        font-size: var(--display-2);
         font-weight: 900;
-        letter-spacing: var(--tracking-display, -0.055em);
-        line-height: var(--leading-display, 0.9);
-        color: var(--ink, #eae7e1);
+        letter-spacing: var(--tracking-display);
+        line-height: var(--leading-display);
+        color: var(--ink);
         margin: 0 0 1.25rem;
       }
       .seo-content h2 {
-        font-family: var(--font-disp, "Archivo", sans-serif);
+        font-family: var(--font-disp);
         font-size: 1.25rem;
         font-weight: 800;
-        letter-spacing: var(--tracking-tight, -0.045em);
-        color: var(--ink, #eae7e1);
+        letter-spacing: var(--tracking-tight);
+        color: var(--ink);
         margin: 2rem 0 0.75rem;
       }
       .seo-content h3 {
         font-size: 1rem;
         font-weight: 600;
-        color: var(--ink, #eae7e1);
+        color: var(--ink);
         margin: 1.25rem 0 0.25rem;
       }
       .seo-content a {
-        color: var(--spot, #79d5c4);
+        color: var(--spot);
       }
       .seo-content code {
-        font-family: var(--font-mono, ui-monospace, monospace);
+        font-family: var(--font-mono);
         font-size: 0.875em;
         padding: 0.1em 0.35em;
-        border-radius: var(--radius-sm, 2px);
-        background: var(--code-bg, #26262a);
-        color: var(--ink, #eae7e1);
+        border-radius: var(--radius-sm);
+        background: var(--code-bg);
+        color: var(--ink);
       }
       .seo-content p {
         margin: 0 0 0.75rem;

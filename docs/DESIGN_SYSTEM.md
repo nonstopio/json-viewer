@@ -17,6 +17,13 @@ the whole tree. `index.html` sets it in a blocking inline script before first
 paint (no flash); `src/hooks/useTheme.ts` sets it thereafter and is the only
 place that writes it.
 
+**Read the ground back with `useGround()`, never with a second `useTheme()`.**
+Every `useTheme()` call is its own `useState`, so only the instance that was
+clicked hears about a swap — an editor or a canvas holding a second instance
+keeps painting the old ground until something remounts it. `useGround()`
+watches the attribute, which is the one thing every consumer agrees on, and
+moves for a system change as well as for a click.
+
 **There is no `dark:` variant anywhere in this app, and adding one is a bug.**
 A `dark:` utility hardcodes a second palette next to the first, which is the
 thing the ground swap exists to avoid.
@@ -48,7 +55,10 @@ makes "they all look alike" a coincidence that holds until the next edit.
   `--sm` (the nav row), `--block` (full width).
 - **`.ground`** — the ground picker: a bordered strip of uppercase mono
   segments with the chosen one inverted. Not a dropdown; with three choices
-  the current one should be readable without opening anything.
+  the current one should be readable without opening anything. It is a native
+  radio group behind the paint — three mutually exclusive choices *are* a
+  radio group, and the platform then supplies the arrow-key roving and the
+  single tab stop that toggle buttons would each have to hand-roll.
 - **`.eyebrow`** — a micro-label: 11px mono, uppercase, wide tracking.
 
 Controls that sit in the nav row take their height from `--nav-control-h`, so
@@ -118,7 +128,7 @@ prop), `src/styles/roles.ts` exposes `readRole("graph-bg")`.
 | `src/index.css`             | base (body, grid, scrollbars, selection) and the components: `.btn`, `.ground`, `.eyebrow`, `.json-node`, `.tooltip-*` |
 | `src/styles/editorTheme.ts` | the CodeMirror chrome and JSON syntax highlighting, built from the same roles                                          |
 | `src/styles/roles.ts`       | `readRole()`, for non-CSS consumers                                                                                    |
-| `src/hooks/useTheme.ts`     | light/dark/system → `data-mode`; stored values stay `light`/`dark`/`system` while the labels say Ink/Paper/Auto        |
+| `src/hooks/useTheme.ts`     | light/dark/system → `data-mode`, and `useGround()` to read it back; stored values stay `light`/`dark`/`system` while the labels say Ink/Paper/Auto |
 | `index.html`                | the no-flash ground script, fonts, and the static About panel's styles                                                 |
 
 ## The look

@@ -2,7 +2,7 @@ import React, {useState, useRef, useCallback, useEffect, useMemo} from "react";
 import CodeMirror, {ReactCodeMirrorRef} from "@uiw/react-codemirror";
 import {json} from "@codemirror/lang-json";
 import {Upload, FileText, X, AlertCircle} from "lucide-react";
-import {useTheme} from "../hooks/useTheme";
+import {useGround} from "../hooks/useTheme";
 import {editorTheme} from "../styles/editorTheme";
 
 interface JsonInputProps {
@@ -38,8 +38,10 @@ export const JsonInput: React.FC<JsonInputProps> = ({
   const editorRef = useRef<ReactCodeMirrorRef>(null);
 
   // The editor is themed from the same role tokens as everything else; it
-  // only needs the ground to set CodeMirror's own `dark` flag.
-  const {ground} = useTheme();
+  // only needs the ground to set CodeMirror's own `dark` flag. Read from the
+  // applied attribute, not a second useTheme instance, which would never hear
+  // about a swap made while the editor stays mounted.
+  const ground = useGround();
   const cmTheme = useMemo(() => editorTheme(ground), [ground]);
 
   useEffect(() => {

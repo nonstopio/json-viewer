@@ -10,20 +10,24 @@ test("the ground picker applies a ground without opening anything", async ({
   page,
 }) => {
   await page.goto("/");
-  const picker = page.getByRole("group", {name: "Colour ground"});
+  const picker = page.getByRole("radiogroup", {name: "Colour ground"});
   await expect(picker).toBeVisible();
 
-  // All three choices are on screen at once — nothing to expand.
-  await expect(picker.getByRole("button")).toHaveText(["Ink", "Paper", "Auto"]);
+  // All three choices are on screen at once — nothing to expand. The radios
+  // themselves are the state; the labels are what a reader sees and clicks.
+  await expect(picker.locator("label")).toHaveText(["Ink", "Paper", "Auto"]);
+  await expect(picker.getByRole("radio")).toHaveCount(3);
 
-  await picker.getByRole("button", {name: "Paper"}).click();
+  await picker.getByText("Paper").click();
   await expect(page.locator("html")).toHaveAttribute("data-mode", "paper");
-  await expect(picker.getByRole("button", {name: "Paper"})).toHaveAttribute(
-    "aria-pressed",
-    "true"
-  );
+  await expect(picker.getByRole("radio", {name: "Paper"})).toBeChecked();
 
-  await picker.getByRole("button", {name: "Ink"}).click();
+  // One tab stop, and the arrow keys move between the choices — which is the
+  // reason for a radio group rather than three toggle buttons.
+  await picker.getByRole("radio", {name: "Paper"}).press("ArrowRight");
+  await expect(picker.getByRole("radio", {name: "Auto"})).toBeChecked();
+
+  await picker.getByText("Ink").click();
   await expect(page.locator("html")).toHaveAttribute("data-mode", "ink");
 
   // The choice survives a reload, and is applied before first paint rather
@@ -36,7 +40,7 @@ test("a ground swap re-resolves every role, including outside the bundle", async
   page,
 }) => {
   await page.goto("/");
-  const picker = page.getByRole("group", {name: "Colour ground"});
+  const picker = page.getByRole("radiogroup", {name: "Colour ground"});
   const role = (name: string) =>
     page.evaluate(
       (n) =>
@@ -44,14 +48,14 @@ test("a ground swap re-resolves every role, including outside the bundle", async
       `--${name}`
     );
 
-  await picker.getByRole("button", {name: "Ink"}).click();
+  await picker.getByText("Ink").click();
   const ink = {
     bg: await role("bg"),
     ink: await role("ink"),
     string: await role("json-string"),
   };
 
-  await picker.getByRole("button", {name: "Paper"}).click();
+  await picker.getByText("Paper").click();
   const paper = {
     bg: await role("bg"),
     ink: await role("ink"),

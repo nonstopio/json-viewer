@@ -285,14 +285,15 @@
     border: 1px solid var(--line-2);
   }
 
-  .ground button {
+  .ground label {
+    position: relative;
+    display: flex;
+    align-items: center;
     font-family: var(--font-mono);
     font-size: 11px;
     font-weight: 400;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    background: none;
-    border: 0;
     color: var(--faint);
     padding: 6px 11px;
     line-height: 1.4;
@@ -302,13 +303,27 @@
       color var(--duration-fast) var(--ease);
   }
 
-  .ground button:hover {
+  /* Out of sight, still in the accessibility tree and still focusable — the
+     label is the target and carries the state, the ring and the pointer. */
+  .ground input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .ground label:hover {
     color: var(--ink);
   }
 
-  .ground button[aria-pressed="true"] {
+  .ground label:has(input:checked) {
     background: var(--ink);
     color: var(--bg);
+  }
+
+  .ground label:has(input:focus-visible) {
+    box-shadow: var(--ring);
   }
 
   /* ---------- the tree ---------- */
