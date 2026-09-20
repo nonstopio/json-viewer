@@ -1,3 +1,20 @@
+# [1.10.0](https://github.com/nonstopio/json-viewer/compare/v1.9.0...v1.10.0) (2026-09-20)
+
+
+### Bug Fixes
+
+* a click is not a pick, and the panel stops burying what it covers ([0560fcd](https://github.com/nonstopio/json-viewer/commit/0560fcdfda2c2914ccfde32891ddca4cbab94f40))
+* carry a picked branch between the Viewer and the Visualizer ([4639a86](https://github.com/nonstopio/json-viewer/commit/4639a860181021137848d1e8865ef44dfa05aa10))
+* fold a node's own values when it folds, not just its children ([354b733](https://github.com/nonstopio/json-viewer/commit/354b733a39aa0721b0d7096b975faf9a045b5872))
+* give every foldable node a toggle to fold it back with ([4236094](https://github.com/nonstopio/json-viewer/commit/4236094d1e026b1c725d5cd87734a389ca1c5707))
+* size a graph card for its key, not just its text ([429350b](https://github.com/nonstopio/json-viewer/commit/429350ba49a4383579e0c48394e361e0e93256fa))
+
+
+### Features
+
+* put the Navigator in the Visualizer and frame the camera on what is open ([1465b4d](https://github.com/nonstopio/json-viewer/commit/1465b4d624e4f9df762987c3d184b6f5f5b463fc))
+* wash the picked object across the graph and give the Navigator room ([6047182](https://github.com/nonstopio/json-viewer/commit/6047182c52ce48a37ac829d42113af053d5f8df3))
+
 # [1.9.0](https://github.com/nonstopio/json-viewer/compare/v1.8.0...v1.9.0) (2026-09-20)
 
 
