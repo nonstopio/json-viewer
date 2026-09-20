@@ -124,6 +124,15 @@ function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
     useContext(ActionsContext);
   const isActiveNode = activeHit?.id === id;
   const isHighlight = isActiveNode || (!query && selectedPath === data.path);
+  // Picking a branch selects the whole object, not just its head — so every
+  // card inside it is washed, the way the tree washes the rows of a subtree.
+  // Root is exempt: selecting it would otherwise wash the entire canvas.
+  const inSelection =
+    !query &&
+    !!selectedPath &&
+    selectedPath !== "root" &&
+    data.path !== selectedPath &&
+    isUnder(data.path, selectedPath);
   const badge =
     data.kind === "array" ? "[ ]" : data.kind === "object" ? "{ }" : "•";
   const targetPos = direction === "LR" ? Position.Left : Position.Top;
@@ -131,8 +140,12 @@ function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
 
   return (
     <div
-      className={`rounded-md border bg-panel text-xs shadow-sm ${
-        isHighlight ? "border-spot ring-2 ring-spot" : "border-line-2"
+      className={`rounded-md border text-xs shadow-sm ${
+        isHighlight
+          ? "border-spot bg-sel ring-2 ring-spot"
+          : inSelection
+            ? "wash-sel border-spot-line"
+            : "border-line-2 bg-panel"
       }`}
     >
       <Handle
@@ -703,7 +716,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
             its whole width some of the time, so this one is a window: fold it
             away to the opener beside it and bring it back. */}
         {navOpen ? (
-          <div className="absolute left-3 top-3 z-20 flex h-[min(26rem,calc(100%-6rem))] w-72 flex-col border border-line-2 bg-panel shadow-lg">
+          <div className="absolute left-3 top-3 z-20 flex h-[min(40rem,calc(100%-5.5rem))] w-72 flex-col border border-line-2 bg-panel shadow-lg">
             <JsonNavigator
               data={data}
               selectedNodePath={selectedNodePath}

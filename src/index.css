@@ -336,6 +336,15 @@
     transition-duration: var(--duration-fast);
   }
 
+  /* ---------- the graph ----------
+     The tree washes a selected subtree with --sel-soft straight onto the
+     panel it sits on. A graph card carries its own opaque background, so the
+     same wash goes on top of it as an image layer instead of replacing it. */
+  .wash-sel {
+    background-color: var(--panel);
+    background-image: linear-gradient(var(--sel-soft), var(--sel-soft));
+  }
+
   /* ---------- tooltips ----------
      Inverted against the ground so a tip always separates from whatever
      it covers; --ink/--bg swap roles rather than naming a fixed pair. */

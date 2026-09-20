@@ -99,3 +99,46 @@ test("ticking a branch opens it in the graph and folds the rest away", async ({
   await navRow(page, "service_3").click();
   await expect.poll(() => nodesTitled(page, "config")).toBe(0);
 });
+
+// The card element inside a React Flow node wrapper — the one that carries the
+// selection styling.
+const cardOf = (page: Page, title: string) =>
+  page.locator(".react-flow__node", {hasText: title}).first().locator("> div");
+
+const backgrounds = (page: Page, title: string) =>
+  cardOf(page, title).evaluate((el) => {
+    const s = getComputedStyle(el);
+    return {image: s.backgroundImage, color: s.backgroundColor};
+  });
+
+test("picking a branch washes the whole object, not just its head card", async ({
+  page,
+}, testInfo) => {
+  // Parity with the tree, where a picked object is washed down its whole
+  // subtree: on the canvas every card inside the branch carries the wash, and
+  // nothing outside it does.
+  await loadGraph(page, buildGraphJson(), `gwash-${testInfo.workerIndex}.json`);
+
+  const plain = await backgrounds(page, "service_5");
+  expect(plain.image).toBe("none");
+
+  await navRow(page, "service_3").click();
+
+  // The head card is the solid selection colour, distinct from an untouched
+  // card, and rings itself.
+  const head = await backgrounds(page, "service_3");
+  expect(head.color).not.toBe(plain.color);
+  expect(
+    await cardOf(page, "service_3").evaluate(
+      (el) => getComputedStyle(el).boxShadow
+    )
+  ).not.toBe("none");
+
+  // Everything inside the branch is washed…
+  for (const title of ["config", "meta"]) {
+    expect((await backgrounds(page, title)).image).toContain("gradient");
+  }
+
+  // …and its siblings are left alone.
+  expect((await backgrounds(page, "service_5")).image).toBe("none");
+});
