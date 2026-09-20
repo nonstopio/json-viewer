@@ -216,7 +216,8 @@ function App() {
 
   // The Navigator's one action. Everything folds, then the picked node's own
   // chain reopens with its whole subtree, so the tree shows exactly what the
-  // panel says is open — and picking the root (nothing ticked) folds the lot.
+  // panel says is open — and picking the root (nothing ticked) leaves the top
+  // level open and nothing more.
   const handleOpenNode = useCallback(
     (path: string) => {
       setSelectedNodePath(path);
@@ -224,7 +225,17 @@ function App() {
       if (searchQuery) return;
 
       let next = jsonParser.collapseAllNodes(originalNodes);
-      if (path !== "root") {
+      if (path === "root") {
+        // Nothing ticked is not a closed document: the top level stays open,
+        // so the tree still shows what the panel is listing.
+        next = jsonParser.expandNode(next, "root");
+        for (let i = 0; i < next.length; i++) {
+          const node = next[i];
+          if (node.isExpanded && node.path !== "root") {
+            next = jsonParser.collapseNode(next, node.path);
+          }
+        }
+      } else {
         // `startsWith` alone would also match a sibling named `orders2`, so
         // the separator has to be part of the test.
         const under = (candidate: string) =>

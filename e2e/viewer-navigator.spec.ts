@@ -225,11 +225,11 @@ test("the navigator lists branches only, two levels, and never a third", async (
   ).toBeVisible();
 });
 
-test("ticking the open branch again folds the whole document", async ({
+test("ticking the open branch again falls back to the top level", async ({
   page,
 }, testInfo) => {
-  // Unticking is the way back out: nothing open in the panel means nothing
-  // open in the tree.
+  // Unticking is the way back out: nothing open in the panel means the tree
+  // shows its top level and nothing deeper — not an empty document.
   await loadViewer(
     page,
     buildFixture(),
@@ -244,8 +244,12 @@ test("ticking the open branch again folds the whole document", async ({
   await expect(
     page.getByTestId("nav-graph").locator("input:checked")
   ).toHaveCount(0);
-  // Only the collapsed root is left in the tree.
-  await expect(page.locator(".json-node")).toHaveCount(1);
+  // root plus its four keys, all folded — level2 and alpha's rows are gone.
+  await expect(page.locator(".json-node")).toHaveCount(5);
+  await expect(page.locator(".json-node", {hasText: "level2"})).toHaveCount(0);
+  await expect(page.locator(".json-node", {hasText: "alphaKey0"})).toHaveCount(
+    0
+  );
 });
 
 test("checking a key collapses every other key, in both panels", async ({

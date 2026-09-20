@@ -359,8 +359,8 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
       <div className="border-t border-line-2 px-2 py-1.5 text-[11px] leading-snug text-faint">
         <p>
           Tick a branch to open it: the tree unfolds it in full and folds
-          everything else. Tick it again to close, and the document folds with
-          it.
+          everything else. Tick it again to close, and the tree falls back to
+          its top level.
         </p>
         <p>
           Only keys that hold more keys are listed, two levels at a time — plain
