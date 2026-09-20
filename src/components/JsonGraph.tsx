@@ -266,6 +266,8 @@ function ToolBtn({
 interface JsonGraphProps {
   data: JsonValue;
   selectedNodePath: string;
+  /** The branch the Navigator has open, if any — what the graph arrives on. */
+  openNodePath: string;
   /** Clicking a node: select it, the way clicking a tree row does. */
   onSelectNode: (path: string) => void;
   /** Ticking it in the Navigator: open it everywhere, folding the rest. */
@@ -288,18 +290,20 @@ function collapsedFor(data: JsonValue, path: string): Set<string> {
 function GraphInner({
   data,
   selectedNodePath,
+  openNodePath,
   onSelectNode,
   onOpenNode,
 }: JsonGraphProps) {
-  // The graph opens on whatever branch is already picked: switching tabs
-  // remounts this view, and the Navigator riding along says that branch is
-  // open. Seeded at the first render rather than in an effect, so the very
-  // first layout is the folded one — set it a render later and the camera
-  // frames the document it is about to replace, which lands on empty canvas.
+  // The graph opens on whatever branch the Navigator has open: switching tabs
+  // remounts this view, and the panel riding along says that branch is open.
+  // Keyed on the opened branch, never on the selection — a click selects
+  // without opening anything, and folding the document away on the strength of
+  // one would throw away a graph the user had expanded by hand. Seeded at the
+  // first render rather than in an effect, so the very first layout is the
+  // folded one: set it a render later and the camera frames the document it is
+  // about to replace, which lands on empty canvas.
   const [collapsed, setCollapsed] = useState<Set<string>>(() =>
-    selectedNodePath && selectedNodePath !== "root"
-      ? collapsedFor(data, selectedNodePath)
-      : new Set()
+    openNodePath ? collapsedFor(data, openNodePath) : new Set()
   );
   const [direction, setDirection] = useState<LayoutDirection>("LR");
   const [showMinimap, setShowMinimap] = useState(true);
@@ -341,11 +345,9 @@ function GraphInner({
   // Camera handoff: a structural change records the node to frame once the new
   // layout lands, and the effect below does the framing. "*" means
   // collapse/expand-all — no single node of interest, so fit the whole graph.
-  // Armed from the start when a branch is already picked, so arriving from the
+  // Armed from the start when a branch is already open, so arriving from the
   // Viewer lands on that branch instead of on the whole document.
-  const pendingFocus = useRef<string | null>(
-    selectedNodePath && selectedNodePath !== "root" ? selectedNodePath : null
-  );
+  const pendingFocus = useRef<string | null>(openNodePath || null);
 
   const onToggle = useCallback(
     (path: string) => {
@@ -459,9 +461,12 @@ function GraphInner({
     return hits;
   }, [nodes, query]);
 
+  // Also when the hits themselves change: folding a branch away can leave the
+  // index past the end of a shorter list, which reads as "7/2" and focuses
+  // nothing.
   useEffect(() => {
     setMatchIndex(0);
-  }, [query]);
+  }, [query, matches.length]);
 
   useEffect(() => {
     const hit = matches[matchIndex];
@@ -563,7 +568,12 @@ function GraphInner({
       fitView({duration: 0, ...framing()})
     );
     return () => cancelAnimationFrame(id);
-  }, [data, direction, isFullscreen, navOpen, fitView, framing]);
+    // `framing` changes identity with the Navigator window, and re-fitting
+    // when that window folds away would reset the zoom of whoever folded it —
+    // the opposite of what asking for more room means. Only a new document, a
+    // new direction or fullscreen re-fits the whole graph.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, direction, isFullscreen, fitView]);
 
   // Frame whatever the last structural change was about, once the new layout
   // has landed. Only runs when a toggle or the Navigator armed `pendingFocus`,
@@ -775,7 +785,7 @@ function GraphInner({
 
         {/* Floating search box (JSON Crack style) */}
         {searchOpen && (
-          <div className="absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 border border-line-2 bg-panel px-3 py-1.5 shadow-lg">
+          <div className="absolute bottom-16 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 border border-line-2 bg-panel px-3 py-1.5 shadow-lg">
             <Search size={14} className="text-faint" />
             <input
               autoFocus
@@ -821,9 +831,10 @@ function GraphInner({
           </div>
         )}
 
-        {/* Settings popover */}
+        {/* Settings popover. Above the Navigator window (z-20), which reaches
+            down the right edge far enough to bury this one where it sits. */}
         {showSettings && (
-          <div className="absolute bottom-16 right-4 z-10 w-44 border border-line-2 bg-panel p-3 text-sm shadow-lg">
+          <div className="absolute bottom-16 right-4 z-30 w-44 border border-line-2 bg-panel p-3 text-sm shadow-lg">
             <label className="flex items-center justify-between gap-2 text-ink">
               <span>Show minimap</span>
               <input

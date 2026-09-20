@@ -87,6 +87,11 @@ function App() {
   const [inputText, setInputText] = useState<string>("");
   const [lastParsedInput, setLastParsedInput] = useState<string>("");
   const [selectedNodePath, setSelectedNodePath] = useState<string>("");
+  // The branch the Navigator has open, which is not the same thing as the
+  // selection: clicking a row or a card selects without opening anything, and
+  // only a pick folds the rest of the document away. The Visualizer reads this
+  // to arrive on the same branch rather than on whatever was last clicked.
+  const [openNodePath, setOpenNodePath] = useState<string>("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [wasModified, setWasModified] = useState(false);
   const [errorDetails, setErrorDetails] = useState<
@@ -155,6 +160,7 @@ function App() {
           setLastParsedInput(jsonText);
           // Auto-select root node when data is loaded
           setSelectedNodePath("root");
+          setOpenNodePath("");
           // Switch to viewer tab only if parsing was successful and requested
           if (shouldSwitchTab) {
             setActiveTab("viewer");
@@ -221,6 +227,7 @@ function App() {
   const handleOpenNode = useCallback(
     (path: string) => {
       setSelectedNodePath(path);
+      setOpenNodePath(path);
       // While searching the list is a search result; don't rebuild it.
       if (searchQuery) return;
 
@@ -484,6 +491,7 @@ function App() {
             setOriginalNodes(newNodes);
             setLastParsedInput(currentInputText);
             setSelectedNodePath("root");
+            setOpenNodePath("");
             setActiveTab(targetTab);
           } else {
             // If parsing fails, show error and redirect back to JSON tab
@@ -526,6 +534,7 @@ function App() {
     setSearchMatchIndices([]);
     setCurrentMatchIndex(0);
     setSelectedNodePath("");
+    setOpenNodePath("");
   }, []);
 
   useEffect(() => {
@@ -1020,6 +1029,7 @@ function App() {
                   <JsonGraph
                     data={jsonData}
                     selectedNodePath={selectedNodePath}
+                    openNodePath={openNodePath}
                     onSelectNode={handleSelectNode}
                     onOpenNode={handleOpenNode}
                   />

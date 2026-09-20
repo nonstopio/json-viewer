@@ -247,3 +247,82 @@ test("a node holding only values can still be folded and brought back", async ({
   await toggle.click();
   await expect(card).toContainText("perPage");
 });
+
+test("the Settings popover opens in front of the Navigator, not behind it", async ({
+  page,
+}, testInfo) => {
+  // The panel moved to the right edge and reaches most of the way down it,
+  // straight over where this popover sits. Both controls inside it were drawn
+  // behind the panel and could not be clicked.
+  await loadGraph(page, buildGraphJson(), `gsettings-${testInfo.workerIndex}.json`);
+
+  await page.getByRole("button", {name: "Settings", exact: true}).click();
+  // Scoped: the Navigator's own rows carry checkboxes too.
+  const minimap = page.locator(
+    'label:has-text("Show minimap") input[type="checkbox"]'
+  );
+  await expect(minimap).toBeVisible();
+
+  // What the user's pointer actually lands on at the control's centre.
+  const onTop = await minimap.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+    return hit === el || el.contains(hit);
+  });
+  expect(onTop).toBe(true);
+
+  // And it is genuinely operable.
+  await minimap.uncheck();
+  await expect(minimap).not.toBeChecked();
+});
+
+test("folding the Navigator away keeps the view the user had", async ({
+  page,
+}, testInfo) => {
+  // Minimizing asks for more room for what you are reading; re-fitting the
+  // whole graph in response threw that reading position away.
+  await loadGraph(page, buildGraphJson(), `gkeep-${testInfo.workerIndex}.json`);
+
+  const zoomIn = page.getByRole("button", {name: "Zoom in", exact: true});
+  await zoomIn.click();
+  await zoomIn.click();
+  await page.waitForTimeout(500);
+  const before = await page
+    .locator(".react-flow__viewport")
+    .evaluate((el) => (el as HTMLElement).style.transform);
+
+  await page.getByRole("button", {name: "Minimize the Navigator"}).click();
+  await page.waitForTimeout(500);
+  expect(
+    await page
+      .locator(".react-flow__viewport")
+      .evaluate((el) => (el as HTMLElement).style.transform)
+  ).toBe(before);
+});
+
+test("clicking a card selects it without folding the graph on the way back", async ({
+  page,
+}, testInfo) => {
+  // A click is not a pick. The graph seeded its folded state from the shared
+  // selection, so clicking one card and round-tripping the tabs folded away a
+  // graph the user had open — and left the two views disagreeing.
+  const file = join(tmpdir(), `gclick-${testInfo.workerIndex}.json`);
+  writeFileSync(file, buildGraphJson());
+  await page.goto("/");
+  await page.locator('input[type="file"]').setInputFiles(file); // → Viewer
+  await page.getByRole("button", {name: "Visualizer", exact: true}).click();
+  await expect(page.locator(".react-flow__node").first()).toBeVisible();
+
+  const open = await page.locator(".react-flow__node").count();
+  await page
+    .locator(".react-flow__node", {hasText: "service_4"})
+    .first()
+    .click();
+  await expect(page.locator(".react-flow__node")).toHaveCount(open);
+
+  // Out to the Viewer and back: still the graph the user had.
+  await page.getByRole("button", {name: "Viewer", exact: true}).click();
+  await page.getByRole("button", {name: "Visualizer", exact: true}).click();
+  await expect(page.locator(".react-flow__node").first()).toBeVisible();
+  await expect(page.locator(".react-flow__node")).toHaveCount(open);
+});
