@@ -26,11 +26,16 @@ const chrome = (dark: boolean) =>
       "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection":
         {backgroundColor: "var(--spot-soft)"},
       ".cm-activeLine": {backgroundColor: "var(--hover)"},
+      /* CodeMirror's base theme sets a bare `monospace` here, which is the
+         OS default rather than ours — the line numbers would be the one
+         surface still rendering in the old font. */
       ".cm-gutters": {
         backgroundColor: "var(--code-bg)",
         color: "var(--faint-2)",
         borderRight: "1px solid var(--line-2)",
+        fontFamily: "var(--font-mono)",
       },
+      ".cm-gutterElement": {fontFamily: "var(--font-mono)"},
       ".cm-activeLineGutter": {
         backgroundColor: "var(--hover)",
         color: "var(--dim)",
@@ -40,7 +45,10 @@ const chrome = (dark: boolean) =>
         border: "1px solid var(--line-2)",
         color: "var(--dim)",
       },
-      ".cm-placeholder": {color: "var(--faint-2)"},
+      ".cm-placeholder": {
+        color: "var(--faint-2)",
+        fontFamily: "var(--font-mono)",
+      },
       ".cm-selectionMatch": {backgroundColor: "var(--spot-soft)"},
       ".cm-matchingBracket, .cm-nonmatchingBracket": {
         backgroundColor: "var(--spot-soft)",

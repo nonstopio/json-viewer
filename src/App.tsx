@@ -650,9 +650,16 @@ function App() {
         }
       `}</style>
 
-      <div className="flex h-screen flex-col overflow-hidden bg-bg">
+      {/* The living ground: two glows drifting behind everything. They are
+          fixed and inert, and every band below is transparent, so this is
+          what gives the app depth instead of a stack of flat greys. */}
+      <div className="grid-layer" aria-hidden="true" />
+      <div className="glow glow--hi" aria-hidden="true" />
+      <div className="glow glow--lo" aria-hidden="true" />
+
+      <div className="relative z-10 flex h-screen flex-col overflow-hidden">
         {/* Top Tab Bar - Fixed */}
-        <div className="flex-shrink-0 border-b border-line-2 bg-panel">
+        <div className="band seam flex-shrink-0 border-b border-line-2">
           <div className="flex items-center">
             <div className="flex">
               <button
@@ -707,7 +714,7 @@ function App() {
 
         {/* Toolbar - Only show for text tab - Fixed */}
         {activeTab === "text" && (
-          <div className="flex-shrink-0 border-b border-line-2 bg-panel px-4 py-2">
+          <div className="band seam seam--delay-1 flex-shrink-0 border-b border-line-2 px-4 py-2">
             <div className="flex items-center space-x-3">
               <button onClick={handlePaste} className="btn btn--ghost">
                 <ClipboardPaste size={14} />
@@ -786,7 +793,7 @@ function App() {
 
         {/* Search Bar - Only show for viewer tab - Fixed */}
         {activeTab === "viewer" && jsonData && (
-          <div className="flex-shrink-0 border-b border-line-2 bg-panel px-4 py-3">
+          <div className="band seam seam--delay-1 flex-shrink-0 border-b border-line-2 px-4 py-3">
             <div className="flex items-center justify-start space-x-2">
               <div className="relative w-full max-w-md">
                 <input
@@ -887,10 +894,10 @@ function App() {
               initialLeftWidth={70}
               minLeftWidth={50}
               minRightWidth={30}
-              className="flex-1"
+              className="fade-up flex-1"
             >
               {/* Left Panel - Tree View */}
-              <div className="h-full min-w-0 overflow-hidden bg-bg">
+              <div className="h-full min-w-0 overflow-hidden">
                 {jsonData ? (
                   <div className="h-full flex flex-col">
                     {/* Tree Header */}
@@ -941,7 +948,7 @@ function App() {
               </div>
 
               {/* Right Panel - Structural navigation */}
-              <div className="h-full min-w-0 overflow-hidden border-l border-line-2 bg-panel">
+              <div className="h-full min-w-0 overflow-hidden border-l border-line-2">
                 <JsonNavigator
                   data={jsonData}
                   selectedNodePath={selectedNodePath}
@@ -954,7 +961,7 @@ function App() {
 
           {/* Graph Tab Content */}
           {activeTab === "graph" && (
-            <div className="h-full w-full min-w-0 overflow-hidden bg-bg">
+            <div className="fade-up h-full w-full min-w-0 overflow-hidden">
               {jsonData ? (
                 <Suspense
                   fallback={
@@ -985,7 +992,7 @@ function App() {
         </div>
 
         {/* Footer */}
-        <footer className="border-t border-line-2 bg-panel py-4">
+        <footer className="band seam seam--top seam--delay-2 border-t border-line-2 py-4">
           <div className="px-4">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               {/* Logo, Company Name and Social Links */}

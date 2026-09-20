@@ -156,7 +156,7 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
   }
 
   return (
-    <div data-testid="json-navigator" className="flex h-full flex-col bg-panel">
+    <div data-testid="json-navigator" className="flex h-full flex-col">
       <div className="flex items-center justify-between gap-2 border-b border-line-2 p-2">
         <span className="eyebrow">Navigator</span>
         <span className="font-mono text-xs text-faint">

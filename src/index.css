@@ -13,14 +13,9 @@
     margin: 0;
     background: var(--bg);
     color: var(--ink);
-    /* The rule grid: it gives the flat ground a measure without adding
-       another surface colour. Sections are separated by hairlines, never
-       by a change of background — that is what makes one theme toggle
-       able to repaint the whole app. */
-    background-image:
-      linear-gradient(var(--grid) 1px, transparent 1px),
-      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-    background-size: 72px 72px;
+    /* The grid itself lives on .grid-layer, not here. Sections are separated
+       by hairlines, never by a change of background — that is what lets the
+       ground, and the glows behind it, carry through the whole app. */
     transition:
       background-color var(--duration-base) var(--ease),
       color var(--duration-base) var(--ease);
@@ -153,6 +148,116 @@
     @apply w-full;
   }
 
+  /* ---------- the living ground ----------
+     Two glows behind everything, drifting on different periods so they never
+     line up twice. They sit under the whole shell at z-0 and are inert to the
+     pointer; every band above them is transparent, so this is what gives the
+     app depth instead of a stack of flat greys. */
+  /* The dot grid drifts one tile a minute so the ground reads as alive
+     rather than as printed. It is its own oversized fixed layer moved with
+     transform, not a background-position on <body>: background-position is
+     not a composited property, so drifting it there repaints the whole
+     viewport every frame — which a user feels as a janky pan on a large
+     graph. */
+  .grid-layer {
+    @apply pointer-events-none fixed;
+    inset: -40px;
+    z-index: 0;
+    background-image: radial-gradient(circle, var(--grid) 1px, transparent 1px);
+    background-size: 34px 34px;
+    animation: grid-drift 60s linear infinite;
+    will-change: transform;
+  }
+
+  .glow {
+    @apply pointer-events-none fixed rounded-full;
+    z-index: 0;
+    will-change: transform;
+  }
+
+  .glow--hi {
+    top: -240px;
+    right: -160px;
+    width: 720px;
+    height: 720px;
+    background: radial-gradient(circle, var(--glow) 0%, transparent 65%);
+    animation:
+      glow-breathe 7s ease-in-out infinite,
+      glow-drift 21s ease-in-out infinite;
+  }
+
+  .glow--lo {
+    bottom: -300px;
+    left: -220px;
+    width: 640px;
+    height: 640px;
+    background: radial-gradient(circle, var(--glow-low) 0%, transparent 65%);
+    animation: glow-drift 26s ease-in-out infinite reverse;
+  }
+
+  /* ---------- chrome bands ----------
+     Sticky chrome is translucent over the ground rather than opaque on top of
+     it: the grid and the glows carry through, so the band reads as glass laid
+     on the page instead of a second surface.
+
+     Deliberately no backdrop-filter. Eklavya's nav blurs, but its ground is
+     static; here the glows drift continuously, so a blurred band re-blurs
+     every frame — measured at better than 2x the whole graph suite's runtime,
+     and that cost lands on anyone panning a large graph. The translucency is
+     what reads as glass; the blur was paying for almost nothing over a soft
+     radial gradient. */
+  .band {
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+  }
+
+  /* ---------- the shuttle ----------
+     One accent beam that travels out and back along the app's own lines —
+     the hairlines between bands. Slow, low-contrast, and always the same
+     gesture, so the app reads as alive rather than as decorated. Staggered,
+     so two seams are never lit at once. */
+  .seam {
+    position: relative;
+  }
+
+  .seam::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 1px;
+    --beam: 240px;
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      var(--spot),
+      transparent
+    );
+    background-repeat: no-repeat;
+    background-size: var(--beam) 100%;
+    background-position: calc(-1 * var(--beam)) 0;
+    animation: shuttle 13s var(--ease) infinite;
+    pointer-events: none;
+  }
+
+  .seam--delay-1::after {
+    animation-delay: 2.5s;
+  }
+  .seam--delay-2::after {
+    animation-delay: 5s;
+  }
+
+  /* A seam that sits on a top border instead of a bottom one. */
+  .seam--top::after {
+    bottom: auto;
+    top: -1px;
+  }
+
+  /* ---------- entrance ---------- */
+  .fade-up {
+    animation: fade-up 0.45s var(--ease) both;
+  }
+
   /* ---------- the ground picker ----------
      Eklavya's idiom: not a dropdown but a bordered strip of uppercase mono
      segments, the chosen one inverted. It names the grounds the design system
@@ -222,6 +327,58 @@
   }
 }
 
+/* ============================================================
+   MOTION
+   Every loop here is slow and low-contrast on purpose. Nothing in
+   this app should compete with the document being read.
+   ============================================================ */
+@keyframes grid-drift {
+  to {
+    transform: translate(34px, 34px);
+  }
+}
+
+@keyframes glow-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes glow-drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-70px, 46px);
+  }
+}
+
+@keyframes shuttle {
+  0%,
+  100% {
+    background-position: calc(-1 * var(--beam)) 0;
+  }
+  50% {
+    background-position: calc(100% + var(--beam)) 0;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @keyframes tooltip-in {
   from {
     opacity: 0;
@@ -230,5 +387,17 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Motion is decoration here, never information: every loop can stop without
+   anything becoming unreadable. Nothing animates to opacity 0, so killing the
+   animations needs no companion rules to restore a resting state. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
   }
 }

@@ -54,6 +54,37 @@ makes "they all look alike" a coincidence that holds until the next edit.
 Controls that sit in the nav row take their height from `--nav-control-h`, so
 the row reads as one band rather than a set of near-misses.
 
+## Motion
+
+The app is meant to read as alive, not as decorated. Three loops, all slow and
+low-contrast, none of them carrying information:
+
+- **`.grid-layer`** — the dot grid behind everything, drifting one tile a
+  minute.
+- **`.glow` / `.glow--hi` / `.glow--lo`** — two accent glows that breathe and
+  wander on different periods, so they never line up twice. These are what
+  give the app depth; without them the grounds are flat greys.
+- **`.seam`** — one accent beam travelling out and back along the hairlines
+  between bands, staggered by `--delay-1` / `--delay-2` so two are never lit
+  at once. Always the same gesture, borrowed from Eklavya's shuttle.
+
+Plus `.fade-up`, a one-shot entrance for tab content.
+
+**Animate transforms and opacity, nothing else.** The grid began as a
+`background-position` drift on `<body>`; because that is not a composited
+property, it repainted the whole viewport every frame — the graph e2e suite
+went from 11s to over a minute, which is a user feeling a janky pan. Moving it
+to its own layer and drifting it with `transform` fixed both.
+
+For the same reason `.band` has **no `backdrop-filter`**. Eklavya's nav blurs,
+but its ground is static; here the glows drift continuously, so a blurred band
+re-blurs every frame — measured at better than 2x the graph suite's runtime.
+The translucency is what reads as glass; the blur bought almost nothing over a
+soft radial gradient.
+
+Everything stops under `prefers-reduced-motion`. Nothing animates to opacity 0,
+so killing the animations needs no companion rules to restore a resting state.
+
 ## Reaching a token from somewhere that isn't CSS
 
 CSS, SVG (`stroke: var(--graph-edge)`) and CodeMirror all take `var()`

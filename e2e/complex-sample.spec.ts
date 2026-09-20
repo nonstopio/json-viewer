@@ -22,10 +22,16 @@ test("the complex sample loads, parses, and covers every value shape", async ({
   // The tree is virtualized, so off-screen rows aren't in the DOM — search
   // the parsed model instead, which is what these shapes need to survive in.
   const search = page.locator('input[placeholder^="Search JSON"]');
+  const counter = page.getByText(/^\d+ of \d+$/);
   const hits = async (q: string) => {
+    // The counter keeps showing the previous query's result until React
+    // re-renders, so an empty query first makes it disappear — otherwise a
+    // stale count is indistinguishable from a fresh one that happens to match.
+    await search.fill("");
+    await expect(counter).toHaveCount(0);
     await search.fill(q);
-    await expect(page.getByText(/^\d+ of \d+$/)).toBeVisible();
-    const text = await page.getByText(/^\d+ of \d+$/).textContent();
+    await expect(counter).toBeVisible();
+    const text = await counter.textContent();
     return Number(text!.split(" of ")[1]);
   };
 
