@@ -274,6 +274,8 @@ test("a node shows its key in full, not clipped by the card's own chrome", async
     short: {a: {b: 1}},
   });
   await loadGraph(page, json, `key-${testInfo.workerIndex}.json`);
+  // Whether a title overflows depends on the font actually in use.
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
 
   // A truncated title reports more text than it has room to show.
   const clipped = await page.evaluate(() =>

@@ -1021,6 +1021,7 @@ function App() {
                     data={jsonData}
                     selectedNodePath={selectedNodePath}
                     onSelectNode={handleSelectNode}
+                    onOpenNode={handleOpenNode}
                   />
                 </Suspense>
               ) : (

@@ -165,3 +165,60 @@ test("a folded branch folds its own values too, not just its children", async ({
     page.locator(".react-flow__node", {hasText: "service_3"}).first()
   ).toContainText("svc 3");
 });
+
+test("a branch picked in one tab is the branch the other tab opens on", async ({
+  page,
+}, testInfo) => {
+  // The selection is shared, but each view kept its own idea of what was open:
+  // arriving in the Visualizer showed the whole document however deep you had
+  // drilled in the Viewer, and picking here never folded the tree back there.
+  const file = join(tmpdir(), `gcarry-${testInfo.workerIndex}.json`);
+  writeFileSync(file, buildGraphJson());
+  await page.goto("/");
+  await page.locator('input[type="file"]').setInputFiles(file); // → Viewer
+  await expect(page.getByTestId("json-navigator")).toBeVisible();
+
+  // Pick in the Viewer, then cross over.
+  await navRow(page, "service_3").click();
+  await page.getByRole("button", {name: "Visualizer", exact: true}).click();
+  await expect(page.locator(".react-flow__node").first()).toBeVisible();
+
+  // The graph opens folded to that branch…
+  await expect.poll(() => nodesTitled(page, "config")).toBe(1);
+  // …and framed, rather than parked over the layout it replaced. (The camera
+  // used to fit the unfolded graph, leaving an empty canvas.)
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const pane = document.querySelector(".react-flow__pane");
+          const node = [...document.querySelectorAll(".react-flow__node")].find(
+            (n) => (n.textContent ?? "").includes("service_3")
+          );
+          if (!pane || !node) return false;
+          const p = pane.getBoundingClientRect();
+          const r = node.getBoundingClientRect();
+          return (
+            r.left < p.right &&
+            r.right > p.left &&
+            r.top < p.bottom &&
+            r.bottom > p.top
+          );
+        }),
+      {timeout: 5_000}
+    )
+    .toBe(true);
+
+  // Pick a different branch here, and cross back.
+  await navRow(page, "service_7").click();
+  await page.getByRole("button", {name: "Viewer", exact: true}).click();
+
+  // The tree is folded to it too: service_7 open to its leaves, the rest shut.
+  await expect(
+    page.locator(".json-node", {hasText: "team7"}).first()
+  ).toBeVisible();
+  await expect(page.locator(".json-node", {hasText: "team3"})).toHaveCount(0);
+  await expect(
+    page.getByTestId("nav-graph").locator("input:checked")
+  ).toHaveCount(1);
+});

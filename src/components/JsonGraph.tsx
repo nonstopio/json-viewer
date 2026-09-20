@@ -266,11 +266,41 @@ function ToolBtn({
 interface JsonGraphProps {
   data: JsonValue;
   selectedNodePath: string;
+  /** Clicking a node: select it, the way clicking a tree row does. */
   onSelectNode: (path: string) => void;
+  /** Ticking it in the Navigator: open it everywhere, folding the rest. */
+  onOpenNode: (path: string) => void;
 }
 
-function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+// Everything folds except the chain down to `path` and its whole subtree —
+// the graph's half of what the Navigator promises. Lives outside the
+// component because the first layout needs it before any interaction.
+function collapsedFor(data: JsonValue, path: string): Set<string> {
+  return new Set(
+    allContainerPaths(data).filter((p) =>
+      // Nothing picked is not a closed document: the top level stays open,
+      // so the graph still shows what the panel is listing.
+      path === "root" ? p !== "root" : !isUnder(p, path) && !isUnder(path, p)
+    )
+  );
+}
+
+function GraphInner({
+  data,
+  selectedNodePath,
+  onSelectNode,
+  onOpenNode,
+}: JsonGraphProps) {
+  // The graph opens on whatever branch is already picked: switching tabs
+  // remounts this view, and the Navigator riding along says that branch is
+  // open. Seeded at the first render rather than in an effect, so the very
+  // first layout is the folded one — set it a render later and the camera
+  // frames the document it is about to replace, which lands on empty canvas.
+  const [collapsed, setCollapsed] = useState<Set<string>>(() =>
+    selectedNodePath && selectedNodePath !== "root"
+      ? collapsedFor(data, selectedNodePath)
+      : new Set()
+  );
   const [direction, setDirection] = useState<LayoutDirection>("LR");
   const [showMinimap, setShowMinimap] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -296,7 +326,12 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
 
   // New document → reset view state (including the dismissed notice, so a
   // freshly loaded large document warns again).
+  // Skipped on arrival, where the state above is already seeded from the
+  // picked branch; this is only a genuinely new document.
+  const loaded = useRef(data);
   useEffect(() => {
+    if (loaded.current === data) return;
+    loaded.current = data;
     setCollapsed(new Set());
     setNoticeDismissed(false);
     setQuery("");
@@ -307,7 +342,11 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   // Camera handoff: a structural change records the node to frame once the new
   // layout lands, and the effect below does the framing. "*" means
   // collapse/expand-all — no single node of interest, so fit the whole graph.
-  const pendingFocus = useRef<string | null>(null);
+  // Armed from the start when a branch is already picked, so arriving from the
+  // Viewer lands on that branch instead of on the whole document.
+  const pendingFocus = useRef<string | null>(
+    selectedNodePath && selectedNodePath !== "root" ? selectedNodePath : null
+  );
 
   const onToggle = useCallback(
     (path: string) => {
@@ -444,20 +483,10 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   const openBranch = useCallback(
     (path: string) => {
       pendingFocus.current = path;
-      onSelectNode(path);
-      setCollapsed(
-        new Set(
-          allContainerPaths(data).filter((p) =>
-            // Nothing ticked is not a closed document: the top level stays
-            // open, so the graph still shows what the panel is listing.
-            path === "root"
-              ? p !== "root"
-              : !isUnder(p, path) && !isUnder(path, p)
-          )
-        )
-      );
+      onOpenNode(path);
+      setCollapsed(collapsedFor(data, path));
     },
-    [data, onSelectNode]
+    [data, onOpenNode]
   );
 
   const centerFirst = useCallback(
