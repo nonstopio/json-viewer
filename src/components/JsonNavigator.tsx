@@ -7,13 +7,13 @@ import {
   Compass,
   Copy,
 } from "lucide-react";
-import {JsonNode, JsonValue} from "../types/json";
-import {appendPath, pathSegments} from "../utils/jsonParser";
+import {JsonValue} from "../types/json";
+import {ancestorPaths, appendPath, pathSegments} from "../utils/jsonParser";
 
 interface JsonNavigatorProps {
   data: JsonValue | null;
   selectedNodePath: string;
-  /** Select this node: open it in the tree and fold everything beside it. */
+  /** Open this node: unfold it in the tree and fold everything else away. */
   onSelectNode: (path: string) => void;
 }
 
@@ -28,26 +28,14 @@ interface PathSegment {
 const isContainer = (value: JsonValue): boolean =>
   value !== null && typeof value === "object";
 
-const typeOf = (value: JsonValue): JsonNode["type"] => {
-  if (value === null) return "null";
-  if (Array.isArray(value)) return "array";
-  if (typeof value === "object") return "object";
-  return typeof value as "string" | "number" | "boolean";
-};
+// Only branches reach the panel, so the type is one of two.
+const typeOf = (value: JsonValue): "object" | "array" =>
+  Array.isArray(value) ? "array" : "object";
 
 // Same palette as JsonNode.tsx so the two panels read as one language.
-const TYPE_COLOR: Record<JsonNode["type"], string> = {
+const TYPE_COLOR: Record<"object" | "array", string> = {
   object: "text-json-object",
   array: "text-json-array",
-  string: "text-json-string",
-  number: "text-json-number",
-  boolean: "text-json-boolean",
-  null: "text-json-null",
-};
-
-const preview = (value: JsonValue): string => {
-  const text = typeof value === "string" ? `"${value}"` : String(value);
-  return text.length > 60 ? `${text.slice(0, 60)}…` : text;
 };
 
 const countOf = (value: JsonValue): number =>
@@ -59,7 +47,7 @@ const summary = (value: JsonValue): string =>
   Array.isArray(value) ? `${value.length} items` : `${countOf(value)} keys`;
 
 // ponytail: plain cap instead of virtualizing these two levels — a level with
-// more than this many children is rare, and search covers finding one.
+// more than this many branches is rare, and search covers finding one.
 const MAX_ROWS = 200;
 
 interface NavRow {
@@ -68,29 +56,47 @@ interface NavRow {
   value: JsonValue;
 }
 
-const childRows = (value: JsonValue, basePath: string): NavRow[] => {
-  if (Array.isArray(value))
-    return value.slice(0, MAX_ROWS).map((child, index) => ({
-      key: `[${index}]`,
-      path: appendPath(basePath, `[${index}]`),
-      value: child,
-    }));
-  const object = value as Record<string, JsonValue>;
-  return Object.keys(object)
-    .slice(0, MAX_ROWS)
-    .map((key) => ({key, path: appendPath(basePath, key), value: object[key]}));
+// Only branches are listed. A key holding a plain value is something to read,
+// not somewhere to go, and listing it would make this a second copy of the
+// tree rather than a map of it. Walked by index rather than built with
+// map/filter, so a 100k-element array does not materialise 100k rows to throw
+// all but MAX_ROWS of them away.
+const branchRows = (
+  value: JsonValue,
+  basePath: string
+): {rows: NavRow[]; total: number} => {
+  const keys = Array.isArray(value)
+    ? null
+    : Object.keys(value as Record<string, JsonValue>);
+  const length = keys ? keys.length : (value as JsonValue[]).length;
+  const rows: NavRow[] = [];
+  let total = 0;
+
+  for (let index = 0; index < length; index++) {
+    const key = keys ? keys[index] : `[${index}]`;
+    const child = keys
+      ? (value as Record<string, JsonValue>)[key]
+      : (value as JsonValue[])[index];
+    if (!isContainer(child) || countOf(child) === 0) continue;
+    total++;
+    if (rows.length < MAX_ROWS)
+      rows.push({key, path: appendPath(basePath, key), value: child});
+  }
+  return {rows, total};
 };
+
+const NO_ROWS = {rows: [] as NavRow[], total: 0};
 
 interface RowProps {
   row: NavRow;
   checked: boolean;
-  onSelect: (path: string) => void;
+  open: boolean;
+  onToggle: (path: string) => void;
   rowRef?: React.Ref<HTMLLabelElement>;
 }
 
-const Row: React.FC<RowProps> = ({row, checked, onSelect, rowRef}) => {
+const Row: React.FC<RowProps> = ({row, checked, open, onToggle, rowRef}) => {
   const type = typeOf(row.value);
-  const container = isContainer(row.value);
 
   return (
     <label
@@ -101,15 +107,14 @@ const Row: React.FC<RowProps> = ({row, checked, onSelect, rowRef}) => {
         checked ? "bg-sel" : "hover:bg-hover"
       }`}
     >
-      {/* A radio rather than a checkbox input: exactly one node is open at a
-          time, and the native group brings single-selection plus arrow-key
-          roving with it. It reads as a box with a tick either way. */}
+      {/* A checkbox, not a radio: clicking the open node again clears it, and
+          that is what folds the document back up. Only one is ever ticked —
+          the panel, not the input, is what enforces that. */}
       <input
-        type="radio"
-        name="navigator-node"
+        type="checkbox"
         className="peer sr-only"
         checked={checked}
-        onChange={() => onSelect(row.path)}
+        onChange={() => onToggle(row.path)}
       />
       <span
         aria-hidden
@@ -120,34 +125,20 @@ const Row: React.FC<RowProps> = ({row, checked, onSelect, rowRef}) => {
         {checked && <Check size={11} strokeWidth={3} />}
       </span>
       <span className={`flex-shrink-0 ${TYPE_COLOR[type]}`}>
-        {type === "object" ? (
-          <Braces size={14} />
-        ) : type === "array" ? (
-          <Brackets size={14} />
-        ) : (
-          <span className="block w-[14px] text-center font-mono text-[10px]">
-            •
-          </span>
-        )}
+        {type === "object" ? <Braces size={14} /> : <Brackets size={14} />}
       </span>
       <span className="max-w-[10rem] flex-shrink-0 truncate font-mono text-sm font-medium text-json-key">
         {row.key}
       </span>
-      <span
-        className={`min-w-0 truncate text-xs ${
-          container ? "text-faint" : TYPE_COLOR[type]
-        }`}
-      >
-        {container ? summary(row.value) : preview(row.value)}
+      <span className="min-w-0 truncate text-xs text-faint">
+        {summary(row.value)}
       </span>
-      {container && (
-        <ChevronRight
-          size={14}
-          className={`ml-auto flex-shrink-0 ${
-            checked ? "rotate-90 text-spot" : "text-faint-2"
-          }`}
-        />
-      )}
+      <ChevronRight
+        size={14}
+        className={`ml-auto flex-shrink-0 ${
+          open ? "rotate-90 text-spot" : "text-faint-2"
+        }`}
+      />
     </label>
   );
 };
@@ -172,19 +163,18 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
     }
   }, []);
 
-  // Two levels, never more: the selected node's own level (its siblings, so it
-  // is clear where you are) and the selected node's children (so you can step
-  // in). Picking a child re-roots the graph on it, which is what holds the
-  // depth at two while the walk goes arbitrarily deep.
-  const {segments, rows, children, selectedPath, total} = useMemo(() => {
+  // Two levels, anchored at the document root: the branches of the root, and
+  // the branches of whichever one is open. Ticking a second-level branch
+  // selects it — it does not open a third level, because past two levels this
+  // panel would be the tree again instead of a way around it.
+  const {segments, level, children, openPath} = useMemo(() => {
     const empty = {
       segments: [] as PathSegment[],
-      rows: [] as NavRow[],
-      children: [] as NavRow[],
-      selectedPath: "",
-      total: 0,
+      level: NO_ROWS,
+      children: NO_ROWS,
+      openPath: "",
     };
-    if (data === null) return empty;
+    if (data === null || !isContainer(data)) return empty;
 
     const requested = pathSegments(selectedNodePath || "root");
     const chain: PathSegment[] = [requested[0] ?? {key: "root", path: "root"}];
@@ -199,24 +189,31 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
       values.push(next);
     }
 
-    const selected = values[values.length - 1];
-    const atRoot = values.length === 1;
-    // Root has no siblings, so it lists its own children as the level.
-    const levelIndex = atRoot ? 0 : values.length - 2;
-    const level = values[levelIndex];
-    if (!isContainer(level)) return empty;
-
+    // The open branch is the one directly under the root that the selection
+    // sits in, whether the selection is that branch or one of its children.
+    const open = chain[1];
     return {
       segments: chain,
-      rows: childRows(level, chain[levelIndex].path),
+      level: branchRows(data, chain[0].path),
       children:
-        !atRoot && isContainer(selected)
-          ? childRows(selected, chain[chain.length - 1].path)
-          : [],
-      selectedPath: atRoot ? "" : chain[chain.length - 1].path,
-      total: countOf(level),
+        open && isContainer(values[1])
+          ? branchRows(values[1], open.path)
+          : NO_ROWS,
+      openPath: open?.path ?? "",
     };
   }, [data, selectedNodePath]);
+
+  // Ticking the row that is already ticked unticks it, which hands the
+  // selection back to its parent — and at the top level that is the root,
+  // where nothing is open and the whole document folds.
+  const toggle = useCallback(
+    (path: string) => {
+      if (path !== selectedNodePath) return onSelectNode(path);
+      const parent = ancestorPaths(path).pop() ?? "root";
+      onSelectNode(parent);
+    },
+    [onSelectNode, selectedNodePath]
+  );
 
   const currentPath = segments[segments.length - 1]?.path ?? "root";
 
@@ -263,7 +260,7 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
       <div className="flex items-center justify-between gap-2 border-b border-line-2 p-2">
         <span className="eyebrow">Navigator</span>
         <span className="font-mono text-xs text-faint">
-          {total} {total === 1 ? "child" : "children"}
+          {level.total} {level.total === 1 ? "branch" : "branches"}
         </span>
       </div>
 
@@ -302,37 +299,43 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
       <div
         ref={graphRef}
         data-testid="nav-graph"
-        role="radiogroup"
-        aria-label="JSON structure"
         className="min-h-0 flex-1 overflow-y-auto"
       >
-        {rows.map((row) => {
-          const checked = row.path === selectedPath;
+        {level.rows.map((row) => {
+          const open = row.path === openPath;
+          const checked = open || row.path === selectedNodePath;
           return (
             <div key={row.path}>
               <Row
                 row={row}
                 checked={checked}
-                onSelect={onSelectNode}
-                rowRef={checked ? selectedRef : undefined}
+                open={open && children.rows.length > 0}
+                onToggle={toggle}
+                rowRef={row.path === selectedNodePath ? selectedRef : undefined}
               />
-              {checked && children.length > 0 && (
+              {open && children.rows.length > 0 && (
                 <div
                   data-testid="nav-children"
                   className="ml-4 border-l-2 border-spot-line pl-1"
                 >
-                  {children.map((child) => (
+                  {children.rows.map((child) => (
                     <Row
                       key={child.path}
                       row={child}
-                      checked={false}
-                      onSelect={onSelectNode}
+                      checked={child.path === selectedNodePath}
+                      open={false}
+                      onToggle={toggle}
+                      rowRef={
+                        child.path === selectedNodePath
+                          ? selectedRef
+                          : undefined
+                      }
                     />
                   ))}
-                  {countOf(row.value) > MAX_ROWS && (
+                  {children.total > MAX_ROWS && (
                     <p className="px-2 py-2 text-xs text-faint">
-                      Showing first {MAX_ROWS} of {countOf(row.value)} — use
-                      search to reach the rest.
+                      Showing first {MAX_ROWS} of {children.total} — use search
+                      to reach the rest.
                     </p>
                   )}
                 </div>
@@ -340,14 +343,29 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
             </div>
           );
         })}
-        {total > MAX_ROWS && (
+        {level.total > MAX_ROWS && (
           <p className="px-2 py-2 text-xs text-faint">
-            Showing first {MAX_ROWS} of {total} — use search to reach the rest.
+            Showing first {MAX_ROWS} of {level.total} — use search to reach the
+            rest.
           </p>
         )}
-        {total === 0 && (
-          <p className="px-2 py-3 text-xs text-faint">This node is empty.</p>
+        {level.total === 0 && (
+          <p className="px-2 py-3 text-xs text-faint">
+            Nothing to navigate — this document has no nested keys.
+          </p>
         )}
+      </div>
+
+      <div className="border-t border-line-2 px-2 py-1.5 text-[11px] leading-snug text-faint">
+        <p>
+          Tick a branch to open it: the tree unfolds it in full and folds
+          everything else. Tick it again to close, and the document folds with
+          it.
+        </p>
+        <p>
+          Only keys that hold more keys are listed, two levels at a time — plain
+          values live in the tree.
+        </p>
       </div>
     </div>
   );

@@ -179,49 +179,73 @@ test("the case-sensitivity toggle narrows the matches", async ({
   await expect(matchCounter(page)).toHaveText("1 of 3");
 });
 
-test("the navigator graph shows two levels and re-roots as you descend", async ({
+test("the navigator lists branches only, two levels, and never a third", async ({
   page,
 }, testInfo) => {
-  // Guards the graph shape: the selected node's own level plus its children,
-  // never deeper — descending re-roots the graph rather than indenting further.
+  // The rules of the panel: a key that holds only plain values is something to
+  // read in the tree, not somewhere to navigate to — and ticking a key on the
+  // second level selects it without opening a third.
   await loadViewer(
     page,
     buildFixture(),
-    `vn-drill-${testInfo.workerIndex}.json`
+    `vn-branch-${testInfo.workerIndex}.json`
   );
 
-  // Root level lists every top-level key with a container summary/preview, and
-  // nothing is open yet.
-  await expect(page.getByTestId("nav-row")).toHaveCount(4);
+  // beta, alpha and gamma hold keys; `Marker` is a string and is not listed.
+  await expect(page.getByTestId("nav-row")).toHaveCount(3);
   await expect(navRow(page, "alpha")).toContainText("40 keys");
   await expect(navRow(page, "gamma")).toContainText("3 items");
-  await expect(navRow(page, "Marker")).toContainText('"first"');
+  await expect(page.getByTestId("nav-row").filter({hasText: "Marker"})).toHaveCount(
+    0
+  );
   await expect(page.getByTestId("nav-children")).toHaveCount(0);
 
-  // Checking `beta` opens it in place: its level stays listed, its one child
-  // appears beneath it, and that is the whole depth.
+  // `alpha` holds 40 plain values, so opening it adds no second level at all.
+  await navRow(page, "alpha").click();
+  await expect(page.getByTestId("nav-children")).toHaveCount(0);
+
+  // `beta` holds a key that holds keys, so that one branch is listed under it.
   await navRow(page, "beta").click();
-  await expect(page.getByTestId("nav-breadcrumb")).toContainText("beta");
   await expect(childRow(page, "level2")).toBeVisible();
-  await expect(page.getByTestId("nav-row")).toHaveCount(5);
+  await expect(page.getByTestId("nav-children").getByTestId("nav-row")).toHaveCount(
+    1
+  );
 
-  // Checking that child re-roots the graph on it: the level is now beta's
-  // children, and level2's own children are the second level.
+  // Ticking the second-level branch selects it — the panel does not re-root on
+  // it, and `level3` never appears as a third level.
   await childRow(page, "level2").click();
-  await expect(page.getByTestId("nav-row")).toHaveCount(3); // level2 + marker + level3
-  await expect(childRow(page, "level3")).toBeVisible();
-  await expect(navRow(page, "alpha")).toHaveCount(0);
+  await expect(page.getByTestId("nav-row")).toHaveCount(4); // 3 branches + level2
+  await expect(page.getByTestId("nav-row").filter({hasText: "level3"})).toHaveCount(
+    0
+  );
+  await expect(page.getByTestId("nav-breadcrumb")).toContainText("level2");
+  // …and the tree is where its contents are read.
+  await expect(
+    page.locator(".json-node", {hasText: "found me"}).first()
+  ).toBeVisible();
+});
 
-  await childRow(page, "level3").click();
-  await expect(childRow(page, "target")).toContainText('"found me"');
+test("ticking the open branch again folds the whole document", async ({
+  page,
+}, testInfo) => {
+  // Unticking is the way back out: nothing open in the panel means nothing
+  // open in the tree.
+  await loadViewer(
+    page,
+    buildFixture(),
+    `vn-untick-${testInfo.workerIndex}.json`
+  );
 
-  // Back up two levels via the breadcrumb.
-  await page
-    .getByTestId("nav-breadcrumb")
-    .getByRole("button", {name: "beta", exact: true})
-    .click();
-  await expect(page.getByTestId("nav-row")).toHaveCount(5);
-  await expect(childRow(page, "level2")).toBeVisible();
+  await navRow(page, "beta").click();
+  await expect(page.getByTestId("nav-children")).toHaveCount(1);
+
+  await navRow(page, "beta").click();
+  await expect(page.getByTestId("nav-children")).toHaveCount(0);
+  await expect(
+    page.getByTestId("nav-graph").locator("input:checked")
+  ).toHaveCount(0);
+  // Only the collapsed root is left in the tree.
+  await expect(page.locator(".json-node")).toHaveCount(1);
 });
 
 test("checking a key collapses every other key, in both panels", async ({
@@ -241,23 +265,26 @@ test("checking a key collapses every other key, in both panels", async ({
 
   await navRow(page, "beta").click();
 
-  // Navigator: only beta carries children, and only beta is checked.
+  // Navigator: only beta carries children, and only beta is ticked.
   await expect(page.getByTestId("nav-children")).toHaveCount(1);
-  // Scoped to the panel: the ground picker is a radio group too.
   await expect(
-    page.getByTestId("nav-graph").getByRole("radio", {checked: true})
+    page.getByTestId("nav-graph").locator("input:checked")
   ).toHaveCount(1);
 
-  // Tree: alpha's 40 rows and gamma's items are folded away; beta stays open.
+  // Tree: alpha's 40 rows and gamma's items are folded away, and beta is open
+  // all the way down rather than one level deep.
   await expect(page.locator(".json-node", {hasText: "alphaKey0"})).toHaveCount(
     0
   );
   await expect(page.locator(".json-node", {hasText: "level2"})).toHaveCount(1);
   await expect(
+    page.locator(".json-node", {hasText: "found me"}).first()
+  ).toBeVisible();
+  await expect(
     page.locator(".json-node", {hasText: "alpha"}).first()
   ).toBeVisible();
 
-  // Switching the checked key moves both the open child list and the tree.
+  // Switching the ticked key moves both the open child list and the tree.
   await navRow(page, "gamma").click();
   await expect(childRow(page, "[0]")).toBeVisible();
   await expect(page.getByTestId("nav-row").filter({hasText: "level2"})).toHaveCount(
@@ -272,7 +299,7 @@ test("the checked row is scrolled to the middle of the navigator", async ({
   // Guards the auto-scroll: a key picked far down the level has to come into
   // focus on its own, together with the children it just opened.
   const data: Record<string, unknown> = {};
-  for (let i = 0; i < 80; i++) data[`key${i}`] = {inner: `value ${i}`};
+  for (let i = 0; i < 80; i++) data[`key${i}`] = {inner: {value: i}};
   await loadViewer(
     page,
     JSON.stringify(data),
@@ -317,8 +344,6 @@ test("clicking a navigator row expands the node's ancestors in the tree", async 
   );
 
   await navRow(page, "beta").click();
-  await childRow(page, "level2").click();
-  await childRow(page, "level3").click();
 
   await expect(
     page.locator(".json-node", {hasText: "found me"}).first()
@@ -331,8 +356,8 @@ test("a selection deep in a long document is scrolled into the tree viewport", a
   // Guards the scroll-into-view effect in JsonTree: with virtualization the
   // picked row is not even mounted, so the user would otherwise see nothing.
   const data: Record<string, unknown> = {};
-  for (let i = 0; i < 150; i++) data[`key${i}`] = `value ${i}`;
-  data.needle = "bottom of the document";
+  for (let i = 0; i < 150; i++) data[`key${i}`] = {value: i};
+  data.needle = {found: "bottom of the document"};
   await loadViewer(
     page,
     JSON.stringify(data),

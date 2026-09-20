@@ -204,49 +204,59 @@ function App() {
     setSelectedNodePath(path);
   }, []);
 
-  // The flat node list only holds nodes whose ancestors are expanded, so a node
-  // reached from the Navigator has to be unfolded before the tree can show it —
-  // along with the node itself, so its contents match what the Navigator lists.
-  const revealNode = useCallback((list: JsonNode[], path: string) => {
-    let result = list;
-    for (const ancestor of [...ancestorPaths(path), path]) {
-      const node = result.find((candidate) => candidate.path === ancestor);
-      if (node && !node.isExpanded && node.childCount) {
-        result = jsonParser.expandNode(result, ancestor);
-      }
-    }
-    return result;
-  }, []);
-
   const applyNodes = useCallback((list: JsonNode[]) => {
     setNodes(list);
     setOriginalNodes(list);
     setFilteredNodes(list);
   }, []);
 
-  // The Navigator's one action: open that node and fold everything beside it,
-  // which is the whole point of picking a node there.
-  const handleIsolateNode = useCallback(
+  // ponytail: unfolding a subtree one node at a time is a splice per node, so
+  // it stops at this many rows. Expand-all is there for the rest.
+  const SUBTREE_ROWS = 2000;
+
+  // The Navigator's one action. Everything folds, then the picked node's own
+  // chain reopens with its whole subtree, so the tree shows exactly what the
+  // panel says is open — and picking the root (nothing ticked) folds the lot.
+  const handleOpenNode = useCallback(
     (path: string) => {
       setSelectedNodePath(path);
       // While searching the list is a search result; don't rebuild it.
       if (searchQuery) return;
-      let next = revealNode(nodes, path);
-      const target = next.find((node) => node.path === path);
-      if (!target) return;
 
-      // Collapsing a sibling only removes nodes deeper than itself, so the
-      // snapshot of sibling paths stays valid while we fold them one by one.
-      const siblings = next.filter(
-        (node) =>
-          node.depth === target.depth && node.path !== path && node.isExpanded
-      );
-      for (const sibling of siblings) {
-        next = jsonParser.collapseNode(next, sibling.path);
+      let next = jsonParser.collapseAllNodes(originalNodes);
+      if (path !== "root") {
+        // `startsWith` alone would also match a sibling named `orders2`, so
+        // the separator has to be part of the test.
+        const under = (candidate: string) =>
+          candidate.startsWith(`${path}.`) || candidate.startsWith(`${path}[`);
+        const onPath = (candidate: string) =>
+          candidate === path ||
+          under(candidate) ||
+          path.startsWith(`${candidate}.`) ||
+          path.startsWith(`${candidate}[`);
+
+        for (const ancestor of [...ancestorPaths(path), path]) {
+          next = jsonParser.expandNode(next, ancestor);
+        }
+        // Expanding a node re-creates its children with the parser's own
+        // "first two levels open" default, so the branches beside the picked
+        // one come back open unless they are folded again here.
+        for (let i = 0; i < next.length; i++) {
+          const node = next[i];
+          if (node.isExpanded && !onPath(node.path)) {
+            next = jsonParser.collapseNode(next, node.path);
+          }
+        }
+        for (let i = 0; i < next.length && next.length < SUBTREE_ROWS; i++) {
+          const node = next[i];
+          if (under(node.path) && !node.isExpanded && node.childCount) {
+            next = jsonParser.expandNode(next, node.path);
+          }
+        }
       }
       applyNodes(next);
     },
-    [applyNodes, revealNode, nodes, searchQuery]
+    [applyNodes, originalNodes, searchQuery]
   );
 
   const handleSearch = useCallback(
@@ -983,7 +993,7 @@ function App() {
                 <JsonNavigator
                   data={jsonData}
                   selectedNodePath={selectedNodePath}
-                  onSelectNode={handleIsolateNode}
+                  onSelectNode={handleOpenNode}
                 />
               </div>
             </ResizablePanel>
