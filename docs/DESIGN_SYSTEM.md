@@ -56,17 +56,26 @@ the row reads as one band rather than a set of near-misses.
 
 ## Motion
 
-The app is meant to read as alive, not as decorated. Three loops, all slow and
-low-contrast, none of them carrying information:
+The app is meant to read as alive, not as decorated. **Every animation runs
+exactly once, as the page arrives.** This is a tool people keep open next to
+their work, and motion that never stops in the corner of the eye stops being
+ambient and becomes something to look away from. An `infinite` here is a bug;
+`e2e/motion.spec.ts` fails on one.
 
-- **`.grid-layer`** — the dot grid behind everything, drifting one tile a
-  minute.
+Three arrival gestures, all slow and low-contrast, none carrying information:
+
+- **`.grid-layer`** — the dot grid behind everything, drifting a single tile
+  as the page settles.
 - **`.glow` / `.glow--hi` / `.glow--lo`** — two accent glows that breathe and
-  wander on different periods, so they never line up twice. These are what
-  give the app depth; without them the grounds are flat greys.
+  wander in, on different periods so they never line up. These are what give
+  the app depth; without them the grounds are flat greys.
 - **`.seam`** — one accent beam travelling out and back along the hairlines
-  between bands, staggered by `--delay-1` / `--delay-2` so two are never lit
-  at once. Always the same gesture, borrowed from Eklavya's shuttle.
+  between bands, staggered by `--delay-1` / `--delay-2` so the bands light in
+  sequence. Borrowed from Eklavya's shuttle.
+
+Each ends in the state a reader should see — the glows rest at their resting
+opacity and offset, the beam ends off-screen — so nothing needs a companion
+rule to restore it, and `prefers-reduced-motion` can simply switch them off.
 
 Plus `.fade-up`, a one-shot entrance for tab content.
 
@@ -82,8 +91,8 @@ re-blurs every frame — measured at better than 2x the graph suite's runtime.
 The translucency is what reads as glass; the blur bought almost nothing over a
 soft radial gradient.
 
-Everything stops under `prefers-reduced-motion`. Nothing animates to opacity 0,
-so killing the animations needs no companion rules to restore a resting state.
+`will-change` is deliberately absent: it pins a compositor layer for good,
+which only pays off while something is still moving.
 
 ## Reaching a token from somewhere that isn't CSS
 

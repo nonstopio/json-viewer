@@ -153,26 +153,26 @@
      line up twice. They sit under the whole shell at z-0 and are inert to the
      pointer; every band above them is transparent, so this is what gives the
      app depth instead of a stack of flat greys. */
-  /* The dot grid drifts one tile a minute so the ground reads as alive
-     rather than as printed. It is its own oversized fixed layer moved with
-     transform, not a background-position on <body>: background-position is
-     not a composited property, so drifting it there repaints the whole
-     viewport every frame — which a user feels as a janky pan on a large
-     graph. */
+  /* The dot grid drifts a single tile as the page settles, then stops. It
+     is its own oversized fixed layer moved with transform, not a
+     background-position on <body>: background-position is not a composited
+     property, so drifting it there repaints the whole viewport every frame.
+
+     Every loop in this file runs once. The app is a tool people keep open
+     next to their work — an ambient motion that never stops stops being
+     ambient and becomes something to look away from. */
   .grid-layer {
     @apply pointer-events-none fixed;
     inset: -40px;
     z-index: 0;
     background-image: radial-gradient(circle, var(--grid) 1px, transparent 1px);
     background-size: 34px 34px;
-    animation: grid-drift 60s linear infinite;
-    will-change: transform;
+    animation: grid-drift 24s linear both;
   }
 
   .glow {
     @apply pointer-events-none fixed rounded-full;
     z-index: 0;
-    will-change: transform;
   }
 
   .glow--hi {
@@ -182,8 +182,8 @@
     height: 720px;
     background: radial-gradient(circle, var(--glow) 0%, transparent 65%);
     animation:
-      glow-breathe 7s ease-in-out infinite,
-      glow-drift 21s ease-in-out infinite;
+      glow-breathe 7s ease-in-out both,
+      glow-drift 21s ease-in-out both;
   }
 
   .glow--lo {
@@ -192,7 +192,7 @@
     width: 640px;
     height: 640px;
     background: radial-gradient(circle, var(--glow-low) 0%, transparent 65%);
-    animation: glow-drift 26s ease-in-out infinite reverse;
+    animation: glow-drift 26s ease-in-out both reverse;
   }
 
   /* ---------- chrome bands ----------
@@ -200,21 +200,21 @@
      it: the grid and the glows carry through, so the band reads as glass laid
      on the page instead of a second surface.
 
-     Deliberately no backdrop-filter. Eklavya's nav blurs, but its ground is
-     static; here the glows drift continuously, so a blurred band re-blurs
-     every frame — measured at better than 2x the whole graph suite's runtime,
-     and that cost lands on anyone panning a large graph. The translucency is
-     what reads as glass; the blur was paying for almost nothing over a soft
-     radial gradient. */
+     Deliberately no backdrop-filter. It was measured at better than 2x the
+     graph suite's runtime back when the glows drifted continuously; the loops
+     run once now, so that particular cost is gone, but a blur still repaints
+     whenever anything behind it moves and it bought almost nothing over a
+     soft radial gradient. The translucency is what reads as glass. */
   .band {
     background: color-mix(in srgb, var(--bg) 88%, transparent);
   }
 
   /* ---------- the shuttle ----------
      One accent beam that travels out and back along the app's own lines —
-     the hairlines between bands. Slow, low-contrast, and always the same
-     gesture, so the app reads as alive rather than as decorated. Staggered,
-     so two seams are never lit at once. */
+     the hairlines between bands — as the page arrives, and then never again.
+     Staggered, so the bands light in sequence rather than together. Each
+     pass ends with the beam off-screen, which is why it needs no resting
+     state of its own. */
   .seam {
     position: relative;
   }
@@ -236,7 +236,7 @@
     background-repeat: no-repeat;
     background-size: var(--beam) 100%;
     background-position: calc(-1 * var(--beam)) 0;
-    animation: shuttle 13s var(--ease) infinite;
+    animation: shuttle 13s var(--ease) both;
     pointer-events: none;
   }
 
@@ -390,9 +390,10 @@
   }
 }
 
-/* Motion is decoration here, never information: every loop can stop without
-   anything becoming unreadable. Nothing animates to opacity 0, so killing the
-   animations needs no companion rules to restore a resting state. */
+/* Motion is decoration here, never information: every animation can be
+   skipped without anything becoming unreadable. Each one also runs a single
+   time and ends in the state a reader should see, so killing them needs no
+   companion rules to restore a resting state. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
