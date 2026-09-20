@@ -73,6 +73,14 @@ Three arrival gestures, all slow and low-contrast, none carrying information:
   between bands, staggered by `--delay-1` / `--delay-2` so the bands light in
   sequence. Borrowed from Eklavya's shuttle.
 
+**They are gated on an `.intro` class on the app root, not simply declared
+once.** The bands and panels that carry them are conditionally rendered, and a
+remounted element restarts its CSS animation from the top — so without the
+gate, every tab switch replays the beam for as long as the session lasts.
+`App` drops the class after the longest one (19s), and the root never
+unmounts, so nothing can bring them back short of a reload. Use `.pop-in` for
+something that appears once by its own nature and so needs no gate.
+
 Each ends in the state a reader should see — the glows rest at their resting
 opacity and offset, the beam ends off-screen — so nothing needs a companion
 rule to restore it, and `prefers-reduced-motion` can simply switch them off.

@@ -83,7 +83,7 @@ export const ShareHint: React.FC<ShareHintProps> = ({active}) => {
       role="dialog"
       aria-labelledby="share-hint-title"
       data-testid="share-hint"
-      className="fade-up absolute right-0 top-full z-50 mt-2 w-64 border border-spot-line bg-panel p-3 text-left shadow-lg"
+      className="pop-in absolute right-0 top-full z-50 mt-2 w-64 border border-spot-line bg-panel p-3 text-left shadow-lg"
     >
       {/* The arrow, pointing at the button above. Two squares: the fill, and
           a slightly larger one behind it that shows as the border. */}

@@ -236,8 +236,17 @@
     background-repeat: no-repeat;
     background-size: var(--beam) 100%;
     background-position: calc(-1 * var(--beam)) 0;
-    animation: shuttle 13s var(--ease) both;
     pointer-events: none;
+  }
+
+  /* The beam runs during the intro and never again. It has to be gated on an
+     ancestor rather than simply declared once, because the bands it sits on
+     are conditionally rendered — switching tabs unmounts and remounts them,
+     and a remounted element restarts its CSS animation from the top. The
+     .intro class lives on the app root, which never unmounts, so once it is
+     gone no remount can bring the beam back. */
+  .intro .seam::after {
+    animation: shuttle 13s var(--ease) both;
   }
 
   .seam--delay-1::after {
@@ -253,8 +262,16 @@
     top: -1px;
   }
 
-  /* ---------- entrance ---------- */
-  .fade-up {
+  /* ---------- entrance ----------
+     Gated for the same reason as the beam: tab panels remount on every
+     switch, and an entrance that replays each time is motion after load. */
+  .intro .fade-up {
+    animation: fade-up 0.45s var(--ease) both;
+  }
+
+  /* For something that appears once by its own nature and so needs no gate —
+     the Share hint, which is shown a single time per reader. */
+  .pop-in {
     animation: fade-up 0.45s var(--ease) both;
   }
 

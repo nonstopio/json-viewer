@@ -62,6 +62,11 @@ const SOCIAL_ICONS = {
 
 function App() {
   const [jsonData, setJsonData] = useState<JsonValue | null>(null);
+  // The arrival animations run once per page load. They are gated on this
+  // rather than simply declared once, because the bands and panels carrying
+  // them are conditionally rendered: a remount restarts a CSS animation, so a
+  // tab switch would replay the beam. Dropping the class closes that door.
+  const [intro, setIntro] = useState(true);
 
   const [nodes, setNodes] = useState<JsonNode[]>([]);
   const [filteredNodes, setFilteredNodes] = useState<JsonNode[]>([]);
@@ -512,6 +517,12 @@ function App() {
     setSelectedNodePath("");
   }, []);
 
+  useEffect(() => {
+    // Longest gated animation: the footer beam, 13s on a 5s delay.
+    const done = setTimeout(() => setIntro(false), 19_000);
+    return () => clearTimeout(done);
+  }, []);
+
   const handleLoadComplexData = useCallback(() => {
     const jsonText = JSON.stringify(complexSample, null, 2);
     setInputText(jsonText);
@@ -667,7 +678,11 @@ function App() {
       <div className="glow glow--hi" aria-hidden="true" />
       <div className="glow glow--lo" aria-hidden="true" />
 
-      <div className="relative z-10 flex h-screen flex-col overflow-hidden">
+      <div
+        className={`relative z-10 flex h-screen flex-col overflow-hidden ${
+          intro ? "intro" : ""
+        }`}
+      >
         {/* Top Tab Bar - Fixed */}
         <div className="band seam flex-shrink-0 border-b border-line-2">
           <div className="flex items-center">

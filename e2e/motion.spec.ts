@@ -52,3 +52,49 @@ test("the ambient motion settles, and leaves the ground visible", async ({
   });
   expect(beamAtRest).toMatch(/calc\(0% ?- ?240px\)/);
 });
+
+// The regression this file exists for. The beam sits on bands that are
+// conditionally rendered, so switching tabs unmounts and remounts them — and
+// a remounted element restarts its CSS animation from the top. Checking only
+// the initial load misses it entirely: the page settles, and then every tab
+// switch replays the beam for as long as the session lasts.
+test("a tab switch after the intro replays nothing", async ({page}) => {
+  await page.clock.install();
+  await page.goto("/");
+
+  // The intro really does happen.
+  await expect(page.locator(".intro")).toBeAttached();
+
+  // Past the intro window (the footer beam is the longest, 13s on a 5s delay).
+  await page.clock.fastForward("00:25");
+  await expect(page.locator(".intro")).toHaveCount(0);
+
+  // getAnimations() returns transitions as well as animations. A transition
+  // is interaction feedback — a colour settling under the pointer — and is
+  // not what "runs once on load" is about, so only named animations count.
+  const running = () =>
+    page.evaluate(() =>
+      document
+        .getAnimations()
+        .filter((a) => a.playState === "running")
+        .filter((a): a is CSSAnimation => "animationName" in a)
+        .map((a) => a.animationName)
+    );
+
+  // The fake clock advances JS timers, not the compositor's animation
+  // timeline, so the arrival animations on the never-unmounting layers are
+  // still mid-flight. They are not what this test is about — land them, so
+  // anything running afterwards can only have been started by a remount.
+  await page.evaluate(() =>
+    document.getAnimations().forEach((a) => a.finish())
+  );
+  expect(await running()).toEqual([]);
+
+  await page.getByRole("button", {name: "Load Complex Test JSON"}).click();
+  expect(await running()).toEqual([]);
+
+  for (const tab of ["Viewer", "Visualizer", "JSON", "Viewer"]) {
+    await page.getByRole("button", {name: tab, exact: true}).click();
+    expect(await running()).toEqual([]);
+  }
+});
