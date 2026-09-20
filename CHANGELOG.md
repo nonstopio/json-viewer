@@ -1,3 +1,21 @@
+# [1.8.0](https://github.com/nonstopio/json-viewer/compare/v1.7.0...v1.8.0) (2026-09-20)
+
+
+### Bug Fixes
+
+* commit the design tokens, which .gitignore was swallowing ([b25b2b3](https://github.com/nonstopio/json-viewer/commit/b25b2b3a2826d1c6f31cabc731288ee93aafa852))
+* read the ground from the attribute, not a second useTheme instance ([1b59441](https://github.com/nonstopio/json-viewer/commit/1b594410f20ca66b31495f8216b14d23d9f8e6b1))
+* stop the beam replaying on every tab switch ([aa2d767](https://github.com/nonstopio/json-viewer/commit/aa2d767499fe86bfe290f27838b249194b57a5cb))
+
+
+### Features
+
+* give the ground depth and motion, and pin the typography ([c169a9c](https://github.com/nonstopio/json-viewer/commit/c169a9c8991d89cdd04e511948cf620f51f4afc6))
+* rebuild the theme as a token-driven design system ([d725152](https://github.com/nonstopio/json-viewer/commit/d725152bea311686c53d97f9f1abc4f10ef19d24))
+* replace the theme dropdown with Eklavya's segmented ground picker ([ba5b8e6](https://github.com/nonstopio/json-viewer/commit/ba5b8e65960b9232a6f4033ae2d432e90b36d0bc))
+* share a link that opens where you made it, and announce it once ([061c081](https://github.com/nonstopio/json-viewer/commit/061c0819f826ac8837b5508a69728cd17efc097f))
+* unify buttons on one Eklavya-style definition and add a complex sample ([395a7d2](https://github.com/nonstopio/json-viewer/commit/395a7d2f43b0d472a70807289d9703bb6242deeb))
+
 # [1.7.0](https://github.com/nonstopio/json-viewer/compare/v1.6.0...v1.7.0) (2026-09-19)
 
 
