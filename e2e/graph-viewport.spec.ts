@@ -180,11 +180,12 @@ test("collapsing a node that was panned off-screen brings it back into view", as
     .toBe(true);
 });
 
-test("a single node toggle pans without resetting the user's zoom", async ({
+test("collapsing a node re-frames the object it belonged to", async ({
   page,
 }, testInfo) => {
-  // Guards against re-fitting the whole graph on every toggle, which would
-  // yank a user who had zoomed in to read one branch back out to the overview.
+  // The reported bug: collapsing a node left the camera at the zoom the now
+  // vanished subtree needed, so the user was looking at a fraction of a graph
+  // that had just shrunk to fit. What is still open must come into frame.
   await loadGraph(page, buildGraphJson(), `zoom-${testInfo.workerIndex}.json`);
 
   const fitScale = await viewportScale(page);
@@ -192,7 +193,6 @@ test("a single node toggle pans without resetting the user's zoom", async ({
   await zoomIn.click();
   await zoomIn.click();
   await expect.poll(() => viewportScale(page)).toBeGreaterThan(fitScale);
-  const zoomed = await viewportScale(page);
 
   const before = await page.locator(".react-flow__node").count();
   await toggleOf(page, "service_0").evaluate((el) =>
@@ -202,10 +202,38 @@ test("a single node toggle pans without resetting the user's zoom", async ({
     .poll(() => page.locator(".react-flow__node").count())
     .toBeLessThan(before);
 
-  // Settle past both camera animations (350ms pan / 400ms fit) so a late
-  // re-fit would be caught rather than raced.
-  await page.waitForTimeout(900);
-  expect(await viewportScale(page)).toBeCloseTo(zoomed, 2);
+  // service_0 hangs off the root, so the root's subtree — the whole graph
+  // here — is what gets framed.
+  await expect.poll(() => nodesOutsidePane(page), {timeout: 5_000}).toBe(0);
+});
+
+test("expanding a node zooms to the subtree it just revealed", async ({
+  page,
+}, testInfo) => {
+  // The other half of the same complaint: re-opening a branch has to show that
+  // branch, not leave it as a sliver of a whole-graph fit.
+  await loadGraph(page, buildGraphJson(), `expand-${testInfo.workerIndex}.json`);
+
+  const full = await page.locator(".react-flow__node").count();
+  await toggleOf(page, "service_0").evaluate((el) =>
+    (el as HTMLElement).click()
+  );
+  await expect
+    .poll(() => page.locator(".react-flow__node").count())
+    .toBeLessThan(full);
+  await page.waitForTimeout(600);
+  const collapsedScale = await viewportScale(page);
+
+  await toggleOf(page, "service_0").evaluate((el) =>
+    (el as HTMLElement).click()
+  );
+  await expect.poll(() => page.locator(".react-flow__node").count()).toBe(full);
+
+  // Three nodes framed instead of the whole document: the camera moves in.
+  await expect
+    .poll(() => viewportScale(page), {timeout: 5_000})
+    .toBeGreaterThan(collapsedScale);
+  expect(await nodeOverlapsPane(page, "config")).toBe(true);
 });
 
 test("collapse-all and expand-all re-fit the whole graph", async ({

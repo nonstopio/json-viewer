@@ -37,7 +37,7 @@ import {ShareHint} from "./components/ShareHint";
 import {JsonNavigator} from "./components/JsonNavigator";
 import {ResizablePanel} from "./components/ResizablePanel";
 import {Tooltip} from "./components/Tooltip";
-import {ancestorPaths, jsonParser} from "./utils/jsonParser";
+import {ancestorPaths, isUnder, jsonParser} from "./utils/jsonParser";
 import {AUTHOR, brand, brandAsset} from "./brand";
 import {complexSample} from "./data/complexSample";
 import {
@@ -236,15 +236,11 @@ function App() {
           }
         }
       } else {
-        // `startsWith` alone would also match a sibling named `orders2`, so
-        // the separator has to be part of the test.
         const under = (candidate: string) =>
-          candidate.startsWith(`${path}.`) || candidate.startsWith(`${path}[`);
+          candidate !== path && isUnder(candidate, path);
+        // On the chain to the picked node, or inside it.
         const onPath = (candidate: string) =>
-          candidate === path ||
-          under(candidate) ||
-          path.startsWith(`${candidate}.`) ||
-          path.startsWith(`${candidate}[`);
+          isUnder(candidate, path) || isUnder(path, candidate);
 
         for (const ancestor of [...ancestorPaths(path), path]) {
           next = jsonParser.expandNode(next, ancestor);

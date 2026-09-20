@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Compass,
   Copy,
+  Minus,
 } from "lucide-react";
 import {JsonValue} from "../types/json";
 import {ancestorPaths, appendPath, pathSegments} from "../utils/jsonParser";
@@ -13,8 +14,10 @@ import {ancestorPaths, appendPath, pathSegments} from "../utils/jsonParser";
 interface JsonNavigatorProps {
   data: JsonValue | null;
   selectedNodePath: string;
-  /** Open this node: unfold it in the tree and fold everything else away. */
+  /** Open this node: unfold it in the view and fold everything else away. */
   onSelectNode: (path: string) => void;
+  /** Given, the panel is a window that can be folded away to its opener. */
+  onMinimize?: () => void;
 }
 
 interface PathSegment {
@@ -147,6 +150,7 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
   data,
   selectedNodePath,
   onSelectNode,
+  onMinimize,
 }) => {
   const [copied, setCopied] = useState(false);
   const crumbRef = useRef<HTMLDivElement>(null);
@@ -259,9 +263,20 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
     <div data-testid="json-navigator" className="flex h-full flex-col">
       <div className="flex items-center justify-between gap-2 border-b border-line-2 p-2">
         <span className="eyebrow">Navigator</span>
-        <span className="font-mono text-xs text-faint">
-          {level.total} {level.total === 1 ? "branch" : "branches"}
-        </span>
+        <div className="flex items-center gap-1">
+          <span className="font-mono text-xs text-faint">
+            {level.total} {level.total === 1 ? "branch" : "branches"}
+          </span>
+          {onMinimize && (
+            <button
+              onClick={onMinimize}
+              aria-label="Minimize the Navigator"
+              className="btn btn--quiet btn--icon !h-6 !w-6"
+            >
+              <Minus size={12} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-1 border-b border-line-2 px-2 py-1.5">
@@ -358,13 +373,13 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
 
       <div className="border-t border-line-2 px-2 py-1.5 text-[11px] leading-snug text-faint">
         <p>
-          Tick a branch to open it: the tree unfolds it in full and folds
-          everything else. Tick it again to close, and the tree falls back to
+          Tick a branch to open it: the view unfolds it in full and folds
+          everything else. Tick it again to close, and the view falls back to
           its top level.
         </p>
         <p>
           Only keys that hold more keys are listed, two levels at a time — plain
-          values live in the tree.
+          values live in the view itself.
         </p>
       </div>
     </div>

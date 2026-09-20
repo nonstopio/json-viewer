@@ -37,6 +37,16 @@ export function pathSegments(path: string): {key: string; path: string}[] {
   return segments;
 }
 
+/**
+ * Is `candidate` the node at `path` or something inside it? A bare
+ * `startsWith` would also claim `root.orders2` for `root.orders`, so the
+ * separator has to be part of the test.
+ */
+export const isUnder = (candidate: string, path: string): boolean =>
+  candidate === path ||
+  candidate.startsWith(`${path}.`) ||
+  candidate.startsWith(`${path}[`);
+
 /** Every ancestor path of `path`, outermost first. */
 export const ancestorPaths = (path: string): string[] =>
   pathSegments(path)
