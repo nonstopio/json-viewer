@@ -33,6 +33,10 @@ async function loadViewer(page: Page, json: string, name: string) {
   await page.goto("/");
   await page.locator('input[type="file"]').setInputFiles(file);
   await expect(page.getByTestId("json-navigator")).toBeVisible();
+  // Several tests here measure boxes against each other. Until the webfonts
+  // swap in, those boxes are the fallback font's, which is a couple of pixels
+  // off — enough to fail an alignment guard that is sound.
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
 }
 
 const navRow = (page: Page, key: string) =>

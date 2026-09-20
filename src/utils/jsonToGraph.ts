@@ -7,9 +7,11 @@ export interface GraphNodeData {
   kind: "object" | "array" | "value";
   fields: {k: string; v: string}[]; // scalar members shown inline
   path: string; // same convention as the tree (root.user.name, root.items[0])
-  childCount: number; // number of nested object/array children
+  // Members this node holds, scalars included — the count the tree and the
+  // Navigator already show, and what folding hides. A node holding only
+  // scalars folds too, so it needs a toggle as much as one holding children.
+  childCount: number;
   collapsed: boolean;
-  hasChildren: boolean;
   [key: string]: unknown; // satisfies React Flow's Record<string, unknown>
 }
 
@@ -43,15 +45,26 @@ const ROW_H = 22;
 const CHAR_W = 7.5;
 const MIN_W = 140;
 const MAX_W = 320;
+// A field row is text between two 8px paddings. The header carries more: the
+// type badge and its margin, the gap, and the copy button. Budget that, or a
+// key as short as "upiAutopay" is clipped inside a card sized for its fields.
+const ROW_CHROME = 28;
+const HEADER_CHROME = 76;
+// A clipped value is still readable; a clipped key names nothing, so a title
+// may push the card wider than a long value ever will.
+const MAX_TITLE_W = 420;
 
 function estimateSize(data: GraphNodeData): {width: number; height: number} {
   const rows = data.fields.length + (data.childCount > 0 ? 1 : 0);
-  const longest = Math.max(
-    data.title.length,
+  const longestField = Math.max(
     ...data.fields.map((f) => (f.k ? `${f.k}: ${f.v}` : f.v).length),
     0
   );
-  const width = Math.min(MAX_W, Math.max(MIN_W, longest * CHAR_W + 28));
+  const width = Math.max(
+    MIN_W,
+    Math.min(MAX_W, longestField * CHAR_W + ROW_CHROME),
+    Math.min(MAX_TITLE_W, data.title.length * CHAR_W + HEADER_CHROME)
+  );
   const height = HEADER_H + Math.max(rows, 1) * ROW_H;
   return {width, height};
 }
@@ -121,26 +134,31 @@ export function jsonToGraph(
         ? value.map((v, i) => [`[${i}]`, v])
         : Object.entries(value);
 
-      const fields = entries
-        .filter(([, v]) => !isContainer(v))
-        .map(([k, v]) => ({k, v: scalarStr(v)}));
       const children = entries.filter(([, v]) => isContainer(v));
+      const isCollapsed = collapsed.has(path);
 
       const nodeData: GraphNodeData = {
         title,
         kind,
-        fields,
+        // Folding a node folds everything it holds, scalars included — the
+        // same single line the tree collapses to. Leaving the inline fields
+        // behind made a folded node as big as an open one, so a graph with
+        // one branch open still read as a wall of cards.
+        fields: isCollapsed
+          ? []
+          : entries
+              .filter(([, v]) => !isContainer(v))
+              .map(([k, v]) => ({k, v: scalarStr(v)})),
         path,
-        childCount: children.length,
-        collapsed: collapsed.has(path),
-        hasChildren: children.length > 0,
+        childCount: entries.length,
+        collapsed: isCollapsed,
       };
       nodes.push({id, type: "json", position: {x: 0, y: 0}, data: nodeData});
       if (parentId) {
         edges.push({id: `${parentId}-${id}`, source: parentId, target: id});
       }
 
-      if (!nodeData.collapsed) {
+      if (!isCollapsed) {
         for (const [k, child] of children) {
           walk(child, k, appendPath(path, k), id);
         }
@@ -154,7 +172,6 @@ export function jsonToGraph(
         path,
         childCount: 0,
         collapsed: false,
-        hasChildren: false,
       };
       nodes.push({id, type: "json", position: {x: 0, y: 0}, data: nodeData});
       if (parentId) {

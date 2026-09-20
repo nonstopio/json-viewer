@@ -25,6 +25,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  Compass,
   Copy,
   Focus,
   Maximize,
@@ -42,6 +43,8 @@ import {
   X,
 } from "lucide-react";
 import {JsonValue} from "../types/json";
+import {JsonNavigator} from "./JsonNavigator";
+import {ancestorPaths, isUnder} from "../utils/jsonParser";
 import {brand} from "../brand";
 import {readRole} from "../styles/roles";
 import {useGround} from "../hooks/useTheme";
@@ -121,6 +124,15 @@ function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
     useContext(ActionsContext);
   const isActiveNode = activeHit?.id === id;
   const isHighlight = isActiveNode || (!query && selectedPath === data.path);
+  // Picking a branch selects the whole object, not just its head — so every
+  // card inside it is washed, the way the tree washes the rows of a subtree.
+  // Root is exempt: selecting it would otherwise wash the entire canvas.
+  const inSelection =
+    !query &&
+    !!selectedPath &&
+    selectedPath !== "root" &&
+    data.path !== selectedPath &&
+    isUnder(data.path, selectedPath);
   const badge =
     data.kind === "array" ? "[ ]" : data.kind === "object" ? "{ }" : "•";
   const targetPos = direction === "LR" ? Position.Left : Position.Top;
@@ -128,8 +140,12 @@ function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
 
   return (
     <div
-      className={`rounded-md border bg-panel text-xs shadow-sm ${
-        isHighlight ? "border-spot ring-2 ring-spot" : "border-line-2"
+      className={`rounded-md border text-xs shadow-sm ${
+        isHighlight
+          ? "border-spot bg-sel ring-2 ring-spot"
+          : inSelection
+            ? "wash-sel border-spot-line"
+            : "border-line-2 bg-panel"
       }`}
     >
       <Handle
@@ -189,7 +205,7 @@ function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
         </div>
       )}
 
-      {data.hasChildren && (
+      {data.childCount > 0 && (
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -216,6 +232,12 @@ function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
 }
 
 const nodeTypes: NodeTypes = {json: JsonFlowNode};
+
+// The floating Navigator's own width (w-72), and the room the bottom toolbar
+// needs. The camera frames around both.
+const NAV_W = 288;
+const GUTTER = 24;
+const TOOLBAR_H = 72;
 
 // Shared style for every toolbar button.
 function ToolBtn({
@@ -244,11 +266,45 @@ function ToolBtn({
 interface JsonGraphProps {
   data: JsonValue;
   selectedNodePath: string;
+  /** The branch the Navigator has open, if any — what the graph arrives on. */
+  openNodePath: string;
+  /** Clicking a node: select it, the way clicking a tree row does. */
   onSelectNode: (path: string) => void;
+  /** Ticking it in the Navigator: open it everywhere, folding the rest. */
+  onOpenNode: (path: string) => void;
 }
 
-function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+// Everything folds except the chain down to `path` and its whole subtree —
+// the graph's half of what the Navigator promises. Lives outside the
+// component because the first layout needs it before any interaction.
+function collapsedFor(data: JsonValue, path: string): Set<string> {
+  return new Set(
+    allContainerPaths(data).filter((p) =>
+      // Nothing picked is not a closed document: the top level stays open,
+      // so the graph still shows what the panel is listing.
+      path === "root" ? p !== "root" : !isUnder(p, path) && !isUnder(path, p)
+    )
+  );
+}
+
+function GraphInner({
+  data,
+  selectedNodePath,
+  openNodePath,
+  onSelectNode,
+  onOpenNode,
+}: JsonGraphProps) {
+  // The graph opens on whatever branch the Navigator has open: switching tabs
+  // remounts this view, and the panel riding along says that branch is open.
+  // Keyed on the opened branch, never on the selection — a click selects
+  // without opening anything, and folding the document away on the strength of
+  // one would throw away a graph the user had expanded by hand. Seeded at the
+  // first render rather than in an effect, so the very first layout is the
+  // folded one: set it a render later and the camera frames the document it is
+  // about to replace, which lands on empty canvas.
+  const [collapsed, setCollapsed] = useState<Set<string>>(() =>
+    openNodePath ? collapsedFor(data, openNodePath) : new Set()
+  );
   const [direction, setDirection] = useState<LayoutDirection>("LR");
   const [showMinimap, setShowMinimap] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -257,9 +313,9 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   const [matchIndex, setMatchIndex] = useState(0);
   const [noticeDismissed, setNoticeDismissed] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [navOpen, setNavOpen] = useState(true);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const {setCenter, fitView, zoomIn, zoomOut, getZoom, flowToScreenPosition} =
-    useReactFlow();
+  const {setCenter, fitView, zoomIn, zoomOut, getZoom} = useReactFlow();
   const isDark = useGround() === "ink";
 
   const {nodes, edges, truncated} = useMemo(
@@ -272,33 +328,69 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
     [truncated, data, nodes.length]
   );
 
-  // New document → reset view state (including the dismissed notice, so a
-  // freshly loaded large document warns again).
+  // A genuinely new document resets the view, the dismissed notice included,
+  // so a freshly loaded large one warns again. Skipped on arrival, where the
+  // state above is already seeded from the branch the other tab had picked.
+  const loaded = useRef(data);
   useEffect(() => {
+    if (loaded.current === data) return;
+    loaded.current = data;
     setCollapsed(new Set());
     setNoticeDismissed(false);
     setQuery("");
     setSearchOpen(false);
+    setNavOpen(true);
   }, [data]);
 
-  // Camera handoff: a toggle records which node the user acted on so the
-  // effect below can re-frame it once the new layout lands. "*" means
+  // Camera handoff: a structural change records the node to frame once the new
+  // layout lands, and the effect below does the framing. "*" means
   // collapse/expand-all — no single node of interest, so fit the whole graph.
-  const pendingFocus = useRef<string | null>(null);
+  // Armed from the start when a branch is already open, so arriving from the
+  // Viewer lands on that branch instead of on the whole document.
+  const pendingFocus = useRef<string | null>(openNodePath || null);
 
-  const onToggle = useCallback((path: string) => {
-    pendingFocus.current = path;
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(path)) next.delete(path);
-      else next.add(path);
-      return next;
-    });
-  }, []);
+  const onToggle = useCallback(
+    (path: string) => {
+      // Expanding, the subtree that just appeared is what the user asked to
+      // see. Collapsing, that subtree is gone — frame the parent instead, so
+      // the camera lands on a whole object rather than holding the zoom the
+      // vanished subtree needed.
+      pendingFocus.current = collapsed.has(path)
+        ? path
+        : (ancestorPaths(path).pop() ?? path);
+      setCollapsed((prev) => {
+        const next = new Set(prev);
+        if (next.has(path)) next.delete(path);
+        else next.add(path);
+        return next;
+      });
+    },
+    [collapsed]
+  );
 
   const onCopyPath = useCallback((path: string) => {
     navigator.clipboard.writeText(path);
   }, []);
+
+  // Every camera move keeps the graph clear of the chrome floating over it:
+  // the Navigator window on the right edge, the toolbar along the bottom.
+  // React Flow reads these as a minimum clearance, so a graph with room to
+  // spare still centres — it just never ends up underneath them. Capped at a
+  // share of the pane, so a narrow one is never padded down to nothing.
+  const framing = useCallback(() => {
+    const paneWidth = wrapperRef.current?.clientWidth ?? 0;
+    const right = navOpen
+      ? Math.round(Math.min(NAV_W + GUTTER, paneWidth * 0.4))
+      : GUTTER;
+    return {
+      padding: {
+        left: `${GUTTER}px`,
+        right: `${right}px`,
+        top: `${GUTTER}px`,
+        bottom: `${TOOLBAR_H}px`,
+      },
+    } as const;
+  }, [navOpen]);
 
   // Zoom-to-fit a single node so it's clearly visible and centered (used for
   // search matches and external selection).
@@ -310,9 +402,30 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
         duration: 500,
         maxZoom: 1.4,
         minZoom: 0.5,
+        ...framing(),
       });
     },
-    [fitView]
+    [fitView, framing]
+  );
+
+  // Frame a node together with everything still open under it, so the whole
+  // object is on screen at a zoom that suits its current size. This is the
+  // camera for every structural change; a fit of the whole graph is just the
+  // root's subtree.
+  const fitSubtree = useCallback(
+    (path: string) => {
+      const inside = nodes
+        .filter((n) => isUnder(n.data.path, path))
+        .map((n) => ({id: n.id}));
+      // A node can vanish under a cap or a collapsed ancestor — fall back to
+      // the whole graph rather than leaving the camera stranded.
+      fitView(
+        inside.length
+          ? {nodes: inside, duration: 400, maxZoom: 1.2, ...framing()}
+          : {duration: 400, ...framing()}
+      );
+    },
+    [nodes, fitView, framing]
   );
 
   // Center a node at a readable zoom (used by "center first item"). Never
@@ -348,9 +461,12 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
     return hits;
   }, [nodes, query]);
 
+  // Also when the hits themselves change: folding a branch away can leave the
+  // index past the end of a shorter list, which reads as "7/2" and focuses
+  // nothing.
   useEffect(() => {
     setMatchIndex(0);
-  }, [query]);
+  }, [query, matches.length]);
 
   useEffect(() => {
     const hit = matches[matchIndex];
@@ -365,11 +481,26 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
     [matches.length]
   );
 
+  // The Navigator's one action, mirroring the tree: everything folds, then the
+  // picked branch's own chain and whole subtree reopen — so the graph shows
+  // exactly what the panel says is open.
+  const openBranch = useCallback(
+    (path: string) => {
+      pendingFocus.current = path;
+      onOpenNode(path);
+      setCollapsed(collapsedFor(data, path));
+    },
+    [data, onOpenNode]
+  );
+
   const centerFirst = useCallback(
     () => panToNode(nodes.find((n) => n.data.path === "root")),
     [nodes, panToNode]
   );
-  const fit = useCallback(() => fitView({duration: 400}), [fitView]);
+  const fit = useCallback(
+    () => fitView({duration: 400, ...framing()}),
+    [fitView, framing]
+  );
   const rotate = useCallback(
     () => setDirection((d) => (d === "LR" ? "TB" : "LR")),
     []
@@ -433,52 +564,32 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
   // The `fitView` prop fires before custom nodes are measured, so re-fit on the
   // next frame when DOM sizes are known.
   useEffect(() => {
-    const id = requestAnimationFrame(() => fitView({duration: 0}));
+    const id = requestAnimationFrame(() =>
+      fitView({duration: 0, ...framing()})
+    );
     return () => cancelAnimationFrame(id);
+    // `framing` changes identity with the Navigator window, and re-fitting
+    // when that window folds away would reset the zoom of whoever folded it —
+    // the opposite of what asking for more room means. Only a new document, a
+    // new direction or fullscreen re-fits the whole graph.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, direction, isFullscreen, fitView]);
 
-  // Keep the node the user just toggled in view. Only runs when a toggle armed
-  // `pendingFocus`, so it never competes with the data/direction re-fit above,
-  // the search focus, or external selection — and search wins while it's open.
+  // Frame whatever the last structural change was about, once the new layout
+  // has landed. Only runs when a toggle or the Navigator armed `pendingFocus`,
+  // so it never competes with the data/direction re-fit above or the search
+  // focus — and search wins while it is open.
   useEffect(() => {
     if (!pendingFocus.current) return;
     const id = requestAnimationFrame(() => {
       const target = pendingFocus.current;
       pendingFocus.current = null;
       if (!target || query.trim()) return;
-      if (target === "*") {
-        fitView({duration: 400});
-        return;
-      }
-      const node = nodes.find((n) => n.data.path === target);
-      if (!node || !wrapperRef.current) return;
-      const w = node.width ?? 160;
-      const h = node.height ?? 40;
-      const tl = flowToScreenPosition(node.position);
-      const br = flowToScreenPosition({
-        x: node.position.x + w,
-        y: node.position.y + h,
-      });
-      // Leave the camera alone when the node already sits comfortably inside
-      // the pane; only an off-screen or clipped node is worth a pan.
-      const r = wrapperRef.current.getBoundingClientRect();
-      const M = 24;
-      if (
-        tl.x >= r.left + M &&
-        tl.y >= r.top + M &&
-        br.x <= r.right - M &&
-        br.y <= r.bottom - M
-      )
-        return;
-      // Pan at the user's current zoom rather than re-fitting, so a single
-      // toggle never yanks them out of the region they were reading.
-      setCenter(node.position.x + w / 2, node.position.y + h / 2, {
-        zoom: getZoom(),
-        duration: 350,
-      });
+      if (target === "*") fitView({duration: 400, ...framing()});
+      else fitSubtree(target);
     });
     return () => cancelAnimationFrame(id);
-  }, [nodes, query, fitView, setCenter, getZoom, flowToScreenPosition]);
+  }, [nodes, query, fitView, fitSubtree, framing]);
 
   // Fullscreen the graph wrapper itself, so toolbar, minimap and search come
   // along. Listening to the event (not just our own clicks) keeps Esc honest.
@@ -507,6 +618,9 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
       return;
     }
     if (!selectedNodePath) return;
+    // The Navigator sets the selection and arms a subtree frame in the same
+    // breath; that frame is the better one, so leave the camera to it.
+    if (pendingFocus.current) return;
     const match =
       nodes.find((n) => n.data.path === selectedNodePath) ??
       nodes
@@ -572,7 +686,7 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
           .json-graph-root:fullscreen { background-color: var(--graph-bg); }
         `}</style>
         {truncated && !noticeDismissed && (
-          <div className="absolute right-3 top-3 z-20 w-80 max-w-[calc(100%-1.5rem)] rounded-md border border-line-2 border-l-2 border-l-warning bg-panel p-3 text-xs text-ink shadow-lg">
+          <div className="absolute left-3 top-3 z-20 w-80 max-w-[calc(100%-1.5rem)] rounded-md border border-line-2 border-l-2 border-l-warning bg-panel p-3 text-xs text-ink shadow-lg">
             <div className="flex items-start gap-2">
               <AlertTriangle size={16} className="mt-0.5 shrink-0" />
               <div className="flex-1">
@@ -633,12 +747,45 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
           panOnDrag
         >
           <Background />
-          {showMinimap && <MiniMap pannable zoomable className="!bg-mass" />}
+          {/* Bottom-left: the right edge belongs to the Navigator window now,
+              and a tall panel would otherwise land on top of the minimap. */}
+          {showMinimap && (
+            <MiniMap
+              pannable
+              zoomable
+              position="bottom-left"
+              className="!bg-mass"
+            />
+          )}
         </ReactFlow>
+
+        {/* The Viewer's Navigator, floated over the canvas on the same edge
+            the Viewer keeps it, so moving between the two tabs doesn't move
+            the panel. The graph wants its whole width some of the time, so
+            this one is a window: fold it away to the opener in its place. */}
+        {navOpen ? (
+          <div className="absolute right-3 top-3 z-20 flex h-[min(40rem,calc(100%-5.5rem))] w-72 flex-col border border-line-2 bg-panel shadow-lg">
+            <JsonNavigator
+              data={data}
+              selectedNodePath={selectedNodePath}
+              onSelectNode={openBranch}
+              onMinimize={() => setNavOpen(false)}
+            />
+          </div>
+        ) : (
+          <button
+            onClick={() => setNavOpen(true)}
+            aria-label="Open the Navigator"
+            className="btn btn--quiet absolute right-3 top-3 z-20 border border-line-2 bg-panel shadow-lg"
+          >
+            <Compass size={16} />
+            <span className="text-xs">Navigator</span>
+          </button>
+        )}
 
         {/* Floating search box (JSON Crack style) */}
         {searchOpen && (
-          <div className="absolute bottom-16 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 border border-line-2 bg-panel px-3 py-1.5 shadow-lg">
+          <div className="absolute bottom-16 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 border border-line-2 bg-panel px-3 py-1.5 shadow-lg">
             <Search size={14} className="text-faint" />
             <input
               autoFocus
@@ -684,9 +831,10 @@ function GraphInner({data, selectedNodePath, onSelectNode}: JsonGraphProps) {
           </div>
         )}
 
-        {/* Settings popover */}
+        {/* Settings popover. Above the Navigator window (z-20), which reaches
+            down the right edge far enough to bury this one where it sits. */}
         {showSettings && (
-          <div className="absolute bottom-16 right-4 z-10 w-44 border border-line-2 bg-panel p-3 text-sm shadow-lg">
+          <div className="absolute bottom-16 right-4 z-30 w-44 border border-line-2 bg-panel p-3 text-sm shadow-lg">
             <label className="flex items-center justify-between gap-2 text-ink">
               <span>Show minimap</span>
               <input
