@@ -155,7 +155,8 @@ test("the share button rides the tab bar, so every view can share", async ({
     await expect(share).toBeEnabled();
   }
 
-  // Sharing from a non-editor tab produces the same working link.
+  // Sharing from a non-editor tab produces the same working link — which now
+  // arrives in the Visualizer, because that is the view it was made from.
   await page.getByRole("button", {name: "Visualizer", exact: true}).click();
   await share.click();
   await expect(page.getByRole("button", {name: "Link copied!"})).toBeVisible();
@@ -163,7 +164,7 @@ test("the share button rides the tab bar, so every view can share", async ({
   expect(url).toContain("#data=");
 
   await page.goto(url);
-  await expect(treeRow(page, "company")).toBeVisible();
+  await expect(page.locator(".react-flow__node").first()).toBeVisible();
 });
 
 // The producer half of the contract (public/open.js, served at /open.js). These
@@ -266,4 +267,46 @@ test("open.js reports a blocked popup instead of hijacking the host page", async
   expect(outcome).toContain("Popup blocked");
   // The host page must still be sitting there, untouched.
   await expect(page.locator("#host")).toHaveText("host app");
+});
+
+test("a link made in the Visualizer reopens in the Visualizer", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/");
+  await page.getByRole("button", {name: "Load Complex Test JSON"}).click();
+  await page.getByRole("button", {name: "Visualizer", exact: true}).click();
+  await expect(page.locator(".react-flow__node").first()).toBeVisible();
+
+  await page.getByRole("button", {name: "Share"}).click();
+  // Encoding and the clipboard write are async; the label is the signal that
+  // both have landed. Reading before it returns the clipboard's old contents.
+  await expect(page.getByRole("button", {name: "Link copied!"})).toBeVisible();
+  const url = await page.evaluate(() => navigator.clipboard.readText());
+  expect(url).toContain("view=graph");
+
+  // Following it lands on the graph, not the tree.
+  await page.goto(url);
+  await expect(page.locator(".react-flow__node").first()).toBeVisible();
+});
+
+test("a link made outside the Visualizer carries no flag and opens parsed", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.goto("/");
+  await page.getByRole("button", {name: "Load Complex Test JSON"}).click();
+  // Shared straight from the editor, without ever visiting the tree.
+  await page.getByRole("button", {name: "Share"}).click();
+  await expect(page.getByRole("button", {name: "Link copied!"})).toBeVisible();
+  const url = await page.evaluate(() => navigator.clipboard.readText());
+  // The default needs no flag — restating it is length the recipient copies
+  // for nothing — and the recipient should land on the parsed view, not on
+  // the raw text they were sent a link to avoid reading.
+  expect(url).not.toContain("view=");
+
+  await page.goto(url);
+  await expect(page.locator(".json-tree-container")).toBeVisible();
 });

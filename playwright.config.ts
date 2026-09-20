@@ -18,6 +18,20 @@ export default defineConfig({
   reporter: "list",
   use: {
     baseURL: url,
+    // The one-time Share hint is a popover: once it appears it covers the
+    // top-right of the page and swallows clicks meant for what is underneath.
+    // That is correct for a coachmark and wrong for every test that is not
+    // about it, so the default state is "already seen". e2e/share-hint.spec.ts
+    // opts back out to exercise it.
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: url,
+          localStorage: [{name: "json-viewer-share-hint-seen", value: "1"}],
+        },
+      ],
+    },
   },
   webServer: {
     command: `npm run dev -- --port ${port} --strictPort`,

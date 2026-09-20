@@ -131,7 +131,12 @@ function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
         isHighlight ? "border-spot ring-2 ring-spot" : "border-line-2"
       }`}
     >
-      <Handle type="target" position={targetPos} className="!bg-faint-2" />
+      <Handle
+        type="target"
+        position={targetPos}
+        /* React Flow draws its handles as circles; the chrome here is square. */
+        className="!rounded-none !bg-faint-2"
+      />
       <div className="flex items-center justify-between gap-2 border-b border-line-2 px-2 py-1.5">
         <span className="truncate font-mono font-semibold text-ink">
           <span className="mr-1 text-spot">{badge}</span>
@@ -199,7 +204,12 @@ function JsonFlowNode({id, data}: NodeProps<GraphNode>) {
           <span>{data.childCount}</span>
         </button>
       )}
-      <Handle type="source" position={sourcePos} className="!bg-faint-2" />
+      <Handle
+        type="source"
+        position={sourcePos}
+        /* React Flow draws its handles as circles; the chrome here is square. */
+        className="!rounded-none !bg-faint-2"
+      />
     </div>
   );
 }

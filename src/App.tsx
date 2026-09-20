@@ -19,7 +19,7 @@ import {
   Bug,
   Maximize,
   Info,
-  Link2,
+  Share2,
   Layers,
 } from "lucide-react";
 // Lazy-loaded so the CodeMirror editor bundle stays off the initial load.
@@ -33,6 +33,7 @@ const JsonGraph = lazy(() =>
 );
 import {JsonTree} from "./components/JsonTree";
 import {ThemeToggle} from "./components/ThemeToggle";
+import {ShareHint} from "./components/ShareHint";
 import {JsonNavigator} from "./components/JsonNavigator";
 import {ResizablePanel} from "./components/ResizablePanel";
 import {Tooltip} from "./components/Tooltip";
@@ -61,6 +62,7 @@ const SOCIAL_ICONS = {
 
 function App() {
   const [jsonData, setJsonData] = useState<JsonValue | null>(null);
+
   const [nodes, setNodes] = useState<JsonNode[]>([]);
   const [filteredNodes, setFilteredNodes] = useState<JsonNode[]>([]);
   const [originalNodes, setOriginalNodes] = useState<JsonNode[]>([]);
@@ -386,7 +388,15 @@ function App() {
 
     let label: string;
     try {
-      const url = await buildShareLink(text);
+      // A link opens on the parsed view by default — that is the thing worth
+      // showing someone. The Visualizer is the one view that carries over,
+      // because a graph you chose to share is the point of sharing it; a link
+      // made from the editor still opens parsed rather than dropping the
+      // recipient in front of the raw text they were sent to avoid reading.
+      const url = await buildShareLink(
+        text,
+        activeTab === "graph" ? "graph" : undefined
+      );
       if (url) {
         await navigator.clipboard.writeText(url);
         label = "Link copied!";
@@ -405,7 +415,7 @@ function App() {
     setShareLabel(label);
     clearTimeout(shareLabelReset.current);
     shareLabelReset.current = setTimeout(() => setShareLabel("Share"), 2500);
-  }, [inputText]);
+  }, [inputText, activeTab]);
 
   const handleCopy = useCallback(() => {
     if (!inputText.trim()) return;
@@ -699,15 +709,27 @@ function App() {
                 confirmation or failure text. */}
             <div className="ml-auto flex items-center gap-2 pr-4">
               <ThemeToggle />
-              <button
-                onClick={handleShareLink}
-                disabled={!inputText.trim()}
-                data-tooltip="Copy a link that reopens this JSON here"
-                className="btn btn--ghost btn--sm min-w-[9.5rem]"
-              >
-                <Link2 className="w-4 h-4" />
-                <span className="text-sm font-medium">{shareLabel}</span>
-              </button>
+              <div className="relative">
+                <button
+                  onClick={handleShareLink}
+                  disabled={!inputText.trim()}
+                  data-tooltip={
+                    activeTab === "graph"
+                      ? "Copy a link that opens this JSON in the Visualizer"
+                      : activeTab === "text"
+                        ? "Copy a link that opens this JSON in the editor"
+                        : "Copy a link that opens this JSON for anyone"
+                  }
+                  className="btn btn--ghost btn--sm min-w-[9.5rem]"
+                >
+                  <Share2 className="h-4 w-4" />
+                  <span className="text-sm font-medium">{shareLabel}</span>
+                </button>
+                {/* Waits for the first successful parse: before that there
+                    is nothing to share, and a pointer at a disabled button
+                    teaches nothing. */}
+                <ShareHint active={jsonData !== null} />
+              </div>
             </div>
           </div>
         </div>

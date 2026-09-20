@@ -20,11 +20,11 @@ https://json.nonstopio.com/#data=<payload>&view=graph
 
 ### `data`
 
-| Value | Meaning |
-|---|---|
-| starts with `{`, `[` or `"` | raw JSON, percent-encoded |
-| `clipboard` | read the document from the user's clipboard |
-| anything else | base64url of raw-deflate ("compacted") JSON |
+| Value                       | Meaning                                     |
+| --------------------------- | ------------------------------------------- |
+| starts with `{`, `[` or `"` | raw JSON, percent-encoded                   |
+| `clipboard`                 | read the document from the user's clipboard |
+| anything else               | base64url of raw-deflate ("compacted") JSON |
 
 The form is detected from the first character — base64url can never begin with
 `{`, `[` or `"` — so there is no mode flag to set and no wrong combination to
@@ -34,11 +34,17 @@ get wrong. Hand-written links can use raw JSON; generated links should compact.
 
 Which tab to land on. Optional, defaults to the tree.
 
-| Value | Tab |
-|---|---|
-| `text`, `json`, `raw` | JSON editor |
-| `tree`, `viewer` | Viewer (default) |
-| `graph`, `visualizer` | Visualizer |
+| Value                 | Tab              |
+| --------------------- | ---------------- |
+| `text`, `json`, `raw` | JSON editor      |
+| `tree`, `viewer`      | Viewer (default) |
+| `graph`, `visualizer` | Visualizer       |
+
+The app's own **Share** button sets this for you: it emits `view=graph` when
+you share from the Visualizer, and omits the flag everywhere else. A link with
+no flag opens on the parsed tree, which is the thing worth showing someone —
+a link made from the editor still opens parsed rather than dropping the
+recipient in front of the raw text they were sent a link to avoid reading.
 
 ### Size
 
@@ -59,11 +65,11 @@ enough for most API responses. Past that, use the clipboard hand-off.
 ```
 
 ```js
-openInJsonViewer(data)                       // opens a new tab
-openInJsonViewer(data, {view: "graph"})      // ...on the Visualizer
-openInJsonViewer(data, {target: "self"})     // navigate instead of opening a tab
-openInJsonViewer(data, {base: "..."})        // point at another deployment
-openInJsonViewer.link(data)                  // -> {url, needsClipboard}
+openInJsonViewer(data); // opens a new tab
+openInJsonViewer(data, {view: "graph"}); // ...on the Visualizer
+openInJsonViewer(data, {target: "self"}); // navigate instead of opening a tab
+openInJsonViewer(data, {base: "..."}); // point at another deployment
+openInJsonViewer.link(data); // -> {url, needsClipboard}
 ```
 
 `data` is an object, an array, or a string of JSON. `openInJsonViewer` handles
@@ -72,7 +78,8 @@ nothing, so you stay in control:
 
 ```js
 const {url, needsClipboard} = await openInJsonViewer.link(bigResponse);
-if (needsClipboard) await navigator.clipboard.writeText(JSON.stringify(bigResponse));
+if (needsClipboard)
+  await navigator.clipboard.writeText(JSON.stringify(bigResponse));
 window.open(url, "_blank");
 ```
 
@@ -82,17 +89,24 @@ The whole producer is ten lines of standard platform API — no dependency, work
 in browsers and Node 18+:
 
 ```js
-export async function jsonViewerLink(data, {view, base = "https://json.nonstopio.com/"} = {}) {
+export async function jsonViewerLink(
+  data,
+  {view, base = "https://json.nonstopio.com/"} = {}
+) {
   const text = typeof data === "string" ? data : JSON.stringify(data);
-  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream("deflate-raw"));
+  const stream = new Blob([text])
+    .stream()
+    .pipeThrough(new CompressionStream("deflate-raw"));
   const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
   const payload = btoa(String.fromCharCode(...bytes))
-    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
   const suffix = view ? `&view=${view}` : "";
 
   return payload.length <= 4000
-    ? `${base}#data=${payload}${suffix}`            // fits in the URL
-    : `${base}?data=clipboard${suffix}`;            // caller puts `text` on the clipboard
+    ? `${base}#data=${payload}${suffix}` // fits in the URL
+    : `${base}?data=clipboard${suffix}`; // caller puts `text` on the clipboard
 }
 ```
 
@@ -139,7 +153,7 @@ Two things to know:
 Prefer `#data=`. A URL fragment is never transmitted: it stays in the browser,
 so the document keeps out of server and CDN access logs, `Referer` headers, and
 analytics. `?data=` is supported because it is what most systems reach for
-first, but the query string *is* sent to the server on every request.
+first, but the query string _is_ sent to the server on every request.
 
 The viewer strips `data` from the address bar as soon as it has loaded the
 document, so a refresh won't replay it and copying the URL afterwards won't

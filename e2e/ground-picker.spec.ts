@@ -77,3 +77,43 @@ test("a ground swap re-resolves every role, including outside the bundle", async
     )
     .toBe("rgb(231, 227, 218)"); // paper's --panel
 });
+
+// The chrome is square — hairline rules, not rounded cards. A stray
+// `rounded-*` from a utility class or a library's own stylesheet is the
+// easiest way for that to erode, and it reads as "almost right" rather than
+// as wrong, so it survives review. The only exception is a genuine circle:
+// the spinner and the scrollbar thumb are round because they are not boxes.
+test("no box in the app has rounded corners", async ({page}) => {
+  const ROUND_BY_NATURE = /animate-spin/;
+
+  const rounded = async () =>
+    page.evaluate(
+      (pattern) =>
+        [...document.querySelectorAll("*")]
+          .filter((el) => {
+            const r = getComputedStyle(el).borderRadius;
+            return r && r !== "0px" && r !== "0%";
+          })
+          .filter((el) => !new RegExp(pattern).test(String(el.className)))
+          .map(
+            (el) =>
+              `${el.tagName}.${String(el.className).slice(0, 40)} → ${
+                getComputedStyle(el).borderRadius
+              }`
+          ),
+      ROUND_BY_NATURE.source
+    );
+
+  await page.goto("/");
+  await page.getByRole("button", {name: "Load Complex Test JSON"}).click();
+  expect(await rounded()).toEqual([]);
+
+  await page.getByRole("button", {name: "Viewer", exact: true}).click();
+  await expect(page.locator(".json-tree-container")).toBeVisible();
+  expect(await rounded()).toEqual([]);
+
+  // React Flow ships its own stylesheet, and its handles default to circles.
+  await page.getByRole("button", {name: "Visualizer", exact: true}).click();
+  await expect(page.locator(".react-flow__node").first()).toBeVisible();
+  expect(await rounded()).toEqual([]);
+});
