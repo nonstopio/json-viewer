@@ -318,6 +318,12 @@ playwright/.cache/
 **/*token*
 **/config/local*
 
+# ...but the design tokens are a stylesheet, not a credential. The rule above
+# is there to keep auth tokens out of the repo, and it silently swallowed the
+# one file the entire theme lives in — the build only failed in CI, because
+# locally the file was on disk.
+!src/styles/tokens.css
+
 # Analytics and tracking files (if any)
 analytics-key.json
 ga-key.json
