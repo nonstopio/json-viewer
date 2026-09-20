@@ -61,6 +61,9 @@
     font-family: var(--font-mono);
     font-size: 11px;
     font-weight: 500;
+    /* Caps with no descenders: without this the line box's own leading sits
+       the label a pixel high next to the buttons it shares a row with. */
+    line-height: 1;
     letter-spacing: var(--tracking-caps-wide);
     text-transform: uppercase;
     color: var(--faint);
@@ -210,10 +213,11 @@
   }
 
   /* ---------- the shuttle ----------
-     One accent beam that travels out and back along the app's own lines —
+     One accent beam that travels left to right along the app's own lines —
      the hairlines between bands — as the page arrives, and then never again.
-     Staggered, so the bands light in sequence rather than together. Each
-     pass ends with the beam off-screen, which is why it needs no resting
+     One pass only: a beam that came back would read as a loop rather than an
+     arrival. Staggered, so the bands light in sequence rather than together.
+     The pass ends with the beam off-screen, which is why it needs no resting
      state of its own. */
   .seam {
     position: relative;
@@ -246,7 +250,7 @@
      .intro class lives on the app root, which never unmounts, so once it is
      gone no remount can bring the beam back. */
   .intro .seam::after {
-    animation: shuttle 13s var(--ease) both;
+    animation: shuttle 6.5s var(--ease) both;
   }
 
   .seam--delay-1::after {
@@ -391,11 +395,10 @@
 }
 
 @keyframes shuttle {
-  0%,
-  100% {
+  from {
     background-position: calc(-1 * var(--beam)) 0;
   }
-  50% {
+  to {
     background-position: calc(100% + var(--beam)) 0;
   }
 }

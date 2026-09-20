@@ -38,7 +38,7 @@ import {JsonNavigator} from "./components/JsonNavigator";
 import {ResizablePanel} from "./components/ResizablePanel";
 import {Tooltip} from "./components/Tooltip";
 import {ancestorPaths, jsonParser} from "./utils/jsonParser";
-import {brand, brandAsset} from "./brand";
+import {AUTHOR, brand, brandAsset} from "./brand";
 import {complexSample} from "./data/complexSample";
 import {
   buildShareLink,
@@ -59,6 +59,10 @@ const SOCIAL_ICONS = {
   twitter: Twitter,
   globe: Globe,
 } as const;
+
+// ponytail: unfolding a subtree one node at a time is a splice per node, so
+// it stops at this many rows. Expand-all is there for the rest.
+const SUBTREE_ROWS = 2000;
 
 function App() {
   const [jsonData, setJsonData] = useState<JsonValue | null>(null);
@@ -204,55 +208,66 @@ function App() {
     setSelectedNodePath(path);
   }, []);
 
-  // The flat node list only holds nodes whose ancestors are expanded, so a node
-  // reached from the Navigator has to be unfolded before the tree can show it —
-  // along with the node itself, so its contents match what the Navigator lists.
-  const revealNode = useCallback((list: JsonNode[], path: string) => {
-    let result = list;
-    for (const ancestor of [...ancestorPaths(path), path]) {
-      const node = result.find((candidate) => candidate.path === ancestor);
-      if (node && !node.isExpanded && node.childCount) {
-        result = jsonParser.expandNode(result, ancestor);
-      }
-    }
-    return result;
-  }, []);
-
   const applyNodes = useCallback((list: JsonNode[]) => {
     setNodes(list);
     setOriginalNodes(list);
     setFilteredNodes(list);
   }, []);
 
-  const handleFocusNode = useCallback(
+  // The Navigator's one action. Everything folds, then the picked node's own
+  // chain reopens with its whole subtree, so the tree shows exactly what the
+  // panel says is open — and picking the root (nothing ticked) leaves the top
+  // level open and nothing more.
+  const handleOpenNode = useCallback(
     (path: string) => {
-      // While searching the list is a search result; don't rebuild it.
-      if (!searchQuery) applyNodes(revealNode(nodes, path));
       setSelectedNodePath(path);
-    },
-    [applyNodes, revealNode, nodes, searchQuery]
-  );
-
-  const handleIsolateNode = useCallback(
-    (path: string) => {
+      // While searching the list is a search result; don't rebuild it.
       if (searchQuery) return;
-      let next = revealNode(nodes, path);
-      const target = next.find((node) => node.path === path);
-      if (!target) return;
 
-      // Collapsing a sibling only removes nodes deeper than itself, so the
-      // snapshot of sibling paths stays valid while we fold them one by one.
-      const siblings = next.filter(
-        (node) =>
-          node.depth === target.depth && node.path !== path && node.isExpanded
-      );
-      for (const sibling of siblings) {
-        next = jsonParser.collapseNode(next, sibling.path);
+      let next = jsonParser.collapseAllNodes(originalNodes);
+      if (path === "root") {
+        // Nothing ticked is not a closed document: the top level stays open,
+        // so the tree still shows what the panel is listing.
+        next = jsonParser.expandNode(next, "root");
+        for (let i = 0; i < next.length; i++) {
+          const node = next[i];
+          if (node.isExpanded && node.path !== "root") {
+            next = jsonParser.collapseNode(next, node.path);
+          }
+        }
+      } else {
+        // `startsWith` alone would also match a sibling named `orders2`, so
+        // the separator has to be part of the test.
+        const under = (candidate: string) =>
+          candidate.startsWith(`${path}.`) || candidate.startsWith(`${path}[`);
+        const onPath = (candidate: string) =>
+          candidate === path ||
+          under(candidate) ||
+          path.startsWith(`${candidate}.`) ||
+          path.startsWith(`${candidate}[`);
+
+        for (const ancestor of [...ancestorPaths(path), path]) {
+          next = jsonParser.expandNode(next, ancestor);
+        }
+        // Expanding a node re-creates its children with the parser's own
+        // "first two levels open" default, so the branches beside the picked
+        // one come back open unless they are folded again here.
+        for (let i = 0; i < next.length; i++) {
+          const node = next[i];
+          if (node.isExpanded && !onPath(node.path)) {
+            next = jsonParser.collapseNode(next, node.path);
+          }
+        }
+        for (let i = 0; i < next.length && next.length < SUBTREE_ROWS; i++) {
+          const node = next[i];
+          if (under(node.path) && !node.isExpanded && node.childCount) {
+            next = jsonParser.expandNode(next, node.path);
+          }
+        }
       }
       applyNodes(next);
-      setSelectedNodePath(path);
     },
-    [applyNodes, revealNode, nodes, searchQuery]
+    [applyNodes, originalNodes, searchQuery]
   );
 
   const handleSearch = useCallback(
@@ -518,8 +533,8 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // Longest gated animation: the footer beam, 13s on a 5s delay.
-    const done = setTimeout(() => setIntro(false), 19_000);
+    // Longest gated animation: the footer beam, 6.5s on a 5s delay.
+    const done = setTimeout(() => setIntro(false), 12_000);
     return () => clearTimeout(done);
   }, []);
 
@@ -645,7 +660,7 @@ function App() {
         className="btn btn--quiet"
       >
         <UnfoldVertical size={16} className="text-current" />
-        <span className="text-xs">Expand all</span>
+        <span className="text-xs leading-none">Expand all</span>
       </button>
       <button
         onClick={handleCollapseAll}
@@ -654,7 +669,7 @@ function App() {
         className="btn btn--quiet"
       >
         <FoldVertical size={16} className="text-current" />
-        <span className="text-xs">Collapse all</span>
+        <span className="text-xs leading-none">Collapse all</span>
       </button>
     </>
   );
@@ -939,7 +954,7 @@ function App() {
                   <div className="h-full flex flex-col">
                     {/* Tree Header */}
                     <div className="flex items-center justify-between border-b border-line-2 p-2">
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-2">
                         <span className="eyebrow mr-1">JSON Tree</span>
                         {treeFoldButtons}
                       </div>
@@ -989,8 +1004,7 @@ function App() {
                 <JsonNavigator
                   data={jsonData}
                   selectedNodePath={selectedNodePath}
-                  onFocusNode={handleFocusNode}
-                  onIsolateNode={handleIsolateNode}
+                  onSelectNode={handleOpenNode}
                 />
               </div>
             </ResizablePanel>
@@ -1087,6 +1101,31 @@ function App() {
                   <Bug size={16} />
                   <span className="text-xs">Report Issues</span>
                 </a>
+                {/* Built by: the author's GitHub picture, linking to the
+                    profile. Last in the row, hard right — it is a signature,
+                    and a signature goes at the end. */}
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-faint">Built by</span>
+                  <a
+                    href={AUTHOR.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-tooltip={`${AUTHOR.name} (@${AUTHOR.login})`}
+                    aria-label={`${AUTHOR.name} on GitHub`}
+                    className="block"
+                  >
+                    {/* Round, against the square rule everything else follows:
+                        this is a face, not a box. */}
+                    <img
+                      src={AUTHOR.avatar}
+                      alt={AUTHOR.name}
+                      loading="lazy"
+                      width={24}
+                      height={24}
+                      className="avatar h-6 w-6 rounded-full border border-line-2 transition-colors hover:border-spot"
+                    />
+                  </a>
+                </div>
               </div>
             </div>
           </div>

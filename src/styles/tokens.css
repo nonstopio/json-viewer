@@ -112,7 +112,8 @@
   --panel: #1e1e22; /* raised band, toolbar, sidebar, popover */
   --mass: #26262a; /* wells, inputs, inline code */
   --hover: #232327; /* row hover */
-  --sel: #1c2b2c; /* selected row — a verdigris-leaning well */
+  --sel: color-mix(in srgb, var(--spot) 20%, var(--bg)); /* selected row */
+  --sel-soft: color-mix(in srgb, var(--spot) 12%, transparent); /* its subtree */
 
   /* -- text -- */
   --ink: #eae7e1; /* primary */
@@ -181,7 +182,8 @@
   --panel: #e7e3da;
   --mass: #ddd8cc;
   --hover: #e4e0d6;
-  --sel: #dce7e2;
+  --sel: color-mix(in srgb, var(--spot) 16%, var(--bg));
+  --sel-soft: color-mix(in srgb, var(--spot) 9%, transparent);
 
   --ink: #16150f;
   --dim: #57534a;

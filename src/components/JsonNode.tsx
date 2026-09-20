@@ -21,6 +21,8 @@ interface JsonNodeProps {
   onToggle?: (path: string) => void;
   onSelect?: (path: string) => void;
   isSelected?: boolean;
+  /** Inside the selected object, but not its head row. */
+  isInSelection?: boolean;
   onCopy?: (value: string, type: "value" | "path") => void;
   searchQuery?: string;
   caseSensitive?: boolean;
@@ -33,6 +35,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
   onToggle,
   onSelect,
   isSelected = false,
+  isInSelection = false,
   onCopy,
   searchQuery,
   caseSensitive = false,
@@ -236,15 +239,20 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
       className={`json-node flex items-start py-1 px-2 group transition-all duration-150 ${
         isSelected
           ? "border-l-2 border-spot bg-sel"
-          : "border-l-2 border-transparent hover:border-line-2"
+          : isInSelection
+            ? "border-l-2 border-spot-line bg-sel-soft"
+            : "border-l-2 border-transparent hover:border-line-2"
       } ${
         isCurrentMatch ? "ring-1 ring-spot" : ""
       } cursor-pointer hover:bg-hover`}
       style={{marginLeft: `${node.depth * 20}px`}}
       onClick={handleRowClick}
     >
-      {/* Expand/Collapse Button */}
-      <div className="w-4 h-4 flex items-center justify-center mr-1">
+      {/* Expand/Collapse Button. The box is as tall as one line of the key
+          beside it, so it centres on that line — the row itself is
+          items-start, because a long value wraps and the controls have to
+          stay on the first line rather than drift to the middle of it. */}
+      <div className="mr-1 flex h-6 w-4 items-center justify-center">
         {canExpand ? (
           <button
             onClick={handleToggleClick}
@@ -265,7 +273,7 @@ const JsonNodeComponent: React.FC<JsonNodeProps> = ({
       {/* Type Icon for primitive values */}
       {!hasChildren && (
         <span
-          className={`mr-1 ${getTypeColor(node.type)}`}
+          className={`mr-1 flex h-6 w-4 items-center justify-center ${getTypeColor(node.type)}`}
           data-tooltip={`Type: ${node.type}`}
         >
           {getTypeIcon(node.type)}

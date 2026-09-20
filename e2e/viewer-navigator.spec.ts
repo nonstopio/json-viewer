@@ -6,7 +6,8 @@ import {tmpdir} from "os";
 // E2E coverage for the reworked Viewer tab: the expand/collapse buttons moved
 // out of the search row and next to the "JSON Tree" title, the search box no
 // longer stretches across the toolbar, and the unused "Property Details" table
-// was replaced by the Navigator panel (breadcrumb + drill-down + isolate).
+// was replaced by the Navigator panel: a two-level graph of checkbox rows where
+// checking a key opens it (and folds everything else) in both panels.
 
 // A document with one wide container (so collapsing it genuinely reflows the
 // tree), one deep chain (so drilling needs several levels), and three
@@ -36,6 +37,14 @@ async function loadViewer(page: Page, json: string, name: string) {
 
 const navRow = (page: Page, key: string) =>
   page.getByTestId("nav-row").filter({hasText: key}).first();
+
+// A row inside the open node's child list — the graph's second level.
+const childRow = (page: Page, key: string) =>
+  page
+    .getByTestId("nav-children")
+    .getByTestId("nav-row")
+    .filter({hasText: key})
+    .first();
 
 const searchInput = (page: Page) =>
   page.locator('input[placeholder^="Search JSON"]');
@@ -70,7 +79,16 @@ test("expand/collapse-all sit in the tree header, not in the search row", async 
   // Right of the title, on the same header line…
   expect(expandBox.x).toBeGreaterThan(titleBox.x + titleBox.width - 1);
   expect(collapseBox.x).toBeGreaterThan(expandBox.x);
-  expect(Math.abs(expandBox.y - titleBox.y)).toBeLessThan(titleBox.height);
+  // …centred on the title rather than sitting a pixel off it, and with room
+  // between them instead of running together.
+  const midY = (box: {y: number; height: number}) => box.y + box.height / 2;
+  // 1.5px, not 0: the eyebrow is 11px mono and the labels 12px sans, so their
+  // centres land on different sub-pixels. The misalignment this guards was 4px.
+  expect(Math.abs(midY(expandBox) - midY(titleBox))).toBeLessThanOrEqual(1.5);
+  expect(Math.abs(midY(collapseBox) - midY(titleBox))).toBeLessThanOrEqual(1.5);
+  expect(collapseBox.x - (expandBox.x + expandBox.width)).toBeGreaterThanOrEqual(
+    8
+  );
 
   // …and below the search row, which is where they used to be.
   expect(expandBox.y).toBeGreaterThan(inputBox.y + inputBox.height);
@@ -170,40 +188,199 @@ test("the case-sensitivity toggle narrows the matches", async ({
   await expect(matchCounter(page)).toHaveText("1 of 3");
 });
 
-test("the navigator drills down and the breadcrumb walks back up", async ({
+test("the navigator lists branches only, two levels, and never a third", async ({
   page,
 }, testInfo) => {
-  // Guards the panel that replaced the Property Details table: each container
-  // row descends one level and the crumb strip is the way back.
+  // The rules of the panel: a key that holds only plain values is something to
+  // read in the tree, not somewhere to navigate to — and ticking a key on the
+  // second level selects it without opening a third.
   await loadViewer(
     page,
     buildFixture(),
-    `vn-drill-${testInfo.workerIndex}.json`
+    `vn-branch-${testInfo.workerIndex}.json`
   );
 
-  // Root level lists every top-level key with a container summary/preview.
-  await expect(page.getByTestId("nav-row")).toHaveCount(4);
+  // beta, alpha and gamma hold keys; `Marker` is a string and is not listed.
+  await expect(page.getByTestId("nav-row")).toHaveCount(3);
   await expect(navRow(page, "alpha")).toContainText("40 keys");
   await expect(navRow(page, "gamma")).toContainText("3 items");
-  await expect(navRow(page, "Marker")).toContainText('"first"');
+  await expect(page.getByTestId("nav-row").filter({hasText: "Marker"})).toHaveCount(
+    0
+  );
+  await expect(page.getByTestId("nav-children")).toHaveCount(0);
+
+  // `alpha` holds 40 plain values, so opening it adds no second level at all.
+  await navRow(page, "alpha").click();
+  await expect(page.getByTestId("nav-children")).toHaveCount(0);
+
+  // `beta` holds a key that holds keys, so that one branch is listed under it.
+  await navRow(page, "beta").click();
+  await expect(childRow(page, "level2")).toBeVisible();
+  await expect(page.getByTestId("nav-children").getByTestId("nav-row")).toHaveCount(
+    1
+  );
+
+  // Ticking the second-level branch selects it — the panel does not re-root on
+  // it, and `level3` never appears as a third level.
+  await childRow(page, "level2").click();
+  await expect(page.getByTestId("nav-row")).toHaveCount(4); // 3 branches + level2
+  await expect(page.getByTestId("nav-row").filter({hasText: "level3"})).toHaveCount(
+    0
+  );
+  await expect(page.getByTestId("nav-breadcrumb")).toContainText("level2");
+  // …and the tree is where its contents are read.
+  await expect(
+    page.locator(".json-node", {hasText: "found me"}).first()
+  ).toBeVisible();
+});
+
+test("ticking the open branch again falls back to the top level", async ({
+  page,
+}, testInfo) => {
+  // Unticking is the way back out: nothing open in the panel means the tree
+  // shows its top level and nothing deeper — not an empty document.
+  await loadViewer(
+    page,
+    buildFixture(),
+    `vn-untick-${testInfo.workerIndex}.json`
+  );
 
   await navRow(page, "beta").click();
-  await expect(page.getByTestId("nav-breadcrumb")).toContainText("beta");
-  await expect(navRow(page, "level2")).toBeVisible();
+  await expect(page.getByTestId("nav-children")).toHaveCount(1);
 
-  await navRow(page, "level2").click();
-  await expect(navRow(page, "level3")).toBeVisible();
+  await navRow(page, "beta").click();
+  await expect(page.getByTestId("nav-children")).toHaveCount(0);
+  await expect(
+    page.getByTestId("nav-graph").locator("input:checked")
+  ).toHaveCount(0);
+  // root plus its four keys, all folded — level2 and alpha's rows are gone.
+  await expect(page.locator(".json-node")).toHaveCount(5);
+  await expect(page.locator(".json-node", {hasText: "level2"})).toHaveCount(0);
+  await expect(page.locator(".json-node", {hasText: "alphaKey0"})).toHaveCount(
+    0
+  );
+});
 
-  await navRow(page, "level3").click();
-  await expect(navRow(page, "target")).toContainText('"found me"');
+test("checking a key collapses every other key, in both panels", async ({
+  page,
+}, testInfo) => {
+  // The core of the request: one node open at a time, everything else folded.
+  await loadViewer(
+    page,
+    buildFixture(),
+    `vn-single-${testInfo.workerIndex}.json`
+  );
 
-  // Back up two levels via the breadcrumb.
-  await page
-    .getByTestId("nav-breadcrumb")
-    .getByRole("button", {name: "beta", exact: true})
-    .click();
-  await expect(navRow(page, "level2")).toBeVisible();
-  await expect(page.getByTestId("nav-row")).toHaveCount(1);
+  // alpha, beta and gamma are all expanded in the tree on load.
+  await expect(page.locator(".json-node", {hasText: "alphaKey0"})).toHaveCount(
+    1
+  );
+
+  await navRow(page, "beta").click();
+
+  // Navigator: only beta carries children, and only beta is ticked.
+  await expect(page.getByTestId("nav-children")).toHaveCount(1);
+  await expect(
+    page.getByTestId("nav-graph").locator("input:checked")
+  ).toHaveCount(1);
+
+  // Tree: alpha's 40 rows and gamma's items are folded away, and beta is open
+  // all the way down rather than one level deep.
+  await expect(page.locator(".json-node", {hasText: "alphaKey0"})).toHaveCount(
+    0
+  );
+  await expect(page.locator(".json-node", {hasText: "level2"})).toHaveCount(1);
+  await expect(
+    page.locator(".json-node", {hasText: "found me"}).first()
+  ).toBeVisible();
+  await expect(
+    page.locator(".json-node", {hasText: "alpha"}).first()
+  ).toBeVisible();
+
+  // Switching the ticked key moves both the open child list and the tree.
+  await navRow(page, "gamma").click();
+  await expect(childRow(page, "[0]")).toBeVisible();
+  await expect(page.getByTestId("nav-row").filter({hasText: "level2"})).toHaveCount(
+    0
+  );
+  await expect(page.locator(".json-node", {hasText: "level2"})).toHaveCount(0);
+});
+
+test("the picked object is washed in the tree, not just its top row", async ({
+  page,
+}, testInfo) => {
+  // Picking a branch has to show what was picked: the head row carries the
+  // selection fill and everything inside it a lighter wash, so the extent of
+  // the object is readable at a glance.
+  await loadViewer(page, buildFixture(), `vn-wash-${testInfo.workerIndex}.json`);
+
+  const background = (row: ReturnType<Page["locator"]>) =>
+    row.evaluate((el) => getComputedStyle(el).backgroundColor);
+
+  // Nothing is ticked on load, so nothing is washed — the root being the
+  // selection by default must not paint the whole document.
+  await page.waitForTimeout(400);
+  expect(
+    await page
+      .locator(".json-node", {hasText: "alpha"})
+      .first()
+      .evaluate((el) => getComputedStyle(el).backgroundColor)
+  ).toMatch(/rgba\(0, 0, 0, 0\)/);
+
+  await navRow(page, "beta").click();
+
+  // The rows cross-fade on a 150ms transition, and a colour read mid-flight
+  // is an interpolation of both states rather than either one.
+  await page.waitForTimeout(400);
+
+  const head = page.locator(".json-node", {hasText: "beta"}).first();
+  const inside = page.locator(".json-node", {hasText: "found me"}).first();
+  const outside = page.locator(".json-node", {hasText: "alpha"}).first();
+
+  const [headBg, insideBg, outsideBg] = await Promise.all([
+    background(head),
+    background(inside),
+    background(outside),
+  ]);
+
+  // Rows outside the selection keep the ground; rows inside are tinted, and
+  // the head row is the strongest of the three.
+  expect(outsideBg).toMatch(/rgba\(0, 0, 0, 0\)/);
+  expect(insideBg).not.toBe(outsideBg);
+  expect(headBg).not.toBe(insideBg);
+});
+
+test("the checked row is scrolled to the middle of the navigator", async ({
+  page,
+}, testInfo) => {
+  // Guards the auto-scroll: a key picked far down the level has to come into
+  // focus on its own, together with the children it just opened.
+  const data: Record<string, unknown> = {};
+  for (let i = 0; i < 80; i++) data[`key${i}`] = {inner: {value: i}};
+  await loadViewer(
+    page,
+    JSON.stringify(data),
+    `vn-center-${testInfo.workerIndex}.json`
+  );
+
+  const graph = page.getByTestId("nav-graph");
+  expect(await graph.evaluate((el) => el.scrollTop)).toBe(0);
+
+  // key60 is well below the fold, so centring it demands a real scroll.
+  await page.getByTestId("nav-row").filter({hasText: "key60"}).first().click();
+
+  const offset = async () => {
+    const pane = (await graph.boundingBox())!;
+    const row = (await page
+      .locator('[data-testid="nav-row"][data-path="root.key60"]')
+      .boundingBox())!;
+    return Math.abs(row.y + row.height / 2 - (pane.y + pane.height / 2));
+  };
+
+  // Smooth scrolling, so poll until it settles near the middle.
+  await expect.poll(offset, {timeout: 5000}).toBeLessThan(60);
+  // And its children came along with it.
+  await expect(page.getByTestId("nav-children")).toHaveCount(1);
 });
 
 test("clicking a navigator row expands the node's ancestors in the tree", async ({
@@ -224,8 +401,6 @@ test("clicking a navigator row expands the node's ancestors in the tree", async 
   );
 
   await navRow(page, "beta").click();
-  await navRow(page, "level2").click();
-  await navRow(page, "level3").click();
 
   await expect(
     page.locator(".json-node", {hasText: "found me"}).first()
@@ -238,8 +413,8 @@ test("a selection deep in a long document is scrolled into the tree viewport", a
   // Guards the scroll-into-view effect in JsonTree: with virtualization the
   // picked row is not even mounted, so the user would otherwise see nothing.
   const data: Record<string, unknown> = {};
-  for (let i = 0; i < 150; i++) data[`key${i}`] = `value ${i}`;
-  data.needle = "bottom of the document";
+  for (let i = 0; i < 150; i++) data[`key${i}`] = {value: i};
+  data.needle = {found: "bottom of the document"};
   await loadViewer(
     page,
     JSON.stringify(data),
@@ -266,36 +441,38 @@ test("a selection deep in a long document is scrolled into the tree viewport", a
   );
 });
 
-test("the isolate button keeps one node open and folds its siblings", async ({
+test("the row controls sit on the centre line of the key beside them", async ({
   page,
 }, testInfo) => {
-  // Guards the per-row isolate action — the whole point of the panel is to cut
-  // the scrolling needed to reach one branch.
-  await loadViewer(
-    page,
-    buildFixture(),
-    `vn-isolate-${testInfo.workerIndex}.json`
-  );
+  // The rows are items-start so a wrapped value keeps its controls on the
+  // first line; that is also what leaves those controls a few pixels high
+  // unless their boxes are as tall as one line of the key.
+  await loadViewer(page, buildFixture(), `vn-rows-${testInfo.workerIndex}.json`);
+  await page.locator(".json-node").first().waitFor();
 
-  // alpha, beta and gamma are all expanded on load.
-  await expect(page.locator(".json-node", {hasText: "alphaKey0"})).toHaveCount(
-    1
-  );
-  await expect(page.locator(".json-node", {hasText: "level2"})).toHaveCount(1);
+  const centres = await page.evaluate(() => {
+    const mid = (el: Element) => {
+      const box = el.getBoundingClientRect();
+      return box.top + box.height / 2;
+    };
+    return [...document.querySelectorAll(".json-node")]
+      .slice(0, 8)
+      .map((row) => {
+        const key = row.querySelector("span.font-mono");
+        const toggle = row.querySelector("button[aria-label]");
+        const icon = row.querySelector("span[data-tooltip^='Type:']");
+        return {
+          toggle: key && toggle ? mid(toggle) - mid(key) : 0,
+          icon: key && icon ? mid(icon) - mid(key) : 0,
+        };
+      });
+  });
 
-  await page.getByRole("button", {name: 'Show only "beta"'}).click();
-
-  // alpha's 40 rows and gamma's items are folded away; beta stays open.
-  await expect(page.locator(".json-node", {hasText: "alphaKey0"})).toHaveCount(
-    0
-  );
-  await expect(page.locator(".json-node", {hasText: "level2"})).toHaveCount(1);
-  await expect(
-    page.locator(".json-node", {hasText: "alpha"}).first()
-  ).toBeVisible();
-
-  // Isolating also makes it the current level in the navigator.
-  await expect(page.getByTestId("nav-breadcrumb")).toContainText("beta");
+  expect(centres.length).toBeGreaterThan(3);
+  for (const row of centres) {
+    expect(Math.abs(row.toggle)).toBeLessThanOrEqual(1.5);
+    expect(Math.abs(row.icon)).toBeLessThanOrEqual(1.5);
+  }
 });
 
 test("the navigator shows an empty state and the old table view is gone", async ({

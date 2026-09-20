@@ -79,6 +79,20 @@ export const JsonTree: React.FC<JsonTreeProps> = ({
     }
   }, []);
 
+  // Everything under the selected node is part of what was selected, so the
+  // whole object is washed rather than just the row that names it. The root
+  // is exempt: it is selected on load, and washing the whole document says
+  // nothing. The separator is part of the test — `orders2` is not inside
+  // `orders`.
+  const inSelection = useCallback(
+    (path: string) =>
+      !!selectedNodePath &&
+      selectedNodePath !== "root" &&
+      (path.startsWith(`${selectedNodePath}.`) ||
+        path.startsWith(`${selectedNodePath}[`)),
+    [selectedNodePath]
+  );
+
   const renderRow = useCallback(
     (index: number, node: JsonNodeType) => {
       const isCurrentMatch =
@@ -91,6 +105,7 @@ export const JsonTree: React.FC<JsonTreeProps> = ({
           onToggle={onToggleNode}
           onSelect={onSelectNode}
           isSelected={selectedNodePath === node.path}
+          isInSelection={inSelection(node.path)}
           onCopy={handleCopy}
           searchQuery={searchQuery}
           caseSensitive={caseSensitive}
@@ -105,6 +120,7 @@ export const JsonTree: React.FC<JsonTreeProps> = ({
       onToggleNode,
       onSelectNode,
       selectedNodePath,
+      inSelection,
       handleCopy,
       searchQuery,
       caseSensitive,

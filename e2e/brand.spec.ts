@@ -35,6 +35,28 @@ test("ajson carries no NonStop marks", async ({page}) => {
   expect(hrefs).toContain("https://github.com/ProjectAJ14");
 });
 
+test("the footer credits the author with a linked GitHub picture", async ({
+  page,
+}) => {
+  // The credit belongs to the person, not the brand, so it stands under both.
+  for (const url of ["/", "/?brand=ajson"]) {
+    await page.goto(url);
+
+    const footer = page.locator("footer");
+    await expect(footer).toContainText("Built by");
+
+    const avatar = footer.locator('img[alt="Ajay Kumar"]');
+    await expect(avatar).toHaveAttribute(
+      "src",
+      "https://github.com/ProjectAJ14.png?size=64"
+    );
+    // Wrapped in the link to the profile, not floating beside it.
+    await expect(
+      footer.locator('a[href="https://github.com/ProjectAJ14"] img')
+    ).toHaveCount(1);
+  }
+});
+
 test("ajson swaps the title and the whole icon set", async ({page}) => {
   await page.goto("/?brand=ajson");
 

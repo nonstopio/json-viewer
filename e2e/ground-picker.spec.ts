@@ -86,9 +86,10 @@ test("a ground swap re-resolves every role, including outside the bundle", async
 // `rounded-*` from a utility class or a library's own stylesheet is the
 // easiest way for that to erode, and it reads as "almost right" rather than
 // as wrong, so it survives review. The only exception is a genuine circle:
-// the spinner and the scrollbar thumb are round because they are not boxes.
+// the spinner, the scrollbar thumb and the author's avatar are round because
+// they are not boxes — the last one is a face.
 test("no box in the app has rounded corners", async ({page}) => {
-  const ROUND_BY_NATURE = /animate-spin/;
+  const ROUND_BY_NATURE = /animate-spin|avatar/;
 
   const rounded = async () =>
     page.evaluate(

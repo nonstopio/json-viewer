@@ -31,6 +31,7 @@ export default {
         mass: role("mass"),
         hover: role("hover"),
         sel: role("sel"),
+        "sel-soft": role("sel-soft"),
         // text
         ink: role("ink"),
         dim: role("dim"),
