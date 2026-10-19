@@ -1,3 +1,11 @@
+## [1.10.2](https://github.com/nonstopio/json-viewer/compare/v1.10.1...v1.10.2) (2026-10-19)
+
+
+### Bug Fixes
+
+* bring dark-mode text roles up to 4.5:1 on every surface ([85129ac](https://github.com/nonstopio/json-viewer/commit/85129ac7de0fc41c66603aa5a007314b0fc8bcde))
+* keep selected editor text readable in dark mode ([f28a3a2](https://github.com/nonstopio/json-viewer/commit/f28a3a25b4dd6eae09309089b0569a0eab9cfaf4))
+
 ## [1.10.1](https://github.com/nonstopio/json-viewer/compare/v1.10.0...v1.10.1) (2026-10-19)
 
 
