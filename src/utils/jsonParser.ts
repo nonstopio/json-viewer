@@ -563,7 +563,8 @@ export class JsonParser {
     }
 
     // Handle multiple levels of quote escaping (like ""status"" or """status""")
-    cleaned = cleaned.replace(/"{2,}/g, '"'); // Replace multiple quotes with single quote
+    // (a quote after a backslash is an escaped one, e.g. the end of "say \"hi\"")
+    cleaned = cleaned.replace(/(?<!\\)"{2,}/g, '"'); // Replace multiple quotes with single quote
 
     // Remove single-line comments (// ...)
     cleaned = cleaned.replace(/\/\/.*$/gm, "");
@@ -621,6 +622,10 @@ export class JsonParser {
         return `: "${value}"`;
       }
     );
+
+    // Double lone backslashes (Windows paths like E:\logs\app.log): JSON only
+    // allows \" \\ \/ \b \f \n \r \t \uXXXX, so anything else is an invalid escape.
+    cleaned = cleaned.replace(/\\(?!["\\/bfnrt]|u[0-9a-fA-F]{4})/g, "\\\\");
 
     // Clean up extra whitespace but preserve structure
     cleaned = cleaned.replace(/\n\s*\n/g, "\n");
