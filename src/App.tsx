@@ -875,7 +875,7 @@ function App() {
                     }
                   }}
                   placeholder="Search JSON... (Enter: next, Shift+Enter: prev)"
-                  className="w-full rounded-sm border border-line-2 bg-mass px-3 py-2 pr-10 text-sm text-ink placeholder:text-faint-2 focus:border-spot focus:outline-none"
+                  className="w-full rounded-sm border border-line-2 bg-mass px-3 py-2 pr-10 text-sm text-ink placeholder:text-faint focus:border-spot focus:outline-none"
                 />
                 {searchQuery && (
                   <button
@@ -1086,7 +1086,7 @@ function App() {
 
               {/* Version and Report Issues - Right */}
               <div className="flex items-center space-x-4">
-                <span className="font-mono text-xs text-faint-2">
+                <span className="font-mono text-xs text-faint">
                   v{__APP_VERSION__}
                 </span>
                 {/* Opens the About dialog (the crawlable content in index.html)

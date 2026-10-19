@@ -133,7 +133,7 @@ export const JsonTree: React.FC<JsonTreeProps> = ({
       <div className="flex flex-col items-center justify-center p-12 text-faint">
         <Package className="w-12 h-12 mb-3 opacity-30" />
         <p className="text-sm font-medium mb-1">No JSON data to display</p>
-        <p className="text-xs text-faint-2">
+        <p className="text-xs text-faint">
           Parse some JSON to see the tree view here
         </p>
       </div>

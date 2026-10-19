@@ -56,16 +56,20 @@ test("dark editor punctuation is readable, not the disabled grey", async ({
   );
   await page.locator(".cm-content").click();
   await page.keyboard.type('{"a": 1}');
-  const color = await page.evaluate(() => {
+  const [color, faint] = await page.evaluate(() => {
     const el = [...document.querySelectorAll(".cm-line span")].find(
       (s) => s.textContent === ":"
     );
-    return el ? getComputedStyle(el).color : null;
+    const probe = document.createElement("i");
+    probe.style.color = "var(--faint)";
+    document.body.append(probe);
+    const faint = getComputedStyle(probe).color;
+    probe.remove();
+    return [el ? getComputedStyle(el).color : null, faint];
   });
-  // --faint-2 is #565249 (86,82,73); --faint is #8b857b (139,133,123).
-  expect(color).not.toBeNull();
-  expect(color).not.toBe("rgb(86, 82, 73)");
-  expect(color).toBe("rgb(139, 133, 123)");
+  // Punctuation (where invalid tokens fall back) must use --faint, not the
+  // disabled --faint-2; tokens.css and e2e/contrast.spec.ts guard the values.
+  expect(color).toBe(faint);
 });
 
 test("selected editor text keeps its colour and sits on a visible fill", async ({
