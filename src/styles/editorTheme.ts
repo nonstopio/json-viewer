@@ -23,8 +23,13 @@ const chrome = (dark: boolean) =>
       },
       ".cm-cursor, .cm-dropCursor": {borderLeftColor: "var(--spot)"},
       "&.cm-focused": {outline: "none"},
-      "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection":
-        {backgroundColor: "var(--spot-soft)"},
+      "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground":
+        {backgroundColor: "var(--spot-line)"},
+      /* The app-wide ::selection paints --spot-ink (dark) text for a solid
+         --spot fill, but CodeMirror draws its own selection layer and makes
+         the native one transparent: dark text on a dark ground, unreadable.
+         Keep each token's own colour. */
+      ".cm-content ::selection": {color: "currentColor"},
       ".cm-activeLine": {backgroundColor: "var(--hover)"},
       /* CodeMirror's base theme sets a bare `monospace` here, which is the
          OS default rather than ours — the line numbers would be the one

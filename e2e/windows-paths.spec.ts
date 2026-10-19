@@ -67,3 +67,29 @@ test("dark editor punctuation is readable, not the disabled grey", async ({
   expect(color).not.toBe("rgb(86, 82, 73)");
   expect(color).toBe("rgb(139, 133, 123)");
 });
+
+test("selected editor text keeps its colour and sits on a visible fill", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.evaluate(() =>
+    document.documentElement.setAttribute("data-mode", "ink")
+  );
+  await page.locator(".cm-content").click();
+  await page.keyboard.insertText('{"a": "text"}');
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.locator(".cm-selectionBackground").first().waitFor();
+  const [text, fill] = await page.evaluate(() => {
+    const str = [...document.querySelectorAll(".cm-line span")].find(
+      (s) => s.textContent === '"text"'
+    )!;
+    const sel = document.querySelector(".cm-selectionBackground")!;
+    return [
+      getComputedStyle(str, "::selection").color,
+      getComputedStyle(sel).backgroundColor,
+    ];
+  });
+  // Not --spot-ink (#17171a), the app-wide selection text colour.
+  expect(text).not.toBe("rgb(23, 23, 26)");
+  expect(fill).not.toBe("rgba(0, 0, 0, 0)");
+});
