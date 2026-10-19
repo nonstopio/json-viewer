@@ -30,7 +30,12 @@ const chrome = (dark: boolean) =>
          the native one transparent: dark text on a dark ground, unreadable.
          Keep each token's own colour. */
       ".cm-content ::selection": {color: "currentColor"},
-      ".cm-activeLine": {backgroundColor: "var(--hover)"},
+      /* Translucent on purpose: CodeMirror draws the selection in a layer
+         behind the text, so an opaque active-line fill hides a drag
+         selection made on the cursor's own line. */
+      ".cm-activeLine": {
+        backgroundColor: "color-mix(in srgb, var(--ink) 5%, transparent)",
+      },
       /* CodeMirror's base theme sets a bare `monospace` here, which is the
          OS default rather than ours — the line numbers would be the one
          surface still rendering in the old font. */
