@@ -23,15 +23,20 @@ const chrome = (dark: boolean) =>
       },
       ".cm-cursor, .cm-dropCursor": {borderLeftColor: "var(--spot)"},
       "&.cm-focused": {outline: "none"},
-      "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection":
-        {backgroundColor: "var(--spot-soft)"},
+      "&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground, .cm-selectionBackground":
+        {backgroundColor: "var(--spot-line)"},
+      /* The app-wide ::selection paints --spot-ink (dark) text for a solid
+         --spot fill, but CodeMirror draws its own selection layer and makes
+         the native one transparent: dark text on a dark ground, unreadable.
+         Keep each token's own colour. */
+      ".cm-content ::selection": {color: "currentColor"},
       ".cm-activeLine": {backgroundColor: "var(--hover)"},
       /* CodeMirror's base theme sets a bare `monospace` here, which is the
          OS default rather than ours — the line numbers would be the one
          surface still rendering in the old font. */
       ".cm-gutters": {
         backgroundColor: "var(--code-bg)",
-        color: "var(--faint-2)",
+        color: "var(--faint)",
         borderRight: "1px solid var(--line-2)",
         fontFamily: "var(--font-mono)",
       },
@@ -46,7 +51,7 @@ const chrome = (dark: boolean) =>
         color: "var(--dim)",
       },
       ".cm-placeholder": {
-        color: "var(--faint-2)",
+        color: "var(--faint)",
         fontFamily: "var(--font-mono)",
       },
       ".cm-selectionMatch": {backgroundColor: "var(--spot-soft)"},
@@ -76,10 +81,7 @@ const highlight = HighlightStyle.define([
   {tag: [t.number, t.integer, t.float], color: "var(--json-number)"},
   {tag: [t.bool, t.atom], color: "var(--json-boolean)"},
   {tag: t.null, color: "var(--json-null)", fontStyle: "italic"},
-  /* --json-punct is --faint-2 (the disabled grey, ~2:1 on the code well):
-     fine for the tree's colons, unreadable for code the parser flagged
-     invalid, whose tokens fall back to punctuation. --faint stays legible. */
-  {tag: [t.punctuation, t.separator, t.bracket], color: "var(--faint)"},
+  {tag: [t.punctuation, t.separator, t.bracket], color: "var(--json-punct)"},
   {tag: t.comment, color: "var(--faint)", fontStyle: "italic"},
   {tag: t.invalid, color: "var(--error)"},
 ]);

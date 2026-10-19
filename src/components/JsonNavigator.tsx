@@ -139,7 +139,7 @@ const Row: React.FC<RowProps> = ({row, checked, open, onToggle, rowRef}) => {
       <ChevronRight
         size={14}
         className={`ml-auto flex-shrink-0 ${
-          open ? "rotate-90 text-spot" : "text-faint-2"
+          open ? "rotate-90 text-spot" : "text-faint"
         }`}
       />
     </label>
@@ -288,10 +288,7 @@ export const JsonNavigator: React.FC<JsonNavigatorProps> = ({
           {segments.map((segment, index) => (
             <React.Fragment key={segment.path}>
               {index > 0 && (
-                <ChevronRight
-                  size={12}
-                  className="flex-shrink-0 text-faint-2"
-                />
+                <ChevronRight size={12} className="flex-shrink-0 text-faint" />
               )}
               <button
                 onClick={() => onSelectNode(segment.path)}

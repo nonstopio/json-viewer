@@ -107,19 +107,24 @@
 
 :root,
 :root[data-mode="ink"] {
+  /* Native controls (checkbox, select, scrollbars) read this to pick
+     their own light or dark chrome. */
+  color-scheme: dark;
+  accent-color: var(--spot);
+
   /* -- surfaces -- */
   --bg: #17171a; /* page */
   --panel: #1e1e22; /* raised band, toolbar, sidebar, popover */
   --mass: #26262a; /* wells, inputs, inline code */
   --hover: #232327; /* row hover */
-  --sel: color-mix(in srgb, var(--spot) 20%, var(--bg)); /* selected row */
+  --sel: color-mix(in srgb, var(--spot) 15%, var(--bg)); /* selected row */
   --sel-soft: color-mix(in srgb, var(--spot) 12%, transparent); /* its subtree */
 
   /* -- text -- */
   --ink: #eae7e1; /* primary */
-  --dim: #a29c93; /* secondary */
-  --faint: #8b857b; /* captions, micro-labels — 4.89:1 */
-  --faint-2: #565249; /* disabled, placeholder */
+  --dim: #b0aaa1; /* secondary */
+  --faint: #9e988e; /* captions, micro-labels — 5.7:1 on --bg, 4.5+ on --sel */
+  --faint-2: #776f66; /* disabled, scrollbars, icons — 3:1+, never body text */
 
   /* -- rules -- */
   --line: #26262a; /* hairline */
@@ -132,12 +137,12 @@
   --spot-line: color-mix(in srgb, var(--spot) 40%, transparent);
 
   /* -- state (kept off the accent hue so state never reads as branding) -- */
-  --error: #ff6369;
+  --error: #ff7378;
   --error-soft: color-mix(in srgb, var(--error) 14%, transparent);
   --warning: #e8920c;
   --warning-soft: color-mix(in srgb, var(--warning) 14%, transparent);
   --success: #8ecf7a;
-  --info: #4a9eff;
+  --info: #5aa8ff;
 
   /* -- the living ground --
      The grid gives the flat surface a measure; the glows give it depth. Both
@@ -158,7 +163,7 @@
   --json-null: var(--faint);
   --json-object: #c9a8ff;
   --json-array: #7fc4ff;
-  --json-punct: var(--faint-2);
+  --json-punct: var(--faint);
 
   /* -- search highlight -- */
   --mark: #4a4326;
@@ -178,11 +183,14 @@
 }
 
 :root[data-mode="paper"] {
+  color-scheme: light;
+  accent-color: var(--spot);
+
   --bg: #f0ede6;
   --panel: #e7e3da;
   --mass: #ddd8cc;
   --hover: #e4e0d6;
-  --sel: color-mix(in srgb, var(--spot) 16%, var(--bg));
+  --sel: color-mix(in srgb, var(--spot) 10%, var(--bg));
   --sel-soft: color-mix(in srgb, var(--spot) 9%, transparent);
 
   --ink: #16150f;
@@ -219,7 +227,7 @@
   --json-null: var(--faint);
   --json-object: #6d3fa8;
   --json-array: #14539e;
-  --json-punct: var(--faint-2);
+  --json-punct: var(--faint);
 
   --mark: #f3e4a8;
   --mark-ink: #3d3411;
