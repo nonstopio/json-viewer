@@ -755,6 +755,12 @@ function GraphInner({
               zoomable
               position="bottom-left"
               className="!bg-mass"
+              // React Flow's defaults are light greys, which read as a
+              // bright slab on the ink ground; take the roles instead.
+              nodeColor="var(--faint-2)"
+              nodeStrokeColor="transparent"
+              maskColor="color-mix(in srgb, var(--bg) 65%, transparent)"
+              maskStrokeColor="var(--spot)"
             />
           )}
         </ReactFlow>
@@ -800,7 +806,7 @@ function GraphInner({
                 }
               }}
               placeholder="Search nodes…"
-              className="w-40 bg-transparent text-sm text-ink outline-none placeholder:text-faint-2"
+              className="w-40 bg-transparent text-sm text-ink outline-none placeholder:text-faint"
             />
             <span className="min-w-[36px] text-center font-mono text-xs text-faint">
               {query
