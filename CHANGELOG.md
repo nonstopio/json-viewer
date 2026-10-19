@@ -1,3 +1,10 @@
+## [1.10.1](https://github.com/nonstopio/json-viewer/compare/v1.10.0...v1.10.1) (2026-10-19)
+
+
+### Bug Fixes
+
+* parse Windows paths and keep dark-mode editor text readable ([bf858ab](https://github.com/nonstopio/json-viewer/commit/bf858abb2169970a637d8458f80728df4804af0b))
+
 # [1.10.0](https://github.com/nonstopio/json-viewer/compare/v1.9.0...v1.10.0) (2026-09-20)
 
 
