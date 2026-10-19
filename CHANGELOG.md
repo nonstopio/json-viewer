@@ -1,3 +1,10 @@
+## [1.10.3](https://github.com/nonstopio/json-viewer/compare/v1.10.2...v1.10.3) (2026-10-19)
+
+
+### Bug Fixes
+
+* show drag selection on the editor's active line ([3bc2760](https://github.com/nonstopio/json-viewer/commit/3bc27609c83bc17702e5230df0b24bec7289008b))
+
 ## [1.10.2](https://github.com/nonstopio/json-viewer/compare/v1.10.1...v1.10.2) (2026-10-19)
 
 
